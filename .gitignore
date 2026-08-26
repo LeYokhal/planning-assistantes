@@ -1,0 +1,18 @@
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+
+# Base locale et fichiers statiques collectes
+db.sqlite3
+staticfiles/
+
+# Secrets et entrees hors depot
+.env
+_entrees/
+
+# Reglages locaux de l'outillage
+.claude/settings.local.json
+
+# Divers
+.pytest_cache/

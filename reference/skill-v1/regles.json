@@ -1,0 +1,113 @@
+{
+  "_doc": "Règles du planning assistantes. Noms = colonne Name de ☎️ Fiche personnel (NOM Prénom), casse et accents indifférents.",
+  "gabarits": {
+    "_doc": "Briques hebdomadaires par contrat : J = journée complète 9h-19h30, C = journée courte 9h-16h30",
+    "39": [
+      "J",
+      "J",
+      "J",
+      "J"
+    ],
+    "35": [
+      "J",
+      "J",
+      "J",
+      "C"
+    ],
+    "27": [
+      "J",
+      "J",
+      "C"
+    ]
+  },
+  "binomes": [
+    {
+      "assistante": "DEHU Lea",
+      "praticien": "KHALFON Yohan"
+    },
+    {
+      "assistante": "ARIBOT Maeva",
+      "praticien": "SCAVINER Justine"
+    },
+    {
+      "assistante": "DA VEIGA MONTEIRO Dilsa",
+      "praticien": "MAILLARD Noemie"
+    },
+    {
+      "assistante": "MICHELOT-BAILLARD Charlotte",
+      "praticien": "LOUNES Sabrina"
+    },
+    {
+      "assistante": "QUESNEY Emilie",
+      "praticien": "PODWOJEWSKI Laura",
+      "exclusif": true
+    },
+    {
+      "assistante": "WINIARZ Lea",
+      "praticien": "PODWOJEWSKI Laura",
+      "exclusif": true
+    }
+  ],
+  "praticiens_exclusifs": {
+    "_doc": "Ne reçoivent que leurs binômes, et les attendent tous chaque jour de présence",
+    "liste": [
+      "PODWOJEWSKI Laura"
+    ]
+  },
+  "creneau_administratif": [
+    {
+      "salariee": "LANGE Amandine",
+      "brique": "C",
+      "_doc": "1 créneau/semaine, ni praticien ni sureffectif, seulement si aucun sous-effectif n'en résulte"
+    }
+  ],
+  "couleurs": {
+    "QUESNEY Emilie": "gray",
+    "MICHELOT-BAILLARD Charlotte": "orange",
+    "LANGE Amandine": "pink",
+    "ARIBOT Maeva": "purple",
+    "DEHU Lea": "yellow",
+    "DA VEIGA MONTEIRO Dilsa": "blue",
+    "MENUEL Jelly": "green",
+    "WINIARZ Lea": "brown",
+    "KHALFON Cécile": "purple",
+    "AURE Genevieve": "blue",
+    "LAUTIE Clara": "yellow",
+    "SCAVINER Justine": "purple",
+    "PODWOJEWSKI Laura": "gray",
+    "MAILLARD Noemie": "blue",
+    "LOUNES Sabrina": "orange",
+    "KHALFON Yohan": "yellow",
+    "CRACOSKY Sacha": "green",
+    "JAFFRENOU Adrien": "pink"
+  },
+  "praticiens_a_part": {
+    "_doc": "Affichés en fin de liste, sur leur propre ligne dans chaque case-jour (statut à part, ex. orthodontie)",
+    "liste": [
+      {
+        "nom": "PODWOJEWSKI Laura",
+        "etiquette": "ortho"
+      }
+    ]
+  },
+  "heures_par_brique": {
+    "_doc": "Heures comptées par brique posée (pause déduite) : J = 9h-19h30, C = 9h-16h30",
+    "J": 9.75,
+    "C": 6.75
+  },
+  "etudiantes": {
+    "_doc": "Alternantes : rythme sans cours, et mot-clé des entrées Notion (Agenda cabinet, Type Ecole) qui portent leurs jours de cours. Chaque cours consomme la journée courte de sa semaine.",
+    "liste": [
+      {
+        "nom": "WINIARZ Lea",
+        "gabarit_sans_cours": [
+          "J",
+          "J",
+          "J",
+          "C"
+        ],
+        "mot_cle_notion": "école"
+      }
+    ]
+  }
+}

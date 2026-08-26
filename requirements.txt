@@ -1,0 +1,30 @@
+# Planning Assistantes — dependances epinglees le 2026-08-26 (brique 1a)
+# Django 5.2 LTS (PAS 6.x) : django-sesame 3.2.3 declare Django 4.2 -> 5.2 uniquement,
+# et 5.2 LTS supporte officiellement Python 3.14 (securite jusqu'en avril 2028).
+
+# --- dependances directes (ordre du plan) ---
+Django==5.2.17
+django-sesame==3.2.3
+psycopg[binary]==3.3.4
+dj-database-url==3.1.2
+whitenoise==6.12.0
+gunicorn==26.2.0
+requests==2.34.2
+python-dotenv==1.2.3
+pytest==8.4.2
+pytest-django==4.14.0
+
+# --- dependances transitives (epinglees pour la reproductibilite) ---
+asgiref==3.12.1
+certifi==2026.7.22
+charset-normalizer==3.5.1
+colorama==0.4.6
+idna==3.19
+iniconfig==2.3.0
+packaging==26.3
+pluggy==1.6.0
+psycopg-binary==3.3.4
+Pygments==2.21.0
+sqlparse==0.6.0
+tzdata==2026.3
+urllib3==2.7.0

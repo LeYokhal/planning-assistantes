@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Planning assistantes</title>
+<style>
+  /* Charte Espace K Dentaire (dentistesvillecresnes.com) : Satoshi, bleu #1764D8, fonds #F8FEFF / #EEF8FA, texte #141717 */
+  @font-face{font-family:"Satoshi";src:url("https://cdn.prod.website-files.com/68ed01d64e872bb260ddd9ca/68ed01d84e872bb260ddda8b_Satoshi-Regular.otf") format("opentype");font-weight:400;font-style:normal;font-display:swap}
+  @font-face{font-family:"Satoshi";src:url("https://cdn.prod.website-files.com/68ed01d64e872bb260ddd9ca/68ed01d84e872bb260ddda8d_Satoshi-Medium.otf") format("opentype");font-weight:500;font-style:normal;font-display:swap}
+  @font-face{font-family:"Satoshi";src:url("https://cdn.prod.website-files.com/68ed01d64e872bb260ddd9ca/68ed01d84e872bb260ddda8e_Satoshi-Bold.otf") format("opentype");font-weight:700;font-style:normal;font-display:swap}
+  @font-face{font-family:"Satoshi";src:url("https://cdn.prod.website-files.com/68ed01d64e872bb260ddd9ca/68ed01d84e872bb260ddda88_Satoshi-MediumItalic.otf") format("opentype");font-weight:500;font-style:italic;font-display:swap}
+  :root{
+    --bg:#F8FEFF; --card:#FFFFFF; --card-2:#EEF8FA; --ink:#141717; --ink-2:#5C6B70; --ink-3:#93A1A6;
+    --line:#D9E6EA; --line-2:#E9F1F4; --outside:#F1F6F8;
+    --accent:#1764D8; --accent-soft:#E4EEFB; --accent-ink:#0F4FAE;
+    --alert:#D92124; --alert-bg:#FDECEC; --warn:#B86E00; --warn-bg:#FFF3DF; --ok:#1E8A4C; --ok-bg:#E6F5EC;
+    --secr:#4C5A82; --secr-bg:#EAEDF7; --sur:#7A6A9C; --sur-bg:#F1EDF8; --adm:#2E7F8F; --adm-bg:#E4F2F5;
+    --font:"Satoshi","Segoe UI Variable Text","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;
+    --mono:"Cascadia Mono",Consolas,"SF Mono",ui-monospace,monospace;
+    --r-card:12px; --r-slot:8px; --r-pill:999px;
+    --shadow:0 1px 2px rgba(20,23,23,.04),0 6px 18px rgba(23,100,216,.06);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:13px;line-height:1.3;font-weight:500}
+  button{font:inherit;color:inherit}
+  h1{font-weight:700;font-size:26px;margin:0;letter-spacing:-.02em;line-height:1.1}
+  h1 .month{color:var(--accent)}
+  h1 .who{color:var(--ink-2);font-weight:500}
+
+  /* ---------- barre haute ---------- */
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(248,254,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-2);
+    display:flex;flex-direction:column;gap:10px;padding:14px 22px 12px}
+  .topbar .titles{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .topbar .sub{color:var(--ink-2);font-size:12px;font-weight:400}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
+  .actions .primary{margin-left:auto}
+  .btn{border:1px solid var(--line);background:var(--card);border-radius:var(--r-pill);padding:8px 16px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s,border-color .15s}
+  .btn:hover{background:var(--card-2);border-color:#C8DBE2}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn.primary:hover{background:var(--accent-ink);border-color:var(--accent-ink)}
+  .btn:focus-visible,.brick:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .banner{background:var(--warn-bg);color:var(--warn);border-bottom:1px solid #F1DDB8;padding:7px 22px;font-size:12.5px}
+  .banner:empty{display:none}
+  .banner .btn{padding:3px 10px;font-size:12px}
+
+  /* ---------- disposition ---------- */
+  .layout{display:grid;grid-template-columns:224px 1fr;gap:0;align-items:start}
+  body.pal-collapsed .layout{grid-template-columns:36px 1fr}
+  .calendar{grid-column:2;grid-row:1;padding:14px 20px 48px 12px;min-width:0}
+  .palette{grid-column:1;grid-row:1;position:sticky;top:var(--topbar-h,112px);height:calc(100vh - var(--topbar-h,112px));overflow:auto;background:var(--card);border-right:1px solid var(--line-2);padding:8px 9px 28px}
+  body.pal-collapsed .palette{padding:8px 4px}
+  body.pal-collapsed .palette .pbody{display:none}
+  .ptoggle{width:100%;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:11.5px;padding:4px 0;cursor:pointer;color:var(--ink-2);margin-bottom:8px;font-weight:700}
+  .ptoggle:hover{border-color:var(--accent);color:var(--accent)}
+  body.pal-collapsed .ptoggle{width:28px;padding:6px 0;writing-mode:vertical-rl}
+
+  /* ---------- barre latérale : semaines, tuiles, praticiens, bilan ---------- */
+  .wtabs{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
+  .wtab{border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);padding:2px 7px;font-size:11px;cursor:pointer;font-weight:700;color:var(--ink-2)}
+  .wtab.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .wtab .ko{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--alert);margin-left:5px;vertical-align:middle}
+  .tiles{display:grid;grid-template-columns:1fr;gap:4px}
+  .tile{background:var(--card-2);border-radius:9px;padding:5px 7px 6px;border:1.5px solid transparent;cursor:pointer;position:relative;transition:border-color .12s,background .12s}
+  .tile:hover{border-color:#C8DBE2}
+  .tile.on{border-color:var(--accent);background:var(--accent-soft)}
+  .tile.armed{border-color:var(--alert)}
+  .tile .nm{display:flex;align-items:center;gap:5px;font-weight:700;font-size:12px;color:var(--fg)}
+  .tile .nm i{width:8px;height:8px;border-radius:50%;background:var(--fg);flex:none}
+  .tile .nm small{font-weight:400;color:var(--ink-3);font-size:10px;white-space:nowrap}
+  .tile .acts{display:flex;gap:3px;margin-left:auto}
+  .tile .acts button{width:20px;height:20px;border:1px solid var(--line);background:#fff;border-radius:50%;font-size:12px;padding:0;cursor:pointer;color:var(--ink-2);line-height:18px}
+  .tile .acts button:hover{border-color:var(--accent);color:var(--accent)}
+  .tile .acts button.on{border-color:var(--alert);color:var(--alert);background:var(--alert-bg)}
+  .tile .mt{display:flex;align-items:center;gap:5px;margin-top:3px;font-size:10.5px;color:var(--ink-2);flex-wrap:wrap}
+  .tile .mt .cnt{font-family:var(--mono);font-size:10.5px}
+  .tile .mt .done{color:var(--ok);font-weight:700}
+  .tile .sup{margin-left:auto;color:#fff;background:var(--warn);font-weight:700;font-size:10px;padding:0 6px;border-radius:var(--r-pill);white-space:nowrap}
+  .tile .stack{display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;align-items:center}
+  .tile .crs{display:flex;align-items:center;gap:4px;margin-top:5px;font-size:10.5px;color:var(--ink-2)}
+  .tile .crs b{color:var(--accent-ink);font-size:12px;min-width:14px;text-align:center}
+  .tile .crs button{width:20px;height:20px;border:1px solid var(--line);background:#fff;border-radius:50%;font-size:12px;padding:0;cursor:pointer;color:var(--ink-2);line-height:18px}
+  .tile .crs button:hover{border-color:var(--accent);color:var(--accent)}
+  .tile .crs button.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .tile .crs .lbl{margin-left:auto;font-size:10px;color:var(--ink-3)}
+  .tile .types{display:flex;gap:3px;margin-top:4px}
+  .tile .types button{flex:1;border:1px solid var(--line);background:#fff;border-radius:6px;font-size:9.5px;padding:2px 0;cursor:pointer;color:var(--ink-2);font-weight:700}
+  .tile .types button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .tile .abs{font-size:9.5px;color:var(--ink-3);display:flex;gap:5px;margin-left:4px}
+  .pchips{display:flex;flex-wrap:wrap;gap:3px}
+  .pchip{border:1px solid var(--line);border-left:4px solid var(--pc);background:#fff;border-radius:var(--r-pill);padding:1px 7px 1px 6px;font-size:11px;font-weight:700;cursor:pointer}
+  .pchip:hover{background:var(--card-2)}
+  .pchip.on{background:var(--accent-soft);border-color:var(--accent);border-left-color:var(--pc)}
+  /* ---------- bilan du mois, sous l'agenda ---------- */
+  .bilan{margin-top:6px;background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);padding:14px 18px 16px}
+  .bilan .bhead{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:10px}
+  .bilan h3{margin:0;font-size:14px;font-weight:700}
+  .bilan .bsub{font-size:11.5px;color:var(--ink-2);font-weight:400}
+  .kpis{display:flex;gap:8px;margin-left:auto}
+  .kpi{background:var(--card-2);border-radius:10px;padding:6px 14px;text-align:center;min-width:96px}
+  .kpi b{display:block;font-size:17px;font-weight:700;white-space:nowrap}
+  .kpi span{font-size:10.5px;color:var(--ink-2);display:block}
+  .bilan table{width:100%;border-collapse:collapse;font-size:12px}
+  .bilan th{font-weight:700;color:var(--ink-3);font-size:10px;text-transform:uppercase;letter-spacing:.06em;text-align:right;padding:4px 10px;border-bottom:1px solid var(--line-2)}
+  .bilan th:first-child,.bilan td:first-child{text-align:left;padding-left:0}
+  .bilan td{padding:4px 10px;text-align:right;font-family:var(--mono);font-size:11.5px;border-bottom:1px solid var(--line-2)}
+  .bilan tr:last-child td{border-bottom:none}
+  .bilan td:first-child{font-family:var(--font);font-weight:700;font-size:12px}
+  .bilan td:first-child i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--fg);margin-right:6px;vertical-align:middle}
+  .bilan td.short{color:var(--warn);font-weight:700}
+  .bilan td.full{color:var(--ok)}
+  .bilan td.sup{color:var(--warn);font-weight:700}
+  .bilan td.dimrow{opacity:.35}
+  .kpi.warn b{color:var(--warn)} .kpi.ko b{color:var(--alert)} .kpi.ok b{color:var(--ok)}
+  .abs-cp{color:var(--ok)} .abs-mal{color:var(--alert)} .abs-ss{color:var(--ink-2)} .abs-cours{color:var(--accent-ink)}
+  body.mode-cours .band,body.mode-cours .day{cursor:copy}
+  .band .cours{font-size:11px;color:var(--accent-ink);white-space:nowrap}
+  .badge-abs{font-size:9px;font-weight:700;padding:0 4px;border-radius:4px;border:1px solid currentColor}
+  .pchips{margin-bottom:6px}
+  .grp:first-child{margin-top:0}
+  .grp .wk-hint{float:right;text-transform:none;letter-spacing:0;font-weight:400;color:var(--ink-3)}
+  .filtre-bar{display:none;align-items:center;gap:6px;background:var(--accent-soft);border:1px solid #BFD4F5;border-radius:9px;padding:5px 8px;margin-bottom:8px;font-size:11.5px}
+  .filtre-bar .btn{padding:3px 9px;font-size:11px}
+  .filtre-bar.on{display:flex}
+  .filtre-bar b{color:var(--accent-ink)}
+  .filtre-bar button{margin-left:auto}
+  .dim{opacity:.16}
+  .brick.dim:hover{opacity:.6}
+
+  /* ---------- semaine ---------- */
+  .week{margin-bottom:18px;background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
+  .band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 14px;background:var(--card-2);cursor:pointer}
+  .week.current .band{background:var(--accent-soft)}
+  .band .wk{font-weight:700;font-size:13px;min-width:190px}
+  .band .wk small{display:block;font-weight:400;color:var(--ink-2);font-size:11.5px}
+  .meters{display:flex;flex-wrap:wrap;gap:4px 14px;flex:1}
+  .meter{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2)}
+  .meter b{color:var(--fg);font-weight:700}
+  .squares{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
+  .sq{width:10px;height:10px;border:1.5px solid var(--fg);border-radius:3px;background:transparent}
+  .sq.on{background:var(--fg)}
+  .sq.c{height:6px}
+  .sq.x{border-color:var(--warn);background:var(--warn);height:10px}
+  .sq.over{border-color:var(--alert);background:var(--alert)}
+  .meter .cnt{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+  .meter .hs{color:var(--warn);font-weight:700;font-size:10.5px}
+  .meter.hide{display:none}
+  .meter.done .cnt{color:var(--ok)}
+  .band .postes{font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap}
+  .band .postes.ko{background:var(--alert-bg);color:var(--alert)}
+  .band .postes.ok{background:var(--ok-bg);color:var(--ok)}
+  .band .adm{font-size:11px;color:var(--warn);white-space:nowrap}
+  .band .adm.ok{color:var(--ok)}
+
+  .days{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));background:var(--card)}
+  .day{border-right:1px solid var(--line-2);padding:8px 8px 10px;min-height:120px;display:flex;flex-direction:column;gap:5px}
+  .day:last-child{border-right:none}
+  .day.outside{background:var(--outside)}
+  .day.ferie{background:repeating-linear-gradient(135deg,#F4F8F9 0 6px,#EAF1F3 6px 12px)}
+  body.moving-abs .day{cursor:copy}
+  .day.over{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
+  .day-head{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink-2);padding-bottom:4px;font-weight:400}
+  .day-head .num{font-weight:700;font-size:16px;color:var(--ink)}
+  .day.outside .day-head .num{color:var(--ink-3)}
+  .day-head .fer{margin-left:auto;font-size:11px;color:var(--alert);font-weight:700}
+  .day-head .fbtn{display:none;margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:10px;padding:0 7px;cursor:pointer;color:var(--ink-2);line-height:16px}
+  .day-head .fer + .fbtn{margin-left:4px}
+  .day:hover .day-head .fbtn,.day.ferie .day-head .fbtn,.day:hover .day-head .cbtn,.day.noted .day-head .cbtn{display:inline-block}
+  .day-head .fbtn:hover{border-color:var(--alert);color:var(--alert)}
+  .day-head .cbtn{display:none;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:10px;padding:0 7px;cursor:pointer;color:var(--ink-2);line-height:16px;margin-left:auto}
+  .day-head .cbtn + .fer,.day-head .cbtn + .fbtn,.day-head .fer + .fbtn{margin-left:4px}
+  .day-head .cbtn:hover,.day.noted .day-head .cbtn{border-color:var(--warn);color:var(--warn)}
+  /* bulle de commentaires à côté de la date */
+  .cbub{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 5px;border-radius:9px 9px 9px 2px;background:var(--warn);color:#fff;font-size:10.5px;font-weight:700;cursor:pointer;line-height:1;margin-left:2px}
+  .cbub:hover{background:#9A5C00}
+  .dnote-print{display:none}
+  /* fenêtre de commentaires */
+  .cpop{position:fixed;z-index:70;width:280px;background:var(--card);border-radius:12px;box-shadow:0 12px 32px rgba(20,23,23,.18);border:1px solid var(--line);padding:10px 12px 12px;display:none}
+  .cpop.show{display:block}
+  .cpop .ch{display:flex;align-items:center;gap:8px;font-weight:700;font-size:12.5px;margin-bottom:6px}
+  .cpop .ch .close{margin-left:auto;border:none;background:transparent;font-size:16px;cursor:pointer;color:var(--ink-3);line-height:1}
+  .cpop .ch .close:hover{color:var(--ink)}
+  .cpop ul{list-style:none;margin:0 0 8px;padding:0;max-height:220px;overflow:auto}
+  .cpop li{display:flex;align-items:flex-start;gap:6px;padding:5px 7px;border-radius:7px;background:#FFF8E1;border-left:3px solid var(--warn);font-size:11.5px;line-height:1.35;white-space:pre-wrap;margin-bottom:4px}
+  .cpop li.editing{outline:2px solid var(--warn)}
+  .cpop li span{flex:1}
+  .cpop li button{border:none;background:transparent;cursor:pointer;color:var(--ink-3);font-size:12px;padding:0 2px;line-height:1}
+  .cpop li button:hover{color:var(--ink)}
+  .cpop textarea{width:100%;min-height:54px;resize:vertical;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font:inherit;font-size:11.5px;outline:none}
+  .cpop textarea:focus{border-color:var(--warn)}
+  .cpop .ca{display:flex;align-items:center;gap:8px;margin-top:6px}
+  .cpop .ca .help{font-size:10px;color:var(--ink-3);margin-left:auto}
+  .cpop .ca .btn{padding:5px 12px;font-size:12px}
+  body.mode-conge .day{cursor:copy}
+  body.mode-conge .day.nodrop{cursor:not-allowed}
+  .day-head .m{font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ---------- postes ---------- */
+  .prats{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+  .slot{border:1px solid var(--line-2);border-left:4px solid var(--pc,var(--line));border-radius:var(--r-slot);padding:4px 6px 5px;background:var(--card-2);min-height:40px;transition:box-shadow .15s}
+  .slot.prat:hover{box-shadow:inset 0 0 0 1px #C8DBE2}
+  .slot.prat.partial{border-color:var(--warn);border-left-color:var(--pc);background:var(--warn-bg)}
+  .slot.prat.empty{border-color:var(--alert);border-left-color:var(--pc);background:var(--alert-bg)}
+  .slot.prat.wide{grid-column:1 / -1;margin-top:2px}
+  .slot.misc{display:flex;align-items:center;gap:6px;border-style:dashed;border-left-style:dashed;background:transparent;min-height:26px;padding:2px 6px 3px}
+  .slot.sur{--pc:var(--sur)}  .slot.secr{--pc:var(--secr)}  .slot.adm{--pc:var(--adm)}  .slot.absr{--pc:var(--ink-3)}
+  .slot.misc.collapsed{display:none}
+  body.placing .slot.misc.collapsed{display:flex;opacity:.7}
+  .vbrick{display:inline-flex;align-items:center;gap:5px;padding:1px 8px 1px 7px;border-radius:var(--r-pill);font-size:11px;font-weight:700;border:1px dashed currentColor;
+    background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(0,0,0,.05) 4px 8px);white-space:nowrap;position:relative}
+  .vbrick .x{border:none;background:transparent;color:inherit;cursor:pointer;font-size:12px;padding:0;line-height:1;opacity:.7}
+  .vbrick .x:hover{opacity:1}
+  .sq.v{background:repeating-linear-gradient(135deg,var(--fg) 0 2px,transparent 2px 4px);border-style:dashed}
+  .tile .nm .badge-abs{margin-left:2px}
+  .slot.over{background:var(--accent-soft)!important;border-color:var(--accent)!important}
+  .slot.nodrop{opacity:.4}
+  .sl{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;line-height:1.2}
+  .sl b{font-size:12px;font-weight:700;color:var(--ink)}
+  .sl .et{font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:1px 6px;border-radius:var(--r-pill);background:var(--ink);color:#fff;font-weight:700}
+  .sl .att{font-size:10px;font-weight:700;padding:0 6px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--line);color:var(--ink-2)}
+  .slot.prat.partial .sl .att{border-color:var(--warn);color:var(--warn)}
+  .slot.prat.empty .sl .att{border-color:var(--alert);color:var(--alert)}
+  .sl .dot{width:6px;height:6px;border-radius:50%;background:var(--warn);display:inline-block}
+  .slot.misc .ml{flex:none;width:66px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pc)}
+  .bricks{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;min-height:20px}
+  .slot.misc .bricks{margin-top:0;flex:1}
+
+  /* ---------- briques ---------- */
+  .brick{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 8px;border-radius:var(--r-pill);background:var(--bg);color:var(--fg);
+    border:1px solid color-mix(in srgb,var(--fg) 28%,transparent);font-size:11.5px;font-weight:700;cursor:grab;user-select:none;position:relative;line-height:1.35;white-space:nowrap;transition:transform .12s,box-shadow .12s}
+  .brick:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(20,23,23,.12)}
+  .brick:active{cursor:grabbing;transform:none}
+  .brick .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--fg) 14%,white)}
+  .brick.c{border-style:dashed}
+  .brick.auto{background:color-mix(in srgb,var(--bg) 45%,white);font-weight:500;font-style:italic}
+  .brick.x{box-shadow:inset 0 0 0 1.5px var(--warn)}
+  .brick.warn::after{content:"!";position:absolute;top:-6px;right:-5px;width:13px;height:13px;border-radius:50%;background:var(--warn);color:#fff;font-size:9px;line-height:13px;text-align:center;font-weight:700}
+  .brick.armed{outline:2px solid var(--accent);outline-offset:1px}
+  .brick.ghost{opacity:.4}
+  .brick .rm{display:none;position:absolute;top:-7px;left:-6px;width:15px;height:15px;border-radius:50%;background:var(--ink);color:#fff;font-size:10px;line-height:15px;text-align:center;cursor:pointer;border:none;padding:0}
+  .slot .brick:hover .rm{display:block}
+
+  .notes{margin-top:auto;font-size:10.5px;color:var(--ink-3);line-height:1.3;font-weight:400}
+  .notes div{padding-left:9px;text-indent:-9px}
+  .notes .off{color:var(--ink-2)}
+  .notes .x{border:none;background:transparent;color:var(--ink-3);cursor:pointer;font-size:11px;padding:0 3px;line-height:1}
+  .notes .x:hover{color:var(--alert)}
+
+  /* ---------- info-bulle ---------- */
+  #tip{position:fixed;z-index:60;max-width:260px;background:var(--ink);color:#fff;padding:8px 11px;border-radius:10px;font-size:12px;line-height:1.4;box-shadow:0 8px 24px rgba(20,23,23,.18);pointer-events:none;opacity:0;transition:opacity .12s;font-weight:400}
+  #tip.show{opacity:1}
+  #tip b{font-weight:700}
+  #tip .h{font-family:var(--mono);font-size:11.5px;color:#C9E1FF}
+  #tip.pinned{pointer-events:auto;outline:2px solid var(--accent)}
+
+  /* ---------- réserve ---------- */
+  .palette h2{font-size:12.5px;font-weight:700;margin:0 0 4px}
+  .palette .sub{font-size:11px;color:var(--ink-2);margin-bottom:6px;font-weight:400}
+  .grp{font-size:9.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin:9px 0 3px;font-weight:700}
+  .prow{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line-2)}
+  .prow .who{width:82px;font-size:12px;font-weight:700;color:var(--fg);display:flex;align-items:center;gap:6px;flex:none}
+  .prow .who i{width:8px;height:8px;border-radius:50%;background:var(--fg);flex:none}
+  .prow .who small{font-weight:400;color:var(--ink-3);font-size:10px}
+  .prow .stack{display:flex;flex-wrap:wrap;gap:3px;flex:1;min-height:22px;align-items:center}
+  .prow .stack .done{color:var(--ok);font-size:11.5px;font-weight:400}
+  .prow .plus{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:15px;line-height:1;color:var(--ink-2);flex:none}
+  .prow .plus:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .prow .cg{width:24px;height:24px;border-radius:50%;border:1px solid var(--line);background:#fff;cursor:pointer;font-size:12px;line-height:1;color:var(--ink-2);flex:none}
+  .prow .cg:hover,.prow .cg.on{border-color:var(--alert);color:var(--alert);background:var(--alert-bg)}
+  .totals{margin-top:14px;border-top:1px solid var(--line-2);padding-top:8px}
+  .totals table{width:100%;border-collapse:collapse;font-size:11.5px}
+  .totals td{padding:2px 0}
+  .totals td.v{text-align:right;font-family:var(--mono)}
+  .totals td.v.short{color:var(--warn);font-weight:700}
+  .totals td.v.full{color:var(--ok)}
+  .palette .hint{font-size:11px;color:var(--ink-3);margin-top:12px;line-height:1.4;font-weight:400}
+  .palette.over{background:var(--accent-soft)}
+
+  #toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:10px 16px;border-radius:var(--r-pill);
+    font-size:12.5px;opacity:0;transition:.18s;pointer-events:none;z-index:50;max-width:70vw}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  #toast.err{background:var(--alert)}
+
+  @media (prefers-reduced-motion:reduce){#toast,.brick,#tip{transition:none}}
+
+  /* ---------- impression ---------- */
+  @media print{
+    @page{size:A4 landscape;margin:8mm}
+    html,body{background:#fff;font-size:10.5px}
+    .topbar{position:static;border:none;padding:0 0 6px;background:#fff;backdrop-filter:none}
+    .actions,.palette,.banner,.brick .rm,#tip,#toast,.fbtn,.cbtn,.cpop,.notes .x{display:none!important}
+    .cbub{display:none!important}
+    .dnote-print{display:block;background:#FFF8E1;border-left:3px solid var(--warn);border-radius:6px;padding:3px 6px;font-size:9.5px;line-height:1.3;white-space:pre-wrap}
+    .dim{display:none!important}
+    .layout{display:block}
+    .calendar{padding:0}
+    .week{break-inside:avoid;page-break-inside:avoid;margin-bottom:8px;box-shadow:none;border:1px solid var(--line)}
+    .bilan{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
+    .band{background:#f4f4f4!important;cursor:default}
+    .day{min-height:0}
+    .slot{background:#fff}
+    .slot.prat.empty{background:#fff;border-color:var(--alert)}
+    .slot.prat.partial{background:#fff;border-color:var(--warn)}
+    .brick,.sq,.day.outside,.day.ferie,.slot,.band{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="titles">
+    <h1 id="title">Planning assistantes</h1>
+    <div class="sub" id="subtitle"></div>
+  </div>
+  <div class="actions">
+    <button class="btn" id="btnPropose" title="Compléter les cases vides avec les règles (binômes, exclusifs, administratif), sans toucher aux briques déjà posées">Proposer</button>
+    <button class="btn" id="btnUndo" title="Annuler la dernière action (Ctrl+Z)">Annuler</button>
+    <button class="btn" id="btnImport" title="Reprendre les affectations d'un autre fichier de planning (semaine à cheval)">Importer…</button>
+    <button class="btn" id="btnExport" title="Exporter les affectations en JSON">Exporter JSON</button>
+    <button class="btn" id="btnPrint" title="Imprimer (avec un filtre actif : planning individuel)">Imprimer</button>
+    <button class="btn" id="btnReset" title="Refaire toute la proposition">Réinitialiser</button>
+    <button class="btn primary" id="btnSave" title="Télécharger ce fichier avec le planning dedans (Ctrl+S)">Enregistrer</button>
+  </div>
+</header>
+<div class="banner" id="banner"></div>
+<main class="layout">
+  <section class="calendar" id="calendar"></section>
+  <aside class="palette" id="palette"></aside>
+</main>
+<div id="toast"></div>
+<div id="tip"></div>
+<div id="cpop" class="cpop"></div>
+<input type="file" id="importFile" accept=".html,.json,text/html,application/json" hidden>
+
+<script id="planning-data" type="application/json">__PLANNING_DATA__</script>
+<script id="planning-state" type="application/json">__PLANNING_STATE__</script>
+<script>
+(() => {
+"use strict";
+// Source du fichier tel qu'ouvert : sert à « Enregistrer » (le fichier est le planning).
+const SOURCE = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+const DATA = JSON.parse(document.getElementById("planning-data").textContent);
+let STATE = JSON.parse(document.getElementById("planning-state").textContent);
+const LS_KEY = "planning-assistantes:" + DATA.meta.mois + ":" + DATA.meta.genere;   // un brouillon ne vaut que pour le fichier qui l'a produit
+const EMBEDDED = JSON.parse(document.getElementById("planning-state").textContent);
+const HISTORY = [];
+let ARMED = null;      // brique sélectionnée au clic : {s,t,x}
+let CURRENT_WEEK = 0;  // semaine dont la réserve est affichée
+let DRAG = null;       // brique en cours de glisser
+
+// ------------------------------------------------------------ dates
+const DOW_ABR = ["lun.","mar.","mer.","jeu.","ven.","sam.","dim."];
+const MOIS = ["janv.","févr.","mars","avr.","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+const toDate = iso => new Date(iso + "T12:00:00");
+const toIso = d => d.toISOString().slice(0,10);
+const addDays = (iso,n) => { const d = toDate(iso); d.setDate(d.getDate()+n); return toIso(d); };
+const weekday = iso => (toDate(iso).getDay()+6)%7;  // 0 = lundi
+const isoWeek = iso => { const d = toDate(iso); d.setDate(d.getDate()+3-weekday(iso)); const y=new Date(d.getFullYear(),0,4); return 1+Math.round(((d-y)/86400000-3+((y.getDay()+6)%7))/7); };
+const fmtJour = iso => { const d = toDate(iso); return `${d.getDate()} ${MOIS[d.getMonth()]}`; };
+const inMonth = iso => iso.slice(0,7) === DATA.meta.mois;
+const heure = h => h ? h.replace(":", "h").replace(/h00$/,"h") : "";
+
+const WEEKS = [];
+for (let iso = DATA.meta.debut; iso <= DATA.meta.fin; iso = addDays(iso,7)) {
+  const days = []; for (let i=0;i<7;i++) days.push(addDays(iso,i));
+  WEEKS.push({ start: iso, days, num: isoWeek(iso) });
+}
+const SHOWN = (() => {   // colonnes : jours où quelqu'un est présent (Doctolib) ou a un jour fixe ; jamais le dimanche
+  const set = new Set();
+  for (const [iso, prs] of Object.entries(DATA.jours)) if (Object.values(prs).some(p => p.pr)) set.add(weekday(iso));
+  for (const s of DATA.salaries) s.fixes.forEach(w => set.add(w));
+  for (const p of DATA.praticiens) if (!p.agenda) p.fixes.forEach(w => set.add(w));
+  set.delete(6);
+  return [0,1,2,3,4,5].filter(w => set.has(w));
+})();
+const SAL = Object.fromEntries(DATA.salaries.map(s => [s.id, s]));
+const PRAT = Object.fromEntries(DATA.praticiens.map(p => [p.id, p]));
+const CONGES = {};
+for (const c of DATA.conges) (CONGES[c.s] ??= {})[c.date] = c;
+const MISC = [["sureffectif","sur","Sureffectif"],["secretariat","secr","Secrétariat"],["administratif","adm","Administratif"]];
+const MISC_LABEL = {sureffectif:"en sureffectif", secretariat:"au secrétariat", administratif:"en administratif"};
+const HB = DATA.meta.heures ?? {J: 9.75, C: 6.75};       // heures par brique
+const fmtH = h => { const m = Math.round(h * 60), hh = Math.floor(m / 60), mm = m % 60; return mm ? `${hh} h ${String(mm).padStart(2,"0")}` : `${hh} h`; };
+// trois types d'absence gérés dans la page ; les autres types Notion s'affichent avec leur libellé
+const ABS = {"Congé payé": {code:"CP", cls:"abs-cp", libelle:"congé payé"}, "Maladie": {code:"MAL", cls:"abs-mal", libelle:"maladie"}, "Congé sans solde": {code:"SS", cls:"abs-ss", libelle:"sans solde"}};
+let FILTER = null;      // {s: sid} ou {p: pid} : vue filtrée sur une personne
+let CPOP = null;        // {iso, edit: index|null} : fenêtre de commentaires ouverte
+
+// ------------------------------------------------------------ lecture de l'état
+const shownDays = week => week.days.filter(iso => SHOWN.includes(weekday(iso)));
+// fériés : ceux du générateur (calendrier français) sauf annulés dans la page, plus ceux ajoutés dans la page
+const isFerie = iso => (iso in DATA.feries && !STATE.feries_off.includes(iso)) || iso in STATE.feries;
+const ferieName = iso => STATE.feries[iso] ?? DATA.feries[iso];
+// congés : Notion d'abord, puis ceux posés dans la page (retirables)
+const congeDe = (sid, iso) => (CONGES[sid]?.[iso] && !STATE.conges_off.some(o => o.s === sid && o.date === iso) ? CONGES[sid][iso] : undefined) ?? STATE.conges.find(c => c.s === sid && c.date === iso);
+const coursDe = (sid, iso) => (STATE.cours?.[sid] ?? []).includes(iso);
+const bloque = (sid, iso) => isFerie(iso) || (congeDe(sid, iso)?.bloque === true) || coursDe(sid, iso);
+// un jour bloqué « consomme » une brique comme une journée placée : congé sur tout jour affiché, férié du lundi au vendredi seulement (samedi et dimanche ne comptent pas)
+const retireBrique = (sid, iso) => (congeDe(sid, iso)?.bloque === true) || (isFerie(iso) && weekday(iso) <= 4);
+function virtuels(s, week) {   // journées comptées comme placées sans brique : absences, fériés, et cours (qui consomment la journée courte)
+  const out = [];
+  for (const iso of week.days) {
+    if (coursDe(s.id, iso)) { out.push({date: iso, code: "COURS", cls: "abs-cours", type: "Cours", manuel: true, prefer: "C"}); continue; }
+    if (!SHOWN.includes(weekday(iso))) continue;
+    if (s.role === "secretaire" && s.fixes.length && !s.fixes.includes(weekday(iso))) continue;   // jours fixes : seules leurs journées comptent
+    const c = congeDe(s.id, iso);
+    if (c?.bloque) out.push({date: iso, code: ABS[c.type]?.code ?? "ABS", cls: ABS[c.type]?.cls ?? "", type: c.type, manuel: !!c.manuel});
+    else if (isFerie(iso) && weekday(iso) <= 4) out.push({date: iso, code: "FÉRIÉ", cls: "", type: ferieName(iso), manuel: false});
+  }
+  return out;
+}
+function consommer(bricks, items) {   // retire une brique par journée virtuelle : la courte pour un cours, sinon une journée complète d'abord
+  const q = bricks.slice();
+  for (const it of items) { const t = it.prefer && q.includes(it.prefer) ? it.prefer : q.includes("J") ? "J" : q[q.length - 1]; const i = q.indexOf(t); if (i >= 0) q.splice(i, 1); }
+  return q;
+}
+function presents(iso) {   // praticiens à pourvoir ce jour, avec leur ligne S7 ; aucun un jour férié
+  const out = [];
+  if (isFerie(iso)) return out;
+  for (const p of DATA.praticiens) {
+    if (p.agenda) { const l = DATA.jours[iso]?.[p.id]; if (l?.pr) out.push({p, l}); }
+    else if (p.fixes.includes(weekday(iso)) && !isFerie(iso)) out.push({p, l:{pr:true, v:"planning fixe", c:[], fin:null, min:0}});
+  }
+  return out;
+}
+const bricksAt = (iso, slot) => (STATE.affectations[iso]?.[slot]) ?? [];
+const allBricksOfDay = iso => Object.entries(STATE.affectations[iso] ?? {}).flatMap(([slot, arr]) => arr.map(b => ({...b, slot})));
+const need = (iso, p) => p.attendues - bricksAt(iso, p.id).length;
+const free = (sid, iso) => !bloque(sid, iso) && !allBricksOfDay(iso).some(b => b.s === sid);
+const finOf = (iso, p) => DATA.jours[iso]?.[p.id]?.fin ?? null;
+const chargePoste = (iso, p) => DATA.jours[iso]?.[p.id]?.min ?? 0;
+
+function retire(bricks, n) {  // retire n briques : les journées complètes d'abord, la courte en dernier
+  const q = bricks.slice();
+  for (let i = 0; i < n; i++) { const j = q.indexOf("J"); if (j >= 0) q.splice(j,1); else q.pop(); }
+  return q;
+}
+function quota(s, week) {  // briques du contrat sur la semaine ; les absences et fériés ne les retirent pas, ils les occupent (cf. reserve)
+  const days = shownDays(week);
+  if (s.role === "secretaire" && s.fixes.length) return days.filter(iso => s.fixes.includes(weekday(iso))).map(() => "J");
+  return s.gabarit.slice();
+}
+function placed(s, week) {
+  const out = [];
+  for (const iso of week.days) for (const b of allBricksOfDay(iso)) if (b.s === s.id) out.push({...b, date: iso});
+  return out;
+}
+function reserve(s, week) {  // types encore à poser + nombre posé en trop sans marque hors-quota ; les absences occupent d'abord les journées complètes
+  let q = consommer(quota(s, week), virtuels(s, week)); let over = 0;
+  for (const b of placed(s, week)) {
+    if (b.x) continue;
+    const i = q.indexOf(b.t); if (i >= 0) q.splice(i,1); else if (q.length) q.pop(); else over++;
+  }
+  return { rest: q, over };
+}
+function heures(s, week) {   // heures de la semaine : posées (hors quota comprises), dues (contrat moins absences/fériés), supplémentaires
+  const posees = placed(s, week).reduce((a, b) => a + (HB[b.t] ?? 0), 0);
+  const dues = consommer(quota(s, week), virtuels(s, week)).reduce((a, t) => a + (HB[t] ?? 0), 0);
+  return { posees, dues, sup: Math.max(0, posees - dues) };
+}
+function jauge(s, week) {    // carrés de la jauge : journées posées, puis absences/fériés (hachurés), puis vides ; hors quota en orange
+  const q = quota(s, week), r = reserve(s, week), pl = placed(s, week), v = virtuels(s, week);
+  const nbPose = pl.filter(x => !x.x).length - r.over, extras = pl.filter(x => x.x).length + r.over;
+  const consommes = q.filter(t => !consommer(q, v).includes(t) || false);   // types consommés par les journées virtuelles
+  const restant = consommer(q, v); let sq = ""; let posesAffiches = 0;
+  q.forEach((t, i) => {
+    const idx = restant.indexOf(t); const virtuel = idx < 0; if (!virtuel) restant.splice(idx, 1);
+    let cls = ""; if (virtuel) cls = " v"; else if (posesAffiches < nbPose) { cls = " on"; posesAffiches++; }
+    sq += `<span class="sq${t === "C" ? " c" : ""}${cls}"></span>`; });
+  for (let i = 0; i < extras; i++) sq += `<span class="sq x"></span>`;
+  return { sq, nbPose, extras, v, q, r, texte: `${nbPose + v.length + extras}/${q.length}` };
+}
+function absences(sid, du, au) {   // comptage par type sur une plage
+  const out = {}; let total = 0;
+  for (const iso of Object.keys({...(CONGES[sid] ?? {})}).concat(STATE.conges.filter(c => c.s === sid).map(c => c.date)))
+    if (iso >= du && iso <= au) { const c = congeDe(sid, iso); if (c?.bloque) { out[c.type] = (out[c.type] ?? 0) + 1; total++; } }
+  return { parType: out, total };
+}
+function reasonRefus(sid, iso, fromDate) {
+  if (isFerie(iso)) return `${fmtJour(iso)} est férié (${ferieName(iso)})`;
+  const c = congeDe(sid, iso); if (c?.bloque) return `${SAL[sid].label} est en ${c.type.toLowerCase()} le ${fmtJour(iso)}`;
+  if (fromDate !== iso && allBricksOfDay(iso).some(b => b.s === sid)) return `${SAL[sid].label} est déjà placée le ${fmtJour(iso)}`;
+  return null;
+}
+const weekOf = iso => WEEKS.findIndex(w => w.days.includes(iso));
+
+// ------------------------------------------------------------ mutations (avec historique)
+function snapshot() { HISTORY.push(JSON.stringify({a: STATE.affectations, c: STATE.conges, f: STATE.feries, o: STATE.feries_off, k: STATE.conges_off, n: STATE.notes, u: STATE.cours})); if (HISTORY.length > 60) HISTORY.shift(); }
+function commit() { STATE.modifie = new Date().toISOString(); STATE.initialise = true; save(); render(); }
+function addBrick(iso, slot, b) { ((STATE.affectations[iso] ??= {})[slot] ??= []).push({s:b.s, t:b.t, x:!!b.x, a:!!b.a}); }
+function removeBrick(iso, slot, index) {
+  const arr = STATE.affectations[iso]?.[slot]; if (!arr) return null;
+  const [b] = arr.splice(index,1);
+  if (!arr.length) delete STATE.affectations[iso][slot];
+  if (!Object.keys(STATE.affectations[iso]).length) delete STATE.affectations[iso];
+  return b;
+}
+function place(iso, slot, b, from) {   // action manuelle : la brique devient confirmée
+  const wk = weekOf(iso);
+  if (from?.date && weekOf(from.date) !== wk) { toast("Une brique appartient à sa semaine : reprends-la dans la réserve de l'autre semaine.", true); return false; }
+  const refus = reasonRefus(b.s, iso, from?.date);
+  if (refus) { toast(refus, true); return false; }
+  if (!from?.date && !b.x && !reserve(SAL[b.s], WEEKS[wk]).rest.includes(b.t)) {
+    toast(`Plus de brique « ${b.t === "C" ? "courte" : "journée"} » pour ${SAL[b.s].label} cette semaine. Utilise + pour une journée hors quota.`, true); return false;
+  }
+  let cible = slot, bascule = null;
+  if (PRAT[slot]) { const deja = bricksAt(iso, slot).filter((x, i) => !(from?.date === iso && from.slot === slot && from.index === i)).length; if (deja >= PRAT[slot].attendues) { cible = "sureffectif"; bascule = PRAT[slot]; } }
+  snapshot();
+  if (from?.date) removeBrick(from.date, from.slot, from.index);
+  addBrick(iso, cible, {...b, a:false});
+  commit();
+  if (bascule) toast(`${bascule.label} a déjà ${bascule.attendues > 1 ? "ses " + bascule.attendues + " assistantes" : "son assistante"} le ${fmtJour(iso)} : ${SAL[b.s].label} passe en sureffectif.`);
+  return cible;
+}
+function retirerCourte(sid, wk) {   // retire la journée courte posée dans la semaine (consommée par un cours)
+  for (const d of wk.days) { const arr = STATE.affectations[d]; if (!arr) continue; for (const slot of Object.keys(arr)) { const i = arr[slot].findIndex(b => b.s === sid && b.t === "C"); if (i >= 0) { removeBrick(d, slot, i); return true; } } }
+  return false;
+}
+function ajouterCours(sid, iso) {   // sans historique ni rendu : utilisé par toggleCours et ajusterCours
+  STATE.cours ??= {}; const l = (STATE.cours[sid] ?? []).slice();
+  const n = retirerBriquesDe(iso, sid);
+  const wk = WEEKS[weekOf(iso)];
+  l.push(iso); l.sort(); STATE.cours[sid] = l;
+  // la journée consommée par le cours ne doit plus être posée : la courte d'abord, sinon une journée complète (sureffectif, administratif, puis praticien)
+  let courte = false, retirees = 0;
+  if (wk) {
+    const s = SAL[sid];
+    while (reserve(s, wk).over > 0 || (placed(s, wk).some(b => b.t === "C" && !b.x) && !consommer(quota(s, wk), virtuels(s, wk)).includes("C"))) {
+      if (retirerCourte(sid, wk)) { courte = true; continue; }
+      const ordre = ["sureffectif", "administratif"]; let fait = false;
+      for (const pref of [...ordre, null]) { for (const d of wk.days.slice().reverse()) { const arr = STATE.affectations[d]; if (!arr) continue; for (const slot of Object.keys(arr)) { if (pref && slot !== pref) continue; if (!pref && ordre.includes(slot)) continue; const i = arr[slot].findIndex(b => b.s === sid && !b.x); if (i >= 0) { removeBrick(d, slot, i); retirees++; fait = true; break; } } if (fait) break; } if (fait) break; }
+      if (!fait) break;
+    }
+  }
+  return {briqueJour: n, courteRetiree: courte, retirees};
+}
+function toggleCours(sid, iso) {
+  const s = SAL[sid]; STATE.cours ??= {}; const l = STATE.cours[sid] ?? [];
+  snapshot();
+  if (l.includes(iso)) { STATE.cours[sid] = l.filter(d => d !== iso); commit(); toast(`Cours de ${s.label} retiré (${fmtJour(iso)}) — sa journée courte revient.`); return; }
+  const r = ajouterCours(sid, iso); commit();
+  toast(`Cours de ${s.label} le ${fmtJour(iso)}` + (r.briqueJour ? " (sa brique du jour a été retirée)" : "") + (r.courteRetiree ? " — sa journée courte, déjà posée, a été retirée." : " — sa journée courte de la semaine est consommée."));
+}
+function nbCoursMois(sid) { return (STATE.cours?.[sid] ?? []).filter(d => d >= DATA.meta.debut && d <= DATA.meta.fin).length; }
+function ajusterCours(sid, delta) {   // règle le nombre de cours du mois : + prend la première semaine sans cours (puis une 2e journée par semaine), − libère la dernière
+  const s = SAL[sid]; STATE.cours ??= {};
+  snapshot();
+  if (delta > 0) {
+    const parSemaine = w => w.days.filter(iso => coursDe(sid, iso)).length;
+    let wk = WEEKS.find(w => parSemaine(w) === 0) ?? WEEKS.slice().sort((a, b) => parSemaine(a) - parSemaine(b))[0];
+    const date = wk.days.find(iso => !coursDe(sid, iso) && !SHOWN.includes(weekday(iso))) ?? wk.days.find(iso => !coursDe(sid, iso));
+    const r = ajouterCours(sid, date); commit();
+    toast(`${nbCoursMois(sid)} cours pour ${s.label} ce mois : semaine ${wk.num}` + (parSemaine(wk) > 1 ? ", second cours, une journée complète en moins" : ", sa journée courte est consommée") + (r.courteRetiree || r.retirees ? " (retirée du planning)" : "") + ".");
+  } else {
+    const dates = (STATE.cours[sid] ?? []).filter(d => d >= DATA.meta.debut && d <= DATA.meta.fin).sort();
+    if (!dates.length) { HISTORY.pop(); toast(`${s.label} n'a aucun cours ce mois.`); return; }
+    const der = dates[dates.length - 1]; STATE.cours[sid] = (STATE.cours[sid] ?? []).filter(d => d !== der); commit();
+    toast(`${nbCoursMois(sid)} cours pour ${s.label} ce mois — semaine ${WEEKS[weekOf(der)].num} libérée, sa journée revient dans la réserve.`);
+  }
+}
+function unplace(iso, slot, index) { snapshot(); removeBrick(iso, slot, index); commit(); }
+function retirerBriquesDe(iso, sid) {   // retire toutes les briques d'une personne (ou de tout le monde si sid null) un jour donné
+  const d = STATE.affectations[iso]; if (!d) return 0; let n = 0;
+  for (const slot of Object.keys(d)) { const avant = d[slot].length; d[slot] = d[slot].filter(b => sid && b.s !== sid); n += avant - d[slot].length; if (!d[slot].length) delete d[slot]; }
+  if (!Object.keys(d).length) delete STATE.affectations[iso];
+  return n;
+}
+function toggleConge(sid, iso) {
+  const s = SAL[sid], existant = congeDe(sid, iso);
+  if (existant && !existant.manuel) { snapshot(); STATE.conges_off.push({s: sid, date: iso}); commit(); toast(`${existant.type} de ${s.label} retiré le ${fmtJour(iso)} dans la page — la saisie Notion n'est pas modifiée.`); return; }
+  snapshot();
+  if (existant) { STATE.conges = STATE.conges.filter(c => !(c.s === sid && c.date === iso)); commit(); toast(`Congé de ${s.label} retiré le ${fmtJour(iso)} — sa brique revient dans la réserve.`); return; }
+  const n = retirerBriquesDe(iso, sid);
+  const type = ARMED?.type ?? "Congé payé";
+  STATE.conges.push({s: sid, date: iso, type, bloque: true, manuel: true});
+  commit();
+  toast(`${ABS[type]?.libelle ?? type} posé pour ${s.label} le ${fmtJour(iso)}` + (n ? " (sa brique du jour a été retirée)" : "") + " — compté comme une journée placée.");
+}
+function moveAbsence(abs, iso) {   // glisser une absence d'un jour à l'autre
+  if (abs.date === iso) return;
+  if (isFerie(iso)) { toast(`${fmtJour(iso)} est fermé.`, true); return; }
+  if (congeDe(abs.s, iso)?.bloque) { toast(`${SAL[abs.s].label} a déjà une absence le ${fmtJour(iso)}.`, true); return; }
+  snapshot();
+  const origine = congeDe(abs.s, abs.date);
+  if (origine?.manuel) STATE.conges = STATE.conges.filter(c => !(c.s === abs.s && c.date === abs.date)); else STATE.conges_off.push({s: abs.s, date: abs.date});
+  const n = retirerBriquesDe(iso, abs.s);
+  STATE.conges.push({s: abs.s, date: iso, type: abs.type, bloque: true, manuel: true});
+  commit();
+  toast(`${ABS[abs.type]?.libelle ?? abs.type} de ${SAL[abs.s].label} déplacé au ${fmtJour(iso)}` + (n ? " (sa brique du jour a été retirée)" : ""));
+}
+const notesDe = iso => { const n = STATE.notes[iso]; return Array.isArray(n) ? n : n ? [n] : []; };   // compatibilité : anciens commentaires simples
+function saveNotes(iso, liste, msg) {
+  snapshot();
+  const l = liste.map(t => t.trim()).filter(Boolean);
+  if (l.length) STATE.notes[iso] = l; else delete STATE.notes[iso];
+  commit(); toast(msg);
+}
+function addNote(iso, t) { if (!t.trim()) return; saveNotes(iso, [...notesDe(iso), t], `Commentaire ajouté au ${fmtJour(iso)}`); }
+function editNote(iso, i, t) { const l = notesDe(iso).slice(); l[i] = t; saveNotes(iso, l, `Commentaire modifié`); }
+function delNote(iso, i) { const l = notesDe(iso).slice(); l.splice(i, 1); saveNotes(iso, l, `Commentaire supprimé`); }
+function closeCpop() { CPOP = null; document.getElementById("cpop").className = "cpop"; }
+function openCpop(iso, edit) {   // fenêtre ancrée sous la bulle (ou le bouton) du jour
+  CPOP = {iso, edit: edit ?? null}; hideTip(true);
+  const pop = document.getElementById("cpop"); pop.innerHTML = "";
+  const liste = notesDe(iso);
+  const head = el("div", "ch", `Commentaires · ${esc(fmtJour(iso))}`); const close = el("button", "close", "×"); close.title = "Fermer"; close.addEventListener("click", closeCpop); head.appendChild(close); pop.appendChild(head);
+  if (liste.length) {
+    const ul = el("ul");
+    liste.forEach((t, i) => { const li = el("li", CPOP.edit === i ? "editing" : null); li.appendChild(el("span", null, esc(t)));
+      const e = el("button", null, "✎"); e.title = "Modifier"; e.addEventListener("click", () => { CPOP.edit = i; openCpop(iso, i); });
+      const x = el("button", null, "×"); x.title = "Supprimer"; x.addEventListener("click", () => delNote(iso, i));
+      li.appendChild(e); li.appendChild(x); ul.appendChild(li); });
+    pop.appendChild(ul);
+  }
+  const ta = el("textarea"); ta.placeholder = liste.length ? "Nouveau commentaire…" : "Commentaire sur la journée…"; ta.rows = 3;
+  if (CPOP.edit != null) ta.value = liste[CPOP.edit] ?? "";
+  const valide = () => { const t = ta.value; if (CPOP?.edit != null) editNote(iso, CPOP.edit, t); else addNote(iso, t); };
+  ta.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape") { if (CPOP?.edit != null) { openCpop(iso, null); } else closeCpop(); } if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) valide(); });
+  pop.appendChild(ta);
+  const ca = el("div", "ca"); const ok = el("button", "btn primary", CPOP.edit != null ? "Enregistrer" : "Ajouter"); ok.addEventListener("click", valide); ca.appendChild(ok);
+  if (CPOP.edit != null) { const ann = el("button", "btn", "Annuler"); ann.addEventListener("click", () => openCpop(iso, null)); ca.appendChild(ann); }
+  ca.appendChild(el("span", "help", "Ctrl+Entrée")); pop.appendChild(ca);
+  pop.className = "cpop show";
+  const anchor = document.querySelector(`.day[data-date="${iso}"] .cbub`) ?? document.querySelector(`.day[data-date="${iso}"] .cbtn`) ?? document.querySelector(`.day[data-date="${iso}"]`);
+  const r = anchor.getBoundingClientRect(); pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 296)) + "px"; pop.style.top = Math.min(r.bottom + 6, window.innerHeight - 320) + "px";
+  setTimeout(() => ta.focus(), 0);
+}
+function toggleFerie(iso) {
+  const nb = allBricksOfDay(iso).length;
+  if (isFerie(iso)) {
+    if (!confirm(`${fmtJour(iso)} : rouvrir ce jour (le cabinet travaille) ?`)) return;
+    snapshot();
+    if (iso in STATE.feries) delete STATE.feries[iso]; else STATE.feries_off.push(iso);
+    commit(); toast(`${fmtJour(iso)} rouvert — les briques reviennent dans les réserves.`);
+    return;
+  }
+  if (!confirm(`Fermer le cabinet le ${fmtJour(iso)} (férié ou pont) ?` + (nb ? ` ${nb} brique(s) posée(s) ce jour-là seront retirées.` : "") + (weekday(iso) <= 4 ? " Le jour comptera comme une journée placée pour chaque salariée." : " Samedi ou dimanche : aucune journée comptée."))) return;
+  snapshot();
+  retirerBriquesDe(iso, null);
+  if (iso in DATA.feries) STATE.feries_off = STATE.feries_off.filter(x => x !== iso); else STATE.feries[iso] = "Fermé (ajouté)";
+  commit(); toast(`${fmtJour(iso)} fermé.`);
+}
+function undo() { if (!HISTORY.length) { toast("Rien à annuler"); return; } const h = JSON.parse(HISTORY.pop()); STATE.affectations = h.a; STATE.conges = h.c; STATE.feries = h.f; STATE.feries_off = h.o; STATE.conges_off = h.k ?? []; STATE.notes = h.n ?? {}; STATE.cours = h.u ?? {}; commit(); toast("Annulé"); }
+
+// ------------------------------------------------------------ moteur de proposition
+// Strict : heures hebdo (briques), une brique par jour, congés/fériés, exclusifs.
+// Relatif : binômes, continuité, équilibre, créneau administratif, reliquat en renfort.
+function proposer(week) {
+  const days = shownDays(week);
+  let poses = 0;
+  const auto = (iso, slot, sid, t) => { addBrick(iso, slot, {s:sid, t, x:false, a:true}); poses++; };
+  const chargeJour = iso => presents(iso).length;
+  const travailleAvec = (sid, pid, w) => { let n = 0; for (const iso of w.days) for (const b of (STATE.affectations[iso]?.[pid] ?? [])) if (b.s === sid) n++; return n; };
+  const joursPraticien = sid => { let n = 0; for (const iso in STATE.affectations) for (const [slot, arr] of Object.entries(STATE.affectations[iso])) if (PRAT[slot]) n += arr.filter(b => b.s === sid).length; return n; };
+  const postesOuverts = (filtre) => { const out = []; for (const iso of days) for (const {p} of presents(iso)) if (need(iso, p) > 0 && (!filtre || filtre(p))) out.push({iso, p}); return out; };
+  // choisit le type de brique à poser : J d'abord ; C sur le jour où le praticien finit le plus tôt ; les personnes à créneau administratif gardent leur C
+  const poserChez = (s, cibles) => {  // cibles : [{iso, p}] triées par priorité ; pose autant que la réserve le permet
+    let rest = reserve(s, week).rest.slice();
+    if (s.admin) rest = rest.filter(t => t !== s.admin);
+    const prises = cibles.slice(0, rest.length);
+    if (!prises.length) return;
+    const parFin = prises.slice().sort((a, b) => (finOf(a.iso, a.p) ?? "99").localeCompare(finOf(b.iso, b.p) ?? "99") || chargePoste(a.iso, a.p) - chargePoste(b.iso, b.p));
+    const jourCourte = rest.includes("C") ? parFin[0].iso : null;
+    for (const c of prises) { const t = (c.iso === jourCourte) ? "C" : (rest.includes("J") ? "J" : rest[0]); rest.splice(rest.indexOf(t), 1); auto(c.iso, c.p.id, s.id, t); }
+  };
+  const ciblesBinomes = (s) => {  // jours où un binôme est présent et manque de monde, une cible par jour
+    const cands = [];
+    for (const iso of days) for (const pid of s.binomes) { const p = PRAT[pid]; if (presents(iso).some(x => x.p.id === pid) && need(iso, p) > 0 && free(s.id, iso)) cands.push({iso, p, need: need(iso, p), charge: chargePoste(iso, p)}); }
+    cands.sort((a, b) => b.need - a.need || b.charge - a.charge);
+    const vu = new Set(); return cands.filter(c => !vu.has(c.iso) && vu.add(c.iso));
+  };
+  // 1. exclusives chez leur binôme (Laura : ses deux assistantes)
+  for (const s of DATA.salaries.filter(x => x.exclusif && x.binomes.length)) poserChez(s, ciblesBinomes(s));
+  // 2. binômes relatifs
+  for (const s of DATA.salaries.filter(x => !x.exclusif && x.binomes.length)) poserChez(s, ciblesBinomes(s));
+  // 3. couverture des postes restants (hors praticiens exclusifs) — postes les plus chargés d'abord
+  let garde = 200;
+  while (garde-- > 0) {
+    const postes = postesOuverts(p => !p.exclusif).map(x => ({...x, charge: chargePoste(x.iso, x.p)})).sort((a, b) => b.charge - a.charge);
+    let fait = false;
+    for (const {iso, p} of postes) {
+      const cands = DATA.salaries.filter(s => s.role === "assistante" && !s.exclusif && free(s.id, iso))
+        .map(s => { let rest = reserve(s, week).rest; const restJ = rest.filter(t => t !== s.admin); return {s, rest, restJ}; })
+        .filter(c => c.rest.length);
+      if (!cands.length) continue;
+      // priorité : briques non réservées à l'administratif > continuité avec ce praticien dans la semaine > équité (moins de journées chez un praticien dans le mois) > briques restantes
+      cands.sort((a, b) => (b.restJ.length > 0) - (a.restJ.length > 0) || travailleAvec(b.s.id, p.id, week) - travailleAvec(a.s.id, p.id, week) || joursPraticien(a.s.id) - joursPraticien(b.s.id) || b.rest.length - a.rest.length);
+      const c = cands[0];
+      const t = c.restJ.includes("J") ? "J" : (c.restJ[0] ?? c.rest[0]);   // dernier recours : la brique administrative sert la couverture
+      auto(iso, p.id, c.s.id, t); fait = true; break;
+    }
+    if (!fait) break;
+  }
+  // 3b. réparation : si la brique administrative a servi la couverture (jour d1), chercher un jour d2 où la personne
+  //     est chez un praticien avec une journée complète et où une autre assistante libre peut la remplacer.
+  for (const s of DATA.salaries.filter(x => x.admin)) {
+    if (reserve(s, week).rest.includes(s.admin)) continue;
+    const d1 = days.find(iso => allBricksOfDay(iso).some(b => b.s === s.id && b.t === s.admin && PRAT[b.slot]));
+    if (!d1) continue;
+    let repare = false;
+    for (const d2 of days.filter(iso => iso !== d1)) {
+      if (repare) break;
+      const bj = allBricksOfDay(d2).find(b => b.s === s.id && b.t !== s.admin && PRAT[b.slot]);
+      if (!bj) continue;
+      const p2 = PRAT[bj.slot];
+      if (p2.exclusif) continue;
+      const rempl = DATA.salaries.find(c => c.role === "assistante" && !c.exclusif && !c.admin && free(c.id, d2) && reserve(c, week).rest.includes("J"));
+      if (!rempl) continue;
+      const idx = STATE.affectations[d2][p2.id].findIndex(b => b.s === s.id);
+      removeBrick(d2, p2.id, idx);
+      auto(d2, p2.id, rempl.id, "J");
+      const b1 = allBricksOfDay(d1).find(b => b.s === s.id);
+      STATE.affectations[d1][b1.slot].find(b => b.s === s.id).t = "J";
+      repare = true;
+    }
+  }
+  // 4. créneau administratif s'il reste la brique prévue — jour libre le moins chargé, mardi→vendredi de préférence
+  for (const s of DATA.salaries.filter(x => x.admin)) {
+    const rest = reserve(s, week).rest; if (!rest.includes(s.admin)) continue;
+    const libres = days.filter(iso => free(s.id, iso)).sort((a, b) => (weekday(a) === 5 || weekday(a) === 0) - (weekday(b) === 5 || weekday(b) === 0) || chargeJour(a) - chargeJour(b));
+    if (libres.length) auto(libres[0], "administratif", s.id, s.admin);
+  }
+  // 5. reliquat → sureffectif (renfort) sur les jours les plus chargés, mardi→vendredi ; samedi ou lundi seulement à défaut
+  for (const s of DATA.salaries.filter(x => x.role === "assistante")) {
+    for (const t of reserve(s, week).rest.slice()) {
+      const ok = days.filter(iso => free(s.id, iso));
+      const semaine = ok.filter(iso => weekday(iso) >= 1 && weekday(iso) <= 4), bord = ok.filter(iso => weekday(iso) === 5 || weekday(iso) === 0);
+      const choix = (semaine.length ? semaine : bord).sort((a, b) => chargeJour(b) - chargeJour(a) || bricksAt(a, "sureffectif").length - bricksAt(b, "sureffectif").length);
+      if (choix.length) auto(choix[0], "sureffectif", s.id, t);
+    }
+  }
+  return poses;
+}
+function initialState() {  // secrétaires sur leurs jours fixes, puis proposition sur chaque semaine (congés et fériés posés dans la page conservés)
+  STATE.affectations = {};
+  STATE.conges ??= []; STATE.feries ??= {}; STATE.feries_off ??= []; STATE.conges_off ??= []; STATE.notes ??= {}; STATE.cours ??= JSON.parse(JSON.stringify(DATA.cours ?? {}));
+  for (const s of DATA.salaries) if (s.role === "secretaire") for (const w of WEEKS) for (const iso of shownDays(w))
+    if (s.fixes.includes(weekday(iso)) && !bloque(s.id, iso)) addBrick(iso, "secretariat", {s:s.id, t:"J", x:false, a:true});
+  for (const w of WEEKS) proposer(w);
+  STATE.initialise = true;
+}
+
+// ------------------------------------------------------------ persistance
+function save() { try { localStorage.setItem(LS_KEY, JSON.stringify(STATE)); } catch(e) {} }
+function restore() {
+  try {
+    const raw = localStorage.getItem(LS_KEY); if (!raw) return false;
+    const saved = JSON.parse(raw);
+    if (saved.modifie && (!STATE.modifie || saved.modifie > STATE.modifie)) { STATE = saved; return true; }
+  } catch(e) {}
+  return false;
+}
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function stamp() { const d = new Date(), p = n => String(n).padStart(2,"0"); return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}`; }
+function saveFile() {
+  const json = JSON.stringify(STATE).replace(/<\//g, "<\\/");
+  const html = SOURCE.replace(/(<script id="planning-state"[^>]*>)[\s\S]*?(<\/script>)/, `$1${json}$2`);
+  download(`planning-assistantes_${DATA.meta.mois}_${stamp()}.html`, html, "text/html");
+  toast("Enregistré : le fichier téléchargé contient le planning.");
+}
+function exportJson() {
+  download(`planning-assistantes_${DATA.meta.mois}.json`, JSON.stringify({mois: DATA.meta.mois, affectations: STATE.affectations, conges: STATE.conges, conges_off: STATE.conges_off, feries: STATE.feries, feries_off: STATE.feries_off, notes: STATE.notes, cours: STATE.cours, exporte: new Date().toISOString()}, null, 1), "application/json");
+}
+function importFrom(text) {
+  let aff = null, src = null;
+  try { if (text.trim().startsWith("{")) src = JSON.parse(text);
+        else { const m = text.match(/<script id="planning-state"[^>]*>([\s\S]*?)<\/script>/); if (m) src = JSON.parse(m[1]); } } catch(e) {}
+  aff = src?.affectations;
+  if (!aff) { toast("Fichier non reconnu : il faut un planning enregistré (.html) ou un export JSON.", true); return; }
+  snapshot();
+  const dansPlage = iso => iso >= DATA.meta.debut && iso <= DATA.meta.fin;
+  for (const c of (src.conges ?? [])) if (dansPlage(c.date) && SAL[c.s] && !STATE.conges.some(x => x.s === c.s && x.date === c.date)) STATE.conges.push({...c, manuel: true});
+  for (const [iso, nom] of Object.entries(src.feries ?? {})) if (dansPlage(iso)) STATE.feries[iso] = nom;
+  for (const iso of (src.feries_off ?? [])) if (dansPlage(iso) && !STATE.feries_off.includes(iso)) STATE.feries_off.push(iso);
+  for (const o of (src.conges_off ?? [])) if (dansPlage(o.date) && SAL[o.s] && !STATE.conges_off.some(x => x.s === o.s && x.date === o.date)) STATE.conges_off.push(o);
+  for (const [iso, txt] of Object.entries(src.notes ?? {})) if (dansPlage(iso) && txt) STATE.notes[iso] = txt;
+  for (const [sid, dates] of Object.entries(src.cours ?? {})) if (SAL[sid]) STATE.cours[sid] = [...new Set([...(STATE.cours[sid] ?? []), ...dates.filter(dansPlage)])].sort();
+  let jours = 0, ignorees = 0;
+  for (const [iso, slots] of Object.entries(aff)) {
+    if (iso < DATA.meta.debut || iso > DATA.meta.fin) continue;
+    const clean = {};
+    for (const [slot, arr] of Object.entries(slots)) {
+      const ok = arr.filter(b => SAL[b.s]); ignorees += arr.length - ok.length;
+      if (ok.length) clean[slot] = ok.map(b => ({s:b.s, t:b.t, x:!!b.x, a:!!b.a}));
+    }
+    if (Object.keys(clean).length) STATE.affectations[iso] = clean; else delete STATE.affectations[iso];
+    jours++;
+  }
+  commit();
+  toast(`${jours} jour(s) repris${ignorees ? `, ${ignorees} brique(s) ignorée(s) (personne absente de la fiche)` : ""}.`);
+}
+
+// ------------------------------------------------------------ rendu
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+// info-bulle des postes : survol = affichage, clic = épinglée (re-clic ou Échap pour fermer)
+let TIP_PINNED = null;
+function showTip(target, html, pinned) {
+  const tip = document.getElementById("tip"); tip.innerHTML = html; tip.className = "show" + (pinned ? " pinned" : "");
+  const r = target.getBoundingClientRect(); tip.style.left = Math.min(r.left, window.innerWidth - 280) + "px"; tip.style.top = (r.bottom + 6) + "px";
+}
+function hideTip(force) { if (TIP_PINNED && !force) return; TIP_PINNED = null; document.getElementById("tip").className = ""; }
+function tipHandlers(target, html) {
+  target.addEventListener("mouseenter", () => { if (!TIP_PINNED && !DRAG) showTip(target, html, false); });
+  target.addEventListener("mouseleave", () => hideTip(false));
+  target.addEventListener("click", ev => { if (ev.target.closest(".brick") || ARMED) return; if (TIP_PINNED === target) { hideTip(true); } else { TIP_PINNED = target; showTip(target, html, true); } });
+}
+let toastTimer;
+function toast(msg, err) { const t = document.getElementById("toast"); t.textContent = msg; t.className = "show" + (err ? " err" : ""); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", err ? 3600 : 2200); }
+
+function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:true}
+  const s = SAL[b.s];
+  const e = el("div", "brick" + (b.t === "C" ? " c" : "") + (b.x ? " x" : "") + (b.a && !ctx.palette ? " auto" : "") + (!ctx.palette && FILTER?.s && FILTER.s !== b.s ? " dim" : ""));
+  e.style.setProperty("--bg", s.couleur[0]); e.style.setProperty("--fg", s.couleur[1]);
+  e.draggable = true; e.tabIndex = 0;
+  e.innerHTML = `${esc(s.label)}${b.t === "C" ? '<span class="tag">16h30</span>' : ""}${b.x ? '<span class="tag">+</span>' : ""}`;
+  e.title = `${s.nom} · ${s.role === "secretaire" ? "secrétaire" : "assistante"} ${s.heures} h` + (b.t === "C" ? " · journée courte, fin 16h30" : "") + (b.x ? " · hors quota" : "") + (b.a && !ctx.palette ? " · proposée par le moteur, déplace-la pour la confirmer" : "");
+  e.addEventListener("dragstart", ev => {
+    DRAG = {b:{s:b.s, t:b.t, x:b.x}, from: ctx.from ?? null};
+    ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", b.s);
+    e.classList.add("ghost"); markDroppables(b.s, ctx.from?.date); document.body.classList.add("placing");
+  });
+  e.addEventListener("dragend", () => { DRAG = null; e.classList.remove("ghost"); document.body.classList.remove("placing"); document.querySelectorAll(".slot.nodrop,.slot.over").forEach(x => x.classList.remove("nodrop","over")); document.getElementById("palette").classList.remove("over"); });
+  if (ctx.palette) {
+    e.addEventListener("click", () => { const same = ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x; ARMED = same ? null : {s:b.s, t:b.t, x:b.x}; render(); if (ARMED) toast(`${s.label} sélectionnée : clique une case pour la placer (Échap pour annuler).`); });
+    if (ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x) e.classList.add("armed");
+  } else {
+    const rm = el("button", "rm", "×"); rm.title = "Retirer"; rm.addEventListener("click", ev => { ev.stopPropagation(); unplace(ctx.from.date, ctx.from.slot, ctx.from.index); });
+    e.appendChild(rm);
+    if (ctx.warn) { e.classList.add("warn"); e.title += ` · ${ctx.warn}`; }
+  }
+  return e;
+}
+function markDroppables(sid, fromDate) {
+  document.querySelectorAll(".slot").forEach(sl => { const iso = sl.closest(".day").dataset.date; if (reasonRefus(sid, iso, fromDate)) sl.classList.add("nodrop"); });
+}
+function dropHandlers(target, iso, slot) {
+  target.addEventListener("dragover", ev => { if (!DRAG || DRAG.abs) return; ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; if (!target.classList.contains("nodrop")) target.classList.add("over"); });
+  target.addEventListener("dragleave", () => target.classList.remove("over"));
+  target.addEventListener("drop", ev => { if (DRAG?.abs) return; ev.preventDefault(); target.classList.remove("over"); if (!DRAG) return; place(iso, slot, DRAG.b, DRAG.from); DRAG = null; });
+  target.addEventListener("click", ev => {
+    if (ev.target.closest(".brick") || !ARMED || ARMED.conge || ARMED.cours) return;
+    const armed = ARMED;
+    const fin = place(iso, slot, armed);
+    if (fin) {
+      const rest = reserve(SAL[armed.s], WEEKS[weekOf(iso)]).rest.filter(t => t === armed.t).length;
+      const cible = MISC_LABEL[fin] ?? `chez ${PRAT[fin].label}`;
+      if (armed.x || !rest) ARMED = null;
+      render();
+      const prefixe = fin !== slot && PRAT[slot] ? `${PRAT[slot].label} a déjà ${PRAT[slot].attendues > 1 ? "ses assistantes" : "son assistante"} : ` : "";
+      toast(prefixe + `${SAL[armed.s].label} placée ${cible} le ${fmtJour(iso)}` + (armed.x ? " (hors quota)" : rest ? ` — encore ${rest} à placer cette semaine` : " — semaine complète"));
+    }
+  });
+}
+
+function render() {
+  hideTip(true);
+  const cp = CPOP;
+  const cal = document.getElementById("calendar"); cal.innerHTML = "";
+  WEEKS.forEach((w, wi) => {
+    const week = el("section", "week" + (wi === CURRENT_WEEK ? " current" : "")); week.dataset.week = wi;
+    week.addEventListener("mouseenter", () => { if (CURRENT_WEEK !== wi) { CURRENT_WEEK = wi; renderPalette(); document.querySelectorAll(".week").forEach((x,i) => x.classList.toggle("current", i === wi)); } });
+    week.appendChild(bandEl(w, wi));
+    const days = el("div", "days"); days.style.setProperty("--cols", SHOWN.length);
+    for (const iso of shownDays(w)) days.appendChild(dayEl(iso));
+    week.appendChild(days); cal.appendChild(week);
+  });
+  cal.appendChild(bilanEl());
+  if (cp) openCpop(cp.iso, null);
+  renderPalette();
+  document.getElementById("btnUndo").disabled = !HISTORY.length;
+}
+function bilanEl() {
+  let manq = 0, supTot = 0, absTot = 0; for (const wk of WEEKS) manq += manquantes(wk);
+  const sec = el("section", "bilan"); let rows = "";
+  for (const s of DATA.salaries) {
+    let q = 0, p = 0, x = 0, hp = 0, hd = 0, hs = 0;
+    for (const wk of WEEKS) { const j = jauge(s, wk), h = heures(s, wk); q += j.q.length; p += j.nbPose + j.v.length; x += j.extras; hp += h.posees; hd += h.dues; hs += h.sup; }
+    supTot += hs;
+    const ab = absences(s.id, DATA.meta.debut, DATA.meta.fin); absTot += ab.total;
+    const nbCours = (STATE.cours?.[s.id] ?? []).filter(d => d >= DATA.meta.debut && d <= DATA.meta.fin).length;
+    const abTxt = [...Object.entries(ab.parType).map(([t, n]) => `<span class="${ABS[t]?.cls ?? ""}">${n} ${ABS[t]?.code ?? esc(t)}</span>`), ...(nbCours ? [`<span class="abs-cours">${nbCours} cours</span>`] : [])].join(" · ") || "—";
+    const dim = FILTER?.s && FILTER.s !== s.id ? " dimrow" : "";
+    rows += `<tr><td class="${dim}" style="--fg:${s.couleur[1]}"><i></i>${esc(s.label)}</td><td class="${p < q ? "short" : "full"}${dim}">${p + x} / ${q}</td><td class="${dim}">${fmtH(hd)}</td><td class="${dim}">${fmtH(hp)}</td><td class="${hs ? "sup" : ""}${dim}">${hs ? "+" + fmtH(hs) : "—"}</td><td class="${dim}">${abTxt}</td></tr>`;
+  }
+  const head = el("div", "bhead", `<h3>Bilan du mois</h3><span class="bsub">${DATA.meta.libelle} · semaines complètes du ${fmtJour(shownDays(WEEKS[0])[0])} au ${fmtJour(shownDays(WEEKS.at(-1)).at(-1))}</span>`);
+  const kp = el("div", "kpis");
+  kp.appendChild(el("div", "kpi " + (manq ? "ko" : "ok"), `<b>${manq}</b><span>assistante${manq > 1 ? "s" : ""} manquante${manq > 1 ? "s" : ""}</span>`));
+  kp.appendChild(el("div", "kpi " + (supTot ? "warn" : ""), `<b>${supTot ? "+" + fmtH(supTot) : "0 h"}</b><span>heures supplémentaires</span>`));
+  kp.appendChild(el("div", "kpi", `<b>${absTot}</b><span>jour${absTot > 1 ? "s" : ""} d'absence</span>`));
+  head.appendChild(kp); sec.appendChild(head);
+  sec.appendChild(el("table", null, `<tr><th>Personne</th><th>Jours placés</th><th>Heures dues</th><th>Heures posées</th><th>Heures sup.</th><th>Absences</th></tr>${rows}`));
+  return sec;
+}
+function manquantes(w) { let n = 0; for (const iso of shownDays(w)) for (const {p} of presents(iso)) n += Math.max(0, need(iso, p)); return n; }
+function bandEl(w, wi) {
+  const b = el("div", "band");
+  const d = shownDays(w);
+  b.appendChild(el("div", "wk", `Semaine ${w.num}<small>du ${fmtJour(d[0])} au ${fmtJour(d[d.length-1])}</small>`));
+  const meters = el("div", "meters");
+  for (const s of DATA.salaries) {
+    const j = jauge(s, w), h = heures(s, w);
+    const m = el("div", "meter"); m.style.setProperty("--fg", s.couleur[1]);
+    m.className = "meter" + (!j.r.rest.length && !j.extras ? " done" : "") + (FILTER?.s && FILTER.s !== s.id ? " hide" : "");
+    m.innerHTML = `<b>${esc(s.label)}</b><span class="squares">${j.sq || '<span style="color:var(--ink-3)">—</span>'}</span><span class="cnt">${j.texte}</span>${h.sup ? `<span class="hs">+${fmtH(h.sup)}</span>` : ""}`;
+    m.title = `${s.nom} · ${j.q.length} j de contrat cette semaine` + (j.v.length ? `, dont ${j.v.length} en absence/férié` : "") + ` · ${fmtH(h.posees)} posées pour ${fmtH(h.dues)} dues` + (h.sup ? ` (+${fmtH(h.sup)} sup)` : "");
+    meters.appendChild(m);
+  }
+  b.appendChild(meters);
+  for (const s of DATA.salaries.filter(x => x.admin)) {
+    const pose = placed(s, w).some(x => x.slot === "administratif"), rest = reserve(s, w).rest;
+    if (!quota(s, w).length) continue;
+    b.appendChild(el("span", "adm" + (pose ? " ok" : ""), pose ? `${esc(s.label)} : administratif ✓` : rest.length ? `${esc(s.label)} : administratif à poser` : `${esc(s.label)} : pas d'administratif (couverture)`));
+  }
+  const n = manquantes(w);
+  b.appendChild(el("span", "postes " + (n ? "ko" : "ok"), n ? `${n} assistante${n > 1 ? "s" : ""} manquante${n > 1 ? "s" : ""}` : "tous les postes pourvus"));
+  for (const s of DATA.salaries.filter(x => x.etudiante)) { const n = w.days.filter(iso => coursDe(s.id, iso)).length; if (n) b.appendChild(el("span", "cours", `${esc(s.label)} : ${n > 1 ? n + " cours" : "cours"}`)); }
+  b.addEventListener("click", () => { if (ARMED?.cours) { toggleCours(ARMED.cours, w.days[0]); return; } CURRENT_WEEK = wi; render(); });
+  return b;
+}
+function dayEl(iso) {
+  const wd = weekday(iso), fer = isFerie(iso) ? ferieName(iso) : null;
+  const coms = notesDe(iso);
+  const day = el("div", "day" + (inMonth(iso) ? "" : " outside") + (fer ? " ferie" : "") + (coms.length ? " noted" : "") + (ARMED?.conge && bloque(ARMED.conge, iso) && !congeDe(ARMED.conge, iso)?.manuel ? " nodrop" : "")); day.dataset.date = iso;
+  const d = toDate(iso);
+  const head = el("div", "day-head", `<span class="num">${d.getDate()}</span><span>${DOW_ABR[wd]}</span>${d.getDate() === 1 || !inMonth(iso) ? `<span class="m">${MOIS[d.getMonth()]}</span>` : ""}${fer ? `<span class="fer">${esc(fer)}</span>` : ""}`);
+  if (coms.length) {
+    const bub = el("span", "cbub", String(coms.length)); bub.title = "";
+    const html = `<b>${coms.length > 1 ? coms.length + " commentaires" : "Commentaire"}</b>` + coms.map(t => `<br>• ${esc(t)}`).join("");
+    bub.addEventListener("mouseenter", () => { if (!CPOP) showTip(bub, html, false); });
+    bub.addEventListener("mouseleave", () => hideTip(false));
+    bub.addEventListener("click", ev => { ev.stopPropagation(); CPOP?.iso === iso ? closeCpop() : openCpop(iso, null); });
+    head.querySelector(".num").after(bub);
+  }
+  const cb = el("button", "cbtn", "commenter"); cb.title = coms.length ? "Ajouter un autre commentaire" : "Ajouter un commentaire sur cette journée";
+  cb.addEventListener("click", ev => { ev.stopPropagation(); openCpop(iso, null); });
+  head.appendChild(cb);
+  const fb = el("button", "fbtn", fer ? "rouvrir" : "fermer"); fb.title = fer ? "Le cabinet travaille finalement ce jour-là" : "Fermer le cabinet ce jour-là (férié, pont)";
+  fb.addEventListener("click", ev => { ev.stopPropagation(); toggleFerie(iso); });
+  head.appendChild(fb); day.appendChild(head);
+  if (coms.length) day.appendChild(el("div", "dnote-print", coms.map(t => "• " + esc(t)).join("\n")));
+  // dépôt d'une absence glissée depuis un autre jour
+  day.addEventListener("dragover", ev => { if (DRAG?.abs) { ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; day.classList.add("over"); } });
+  day.addEventListener("dragleave", ev => { if (!day.contains(ev.relatedTarget)) day.classList.remove("over"); });
+  day.addEventListener("drop", ev => { if (!DRAG?.abs) return; ev.preventDefault(); ev.stopPropagation(); day.classList.remove("over"); moveAbsence(DRAG.abs, iso); DRAG = null; }, true);
+  // mode congé : un clic n'importe où dans la case pose ou retire le congé de la personne en main
+  day.addEventListener("click", ev => { if (ev.target.closest(".fbtn,.cbtn,.cbub,.notes .x")) return;
+    if (ARMED?.cours) { ev.stopPropagation(); toggleCours(ARMED.cours, iso); return; }
+    if (!ARMED?.conge) return; ev.stopPropagation(); if (isFerie(iso)) { toast(`${fmtJour(iso)} est fermé.`, true); return; } toggleConge(ARMED.conge, iso); }, true);
+  const pres = presents(iso), notes = [];
+  const prats = el("div", "prats");
+  for (const {p, l} of pres) {
+    const bricks = bricksAt(iso, p.id), etat = bricks.length === 0 ? " empty" : bricks.length < p.attendues ? " partial" : "";
+    const sl = el("div", "slot prat" + etat + (p.a_part ? " wide" : "") + (FILTER?.p && FILTER.p !== p.id ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.style.setProperty("--pc", p.couleur[1]);
+    const h = l.c.length ? l.c.map(([a,b]) => `${heure(a)}–${heure(b)}`).join(" · ") : (l.v === "planning fixe" ? "jours fixes" : "");
+    sl.appendChild(el("div", "sl", `<b>${esc(p.label)}</b>${p.etiquette ? `<span class="et">${esc(p.etiquette)}</span>` : ""}${p.attendues > 1 ? `<span class="att">${bricks.length}/${p.attendues}</span>` : ""}${l.v === "ouvert (atypique)" || l.jc ? '<span class="dot"></span>' : ""}`));
+    const details = `<b>${esc(p.nom)}</b><br><span class="h">${esc(h || "—")}</span>` +
+      (l.n != null ? `<br>${l.n} rendez-vous · agenda ${esc(l.v)}${l.jc ? " · journée courte" : ""}` : "<br>planning fixe") +
+      (p.exclusif ? `<br>reçoit uniquement ${p.binomes.map(x => SAL[x]?.label).filter(Boolean).join(" et ")}` : "");
+    tipHandlers(sl, details);
+    const bk = el("div", "bricks");
+    bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot:p.id, index:i}, warn: (b.t === "C" && l.fin && l.fin > "16:30") ? `journée courte : ${p.label} travaille jusqu'à ${heure(l.fin)}` : null})));
+    sl.appendChild(bk); dropHandlers(sl, iso, p.id); prats.appendChild(sl);
+  }
+  if (pres.length) day.appendChild(prats);
+  // Secrétariat toujours présent, juste sous les praticiens ; Sureffectif et Administratif seulement s'ils contiennent une brique (ou pendant un placement)
+  for (const [slot, cls, label] of [MISC[1], MISC[0], MISC[2]]) {
+    const bricks = bricksAt(iso, slot);
+    const sl = el("div", `slot misc ${cls}` + (slot !== "secretariat" && !bricks.length ? " collapsed" : "") + (FILTER?.p ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.appendChild(el("div", "ml", label));
+    const bk = el("div", "bricks"); bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot, index:i}})));
+    sl.appendChild(bk); dropHandlers(sl, iso, slot); day.appendChild(sl);
+  }
+  // absences du jour, comptées comme des journées placées
+  const absJour = DATA.salaries.filter(s => (congeDe(s.id, iso)?.bloque || coursDe(s.id, iso)) && !(FILTER?.s && FILTER.s !== s.id));
+  if (absJour.length) {
+    const sl = el("div", "slot misc absr" + (FILTER?.p ? " dim" : "")); sl.appendChild(el("div", "ml", "Absent"));
+    const bk = el("div", "bricks");
+    for (const s of absJour.filter(x => coursDe(x.id, iso))) { const vb = el("span", "vbrick abs-cours", `${esc(s.label)} · COURS`); vb.title = `${s.nom} · cours — × pour retirer`; const x = el("button", "x", "×"); x.addEventListener("click", ev => { ev.stopPropagation(); toggleCours(s.id, iso); }); vb.appendChild(x); bk.appendChild(vb); }
+    for (const s of absJour.filter(x => congeDe(x.id, iso)?.bloque)) { const c = congeDe(s.id, iso), a = ABS[c.type]; const vb = el("span", `vbrick ${a?.cls ?? ""}`, `${esc(s.label)} · ${a?.code ?? esc(c.type)}`); vb.style.color = a ? "" : "var(--ink-2)"; vb.title = `${s.nom} · ${c.type}${c.manuel ? " (posé dans la page)" : " (Notion)"} — × pour retirer, glisser pour déplacer`;
+      vb.draggable = true; vb.style.cursor = "grab";
+      vb.addEventListener("dragstart", ev => { DRAG = {abs: {s: s.id, date: iso, type: c.type}}; ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", s.id); vb.classList.add("ghost"); document.body.classList.add("moving-abs"); });
+      vb.addEventListener("dragend", () => { DRAG = null; vb.classList.remove("ghost"); document.body.classList.remove("moving-abs"); document.querySelectorAll(".day.over").forEach(d => d.classList.remove("over")); });
+      const x = el("button", "x", "×"); x.title = c.manuel ? "Retirer cette absence" : "Retirer cette absence dans la page (Notion inchangé)"; x.addEventListener("click", ev => { ev.stopPropagation(); toggleConge(s.id, iso); }); vb.appendChild(x);
+      bk.appendChild(vb); }
+    sl.appendChild(bk); day.appendChild(sl);
+  }
+  for (const p of DATA.praticiens) { const l = DATA.jours[iso]?.[p.id]; if (l && !l.pr && l.n > 0) notes.push(`<div>${esc(p.label)} · agenda ${l.v === "non planifié" ? "non ouvert" : l.v}, ${l.n} RDV</div>`); }
+  for (const s of DATA.salaries) { const c = congeDe(s.id, iso); if (c && !c.bloque && !(FILTER?.s && FILTER.s !== s.id)) notes.push(`<div>ℹ ${esc(s.label)} : ${esc(c.type.toLowerCase())}</div>`); }
+  if (notes.length) {
+    const n = el("div", "notes", notes.join(""));
+    n.querySelectorAll(".x").forEach(x => x.addEventListener("click", ev => { ev.stopPropagation(); toggleConge(x.dataset.conge, iso); }));
+    day.appendChild(n);
+  }
+  return day;
+}
+function setTitle() { const qui = FILTER?.s ? SAL[FILTER.s].label : FILTER?.p ? PRAT[FILTER.p].label : null; document.getElementById("title").innerHTML = `Planning assistantes <span class="month">${esc(DATA.meta.libelle)}</span>` + (qui ? ` <span class="who">· ${esc(qui)}</span>` : ""); }
+function setFilter(f) { FILTER = f; render(); setTitle(); document.title = `Planning assistantes — ${DATA.meta.libelle}` + (FILTER?.s ? ` — ${SAL[FILTER.s].label}` : FILTER?.p ? ` — ${PRAT[FILTER.p].label}` : ""); }
+function renderPalette() {
+  const palette = document.getElementById("palette"); palette.innerHTML = "";
+  const collapsed = document.body.classList.contains("pal-collapsed");
+  const tg = el("button", "ptoggle", collapsed ? "Réserve ›" : "‹ Replier"); tg.title = collapsed ? "Afficher la réserve" : "Replier la réserve pour agrandir le calendrier";
+  tg.addEventListener("click", () => { document.body.classList.toggle("pal-collapsed"); renderPalette(); });
+  palette.appendChild(tg);
+  const pal = el("div", "pbody"); palette.appendChild(pal);
+  const w = WEEKS[CURRENT_WEEK], d = shownDays(w);
+  // --- praticiens en tête : un clic filtre la vue
+  pal.appendChild(el("div", "grp", "Praticiens"));
+  const chips = el("div", "pchips");
+  for (const p of DATA.praticiens) { const c = el("button", "pchip" + (FILTER?.p === p.id ? " on" : ""), esc(p.label)); c.style.setProperty("--pc", p.couleur[1]); c.title = p.nom; c.addEventListener("click", () => setFilter(FILTER?.p === p.id ? null : {p: p.id})); chips.appendChild(c); }
+  pal.appendChild(chips);
+  // --- filtre actif
+  const fb = el("div", "filtre-bar" + (FILTER ? " on" : "")); fb.style.marginTop = "6px";
+  if (FILTER) { fb.innerHTML = `Vue filtrée : <b>${esc(FILTER.s ? SAL[FILTER.s].label : PRAT[FILTER.p].label)}</b>`; const off = el("button", "btn", "Tout afficher"); off.addEventListener("click", () => setFilter(null)); fb.appendChild(off); }
+  pal.appendChild(fb);
+
+  // --- tuiles salariées
+  for (const [role, titre] of [["assistante","Assistantes"],["secretaire","Secrétaires"]]) {
+    pal.appendChild(el("div", "grp", `${titre}<span class="wk-hint">${fmtJour(d[0])} → ${fmtJour(d[d.length-1])}</span>`));
+    const grid = el("div", "tiles");
+    for (const s of DATA.salaries.filter(x => x.role === role)) {
+      const j = jauge(s, w), r = j.r, q = j.q, h = heures(s, w);
+      const tile = el("div", "tile" + (FILTER?.s === s.id ? " on" : "") + (ARMED?.conge === s.id ? " armed" : "")); tile.style.setProperty("--fg", s.couleur[1]); tile.style.setProperty("--bg", s.couleur[0]);
+      const badges = {}; for (const v of j.v) badges[v.code] = badges[v.code] ? badges[v.code] + 1 : 1;
+      const badgeHtml = Object.entries(badges).map(([code, n]) => `<span class="badge-abs ${j.v.find(v => v.code === code).cls}">${code}${n > 1 ? " ×" + n : ""}</span>`).join("");
+      const nm = el("div", "nm", `<i></i>${esc(s.label)}${badgeHtml}<small>${s.heures_fixes ? `${s.fixes.length} j fixes` : s.etudiante ? "étudiante" : `${s.heures} h`}</small>`);
+      const acts = el("div", "acts");
+      const plus = el("button", null, "+"); plus.title = `Journée supplémentaire (hors quota, +${fmtH(HB.J)}) pour ${s.label}`;
+      plus.addEventListener("click", ev => { ev.stopPropagation(); ARMED = {s:s.id, t:"J", x:true}; render(); toast(`Journée supplémentaire pour ${s.label} (+${fmtH(HB.J)}) : clique la case où la placer.`); });
+      const cg = el("button", ARMED?.conge === s.id ? "on" : null, "◌"); cg.title = `Poser ou retirer des absences pour ${s.label}`;
+      cg.addEventListener("click", ev => { ev.stopPropagation(); ARMED = ARMED?.conge === s.id ? null : {conge: s.id, type: "Congé payé"}; render(); if (ARMED) toast(`Absences de ${s.label} : choisis le type, puis clique chaque jour. Échap pour finir.`); });
+      acts.appendChild(plus); acts.appendChild(cg);
+      nm.appendChild(acts); tile.appendChild(nm);
+      if (s.etudiante) {
+        const n = nbCoursMois(s.id);
+        const crs = el("div", "crs", `<span>cours ce mois</span>`);
+        const moins = el("button", null, "−"); moins.title = "Un cours de moins ce mois"; moins.addEventListener("click", ev => { ev.stopPropagation(); ajusterCours(s.id, -1); });
+        const plus2 = el("button", null, "+"); plus2.title = "Un cours de plus ce mois (première semaine sans cours)"; plus2.addEventListener("click", ev => { ev.stopPropagation(); ajusterCours(s.id, +1); });
+        const cr = el("button", ARMED?.cours === s.id ? "on" : null, "⌂"); cr.title = "Dater précisément : clique, puis clique les semaines (ou les jours) de cours. Re-clic pour retirer.";
+        cr.addEventListener("click", ev => { ev.stopPropagation(); ARMED = ARMED?.cours === s.id ? null : {cours: s.id}; render(); if (ARMED) toast(`Cours de ${s.label} : clique le bandeau d'une semaine (cours le lundi) ou un jour précis. Échap pour finir.`); });
+        crs.appendChild(moins); crs.appendChild(el("b", null, String(n))); crs.appendChild(plus2);
+        const lbl = el("span", "lbl", "dater"); crs.appendChild(lbl); crs.appendChild(cr);
+        crs.addEventListener("click", ev => ev.stopPropagation());
+        tile.appendChild(crs);
+      }
+      tile.appendChild(el("div", "mt", `<span class="squares">${j.sq || "—"}</span><span class="cnt">${j.texte}</span>${!r.rest.length && q.length ? '<span class="done" title="semaine placée">✓</span>' : ""}${h.sup ? `<span class="sup" title="heures supplémentaires cette semaine">+${fmtH(h.sup)}</span>` : ""}`));
+      if (r.rest.length) { const stack = el("div", "stack"); r.rest.forEach(t => stack.appendChild(brickEl({s:s.id, t, x:false}, {palette:true}))); tile.appendChild(stack); }
+      if (ARMED?.conge === s.id) {
+        const types = el("div", "types");
+        for (const [type, a] of Object.entries(ABS)) { const b = el("button", ARMED.type === type ? "on" : null, a.code); b.title = a.libelle; b.addEventListener("click", ev => { ev.stopPropagation(); ARMED.type = type; render(); }); types.appendChild(b); }
+        tile.appendChild(types);
+      }
+      tile.addEventListener("click", ev => { if (ev.target.closest(".brick,button")) return; setFilter(FILTER?.s === s.id ? null : {s: s.id}); });
+      grid.appendChild(tile);
+    }
+    pal.appendChild(grid);
+  }
+  if (ARMED?.x) { const note = el("div", "sub", `Journée supplémentaire de ${SAL[ARMED.s].label} en main — clique une case.`); note.style.color = "var(--warn)"; note.style.marginTop = "8px"; pal.appendChild(note); }
+  if (ARMED?.conge) { const note = el("div", "sub", `Mode absences (${ABS[ARMED.type]?.libelle ?? ARMED.type}) pour ${SAL[ARMED.conge].label} : clique les jours. Un jour déjà planifié libère sa brique.`); note.style.color = "var(--alert)"; note.style.marginTop = "8px"; pal.appendChild(note); }
+  if (ARMED?.cours) { const note = el("div", "sub", `Mode cours pour ${SAL[ARMED.cours].label} : clique le bandeau d'une semaine pour un cours le lundi, ou un jour précis. Re-clic pour retirer.`); note.style.color = "var(--accent-ink)"; note.style.marginTop = "8px"; pal.appendChild(note); }
+  document.body.classList.toggle("mode-cours", !!ARMED?.cours);
+  document.body.classList.toggle("mode-conge", !!ARMED?.conge);
+  document.body.classList.toggle("placing", !!ARMED && !ARMED.conge && !ARMED.cours);
+  pal.appendChild(el("div", "hint", "Clique un nom pour filtrer. Glisse une brique (ou clique-la puis la case). + journée sup, ◌ absences. Glisse une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
+  palette.addEventListener("dragover", ev => { if (DRAG?.from && !DRAG.abs) { ev.preventDefault(); palette.classList.add("over"); } });
+  palette.addEventListener("dragleave", () => palette.classList.remove("over"));
+  palette.addEventListener("drop", ev => { ev.preventDefault(); palette.classList.remove("over"); if (DRAG?.from) { unplace(DRAG.from.date, DRAG.from.slot, DRAG.from.index); DRAG = null; } });
+}
+
+// ------------------------------------------------------------ démarrage
+function boot() {
+  setTitle();
+  document.title = `Planning assistantes — ${DATA.meta.libelle}`;
+  document.getElementById("subtitle").textContent = `Généré le ${DATA.meta.genere} · Doctolib · présence = agenda ouvert ou ≥ ${DATA.meta.seuils.presence_h} h de rendez-vous`;
+  const mesure = () => document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").getBoundingClientRect().height + "px");
+  mesure(); window.addEventListener("resize", mesure); if (window.ResizeObserver) new ResizeObserver(mesure).observe(document.querySelector(".topbar"));
+  const avert = DATA.salaries.filter(s => s.heures_supposees).map(s => `${s.label} : heures non renseignées dans la fiche, ${s.heures} h supposé`);
+  document.getElementById("banner").textContent = avert.join(" · ");
+  const restored = restore();
+  STATE.conges ??= []; STATE.feries ??= {}; STATE.feries_off ??= []; STATE.conges_off ??= []; STATE.notes ??= {}; STATE.cours ??= JSON.parse(JSON.stringify(DATA.cours ?? {}));
+  if (!STATE.initialise) { initialState(); save(); }
+  if (restored) {
+    const b = document.getElementById("banner");
+    b.textContent = (b.textContent ? b.textContent + " — " : "") + `Brouillon repris depuis ce navigateur (modifié le ${new Date(STATE.modifie).toLocaleString("fr-FR")}).`;
+    const btn = el("button", "btn", "Repartir du fichier"); btn.style.marginLeft = "8px";
+    btn.addEventListener("click", () => { STATE = JSON.parse(JSON.stringify(EMBEDDED)); if (!STATE.initialise) initialState(); save(); b.textContent = ""; render(); toast("Brouillon ignoré : planning du fichier recalculé."); });
+    b.appendChild(btn);
+  }
+  render();
+  document.getElementById("btnSave").addEventListener("click", saveFile);
+  document.getElementById("btnExport").addEventListener("click", exportJson);
+  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+  document.getElementById("btnUndo").addEventListener("click", undo);
+  document.getElementById("btnPropose").addEventListener("click", () => { snapshot(); let n = 0; for (const w of WEEKS) n += proposer(w); commit(); toast(n ? `${n} brique${n > 1 ? "s" : ""} proposée${n > 1 ? "s" : ""} dans les cases vides.` : "Rien à compléter : toutes les briques disponibles sont posées."); });
+  document.getElementById("btnImport").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; f.text().then(importFrom); ev.target.value = ""; });
+  document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Refaire toute la proposition ? Les placements manuels seront perdus.")) { snapshot(); initialState(); commit(); toast("Nouvelle proposition calculée"); } });
+  document.addEventListener("click", ev => { if (!CPOP) return; const chemin = ev.composedPath ? ev.composedPath() : []; if (!chemin.some(n => n.id === "cpop" || n.classList?.contains("cbub") || n.classList?.contains("cbtn"))) closeCpop(); });
+  document.addEventListener("keydown", ev => {
+    if (ev.key === "Escape") { hideTip(true); if (CPOP) closeCpop(); else if (ARMED) { ARMED = null; render(); } else if (FILTER) setFilter(null); }
+    if (ev.key === "Escape" && document.body.classList.contains("mode-cours")) document.body.classList.remove("mode-cours");
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); undo(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") { ev.preventDefault(); saveFile(); }
+  });
+}
+boot();
+})();
+</script>
+</body>
+</html>
