@@ -1,0 +1,115 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Présences {{ libelle }} — Planning Assistantes{% endblock %}
+{% block entete %}Présences — {{ libelle }}{% endblock %}
+{% block classe_corps %}large{% endblock %}
+
+{% block tete %}
+<style>
+  .barre { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; margin-bottom: 1.25rem; }
+  .barre .bouton { margin-left: auto; border: 1px solid currentColor; border-radius: 0.25rem; padding: 0.3rem 0.7rem; text-decoration: none; }
+  .alerte { border-left-color: #c93; background: rgba(204,153,51,.10); margin-bottom: 1.5rem; }
+
+  table { border-collapse: collapse; width: 100%; margin: 0 0 2rem; font-size: 0.82rem; table-layout: fixed; }
+  caption { text-align: left; font-weight: 600; padding: 0.4rem 0; }
+  th, td { border: 1px solid rgba(128,128,128,.35); padding: 0.35rem 0.4rem; vertical-align: top; overflow-wrap: anywhere; }
+  thead th { text-align: center; font-weight: 600; }
+  thead th .compte { font-weight: 400; color: #666; font-size: 0.78rem; }
+  tbody th { text-align: left; width: 9rem; font-weight: 600; }
+  th.coin { border: 0; }
+  .we { background: rgba(128,128,128,.06); }
+
+  /* Le signal primaire est la présence ; le verdict n'est que secondaire.
+     Sélecteurs de classe nue : les pastilles de la légende portent les mêmes
+     classes que les cases et reçoivent ainsi les mêmes fonds. */
+  .present { background: rgba(68,170,119,.16); }
+  .present-atypique { background: rgba(68,170,119,.16); border-left: 3px solid #c93; }
+  .atypique { background: rgba(204,153,51,.14); }
+  .ferme { background: rgba(128,128,128,.16); color: #555; }
+  td.nonplan { color: #999; text-align: center; }
+  td.inconnu { color: #999; text-align: center; }
+  .noncouvert {
+    background: repeating-linear-gradient(45deg, #eee, #eee 4px, #fff 4px, #fff 8px);
+  }
+  td.noncouvert, th.noncouvert { color: #888; font-size: 0.74rem; text-align: center; }
+
+  .legende { font-size: 0.8rem; color: #555; display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; }
+  .pastille { display: inline-block; width: 0.85rem; height: 0.85rem; border: 1px solid rgba(128,128,128,.5); vertical-align: -2px; margin-right: 0.25rem; }
+  .sources { font-size: 0.85rem; }
+</style>
+{% endblock %}
+
+{% block contenu %}
+  <p class="barre">
+    <a href="{% url 'presences:mois' precedent %}">← {{ precedent }}</a>
+    <a href="{% url 'presences:mois' suivant %}">{{ suivant }} →</a>
+    {% if peut_importer %}<a class="bouton" href="{% url 'presences:importer' %}">Importer un fichier S7</a>{% endif %}
+  </p>
+
+  {% if couverture.jours_non_couverts %}
+    <p class="message alerte">{{ couverture.jours_non_couverts }} jour(s) de la plage sans import.
+       Les colonnes hachurées ne sont pas des absences : rien n'a encore été importé pour ces jours.</p>
+  {% endif %}
+
+  {% for semaine in couverture.semaines %}
+    <table>
+      <caption>Semaine du {{ semaine.lundi|date:"j F Y" }}</caption>
+      <thead>
+        <tr>
+          <th class="coin"></th>
+          {% for jour in semaine.jours %}
+            <th class="{% if jour.week_end %}we {% endif %}{% if not jour.couvert %}noncouvert{% endif %}">
+              {{ jour.date|date:"D j/m" }}<br>
+              <span class="compte">{% if jour.couvert %}{{ jour.nb_presents }}/{{ jour.nb_ouverts }}{% else %}non importé{% endif %}</span>
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in semaine.lignes %}
+          <tr>
+            <th scope="row">{{ ligne.agenda }}</th>
+            {% for case in ligne.cases %}
+              {% if case %}
+                <td class="{{ case.classe }}{% if forloop.counter > 5 %} we{% endif %}">{{ case.libelle }}</td>
+              {% else %}
+                <td class="noncouvert{% if forloop.counter > 5 %} we{% endif %}">non importé</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% empty %}
+          <tr><td colspan="8">Aucun agenda : aucun import ne couvre cette semaine.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endfor %}
+
+  <p class="legende">
+    <span><span class="pastille present"></span>présent</span>
+    <span><span class="pastille present-atypique"></span>présent, horaires atypiques</span>
+    <span><span class="pastille atypique"></span>atypique, non présent</span>
+    <span><span class="pastille ferme"></span>fermé</span>
+    <span><span class="pastille nonplan"></span>non planifié</span>
+    {% if couverture.jours_non_couverts %}<span><span class="pastille noncouvert"></span>non importé</span>{% endif %}
+  </p>
+
+  <h2>Sources</h2>
+  <ul class="sources">
+    {% for source in couverture.sources %}
+      <li>Import #{{ source.pk }} — {{ source.debut }} → {{ source.fin }} —
+          {{ source.get_source_display|lower }} — importé le {{ source.importe_le|date:"d/m/Y à H:i" }} —
+          {{ source.nb_lignes }} lignes</li>
+    {% empty %}
+      <li>Aucun import réussi ne couvre cette plage.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}
+
+{% block navigation %}
+  <a href="/">Accueil</a> —
+  {% if user.is_staff %}<a href="/admin/">Administration</a> —{% endif %}
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

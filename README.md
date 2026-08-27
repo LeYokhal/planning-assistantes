@@ -1,8 +1,9 @@
 # Planning Assistantes — Espace K Dentaire
 
-Application Django pour le planning des assistantes du cabinet. Ce dépôt en est
-au **socle (brique 1a)** : comptes, connexion sans mot de passe, journal
-d'audit, page de santé et fichiers de déploiement.
+Application Django pour le planning des assistantes du cabinet. Ce dépôt porte
+le **socle (brique 1a)** — comptes, connexion sans mot de passe, journal
+d'audit, page de santé, déploiement — et l'**import des présences (brique 1b)** :
+lecture des exports Doctolib, écran « présences du mois », API n8n.
 
 ## État
 
@@ -10,19 +11,26 @@ d'audit, page de santé et fichiers de déploiement.
   par lien magique (django-sesame, 15 minutes, usage unique), rôles `cabinet` /
   `principale` / `salariee`, journal d'audit, page `/sante/`, envoi de mail via
   webhook n8n. Déployée sur Railway (projet dédié, PostgreSQL dédié).
-- **Prochaine étape** : brique 1b — import des présences S7, écran « présences du
-  mois », API n8n.
+- **Brique 1b, en recette** : import des présences par fichier depuis
+  l'application (compte cabinet), invariant de recompte, écran « présences du
+  mois », API entrante n8n (santé, déclenchement d'import) et webhooks
+  `import.termine` / `import.echec`. Le chemin « endpoint » vers le serveur MCP
+  Doctolib est câblé mais **inactif** : il dépend de la brique 0, non livrée.
+- **Prochaine étape** : brique 2 — personnes et appariement des agendas.
 
-## Périmètre de la brique 1a
+## Périmètre
 
 | Livré | Pas encore |
 |---|---|
-| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Import des exports S7 |
-| Modèles `Personne`, `Compte`, `EvenementAudit` | Écran « présences du mois » |
-| Connexion par lien magique (django-sesame), 15 min, usage unique | Génération du planning |
-| Journal d'audit consultable, non modifiable | |
-| Page de santé `/sante/` pour la sonde Railway | |
+| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Appariement agenda ↔ personne (brique 2) |
+| Modèles `Personne`, `Compte`, `EvenementAudit` | Fiches de paie (brique 3) |
+| Connexion par lien magique (django-sesame), 15 min, usage unique | Génération du planning (brique 4) |
+| Journal d'audit consultable, non modifiable | Publication et purge (briques 4 et 5) |
+| Page de santé `/sante/` pour la sonde Railway | Appel direct de Doctolib (brique 0) |
 | Envoi de mails délégué à un webhook n8n → Gmail | |
+| Import des présences S7 par fichier, avec invariant de recompte | |
+| Écran « présences du mois », rôles `cabinet` et `principale` | |
+| API n8n `/api/n8n/` et webhooks `import.*` | |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -77,6 +85,11 @@ Tests :
 | `N8N_MAIL_WEBHOOK_URL` | non | Webhook d'envoi des mails. Absent = aucun envoi. |
 | `N8N_WEBHOOK_SECRET` | non | Envoyé dans l'en-tête `X-Mail-Secret`. |
 | `CABINET_EMAIL` | non | Compte cabinet créé au pré-déploiement. |
+| `N8N_API_SECRET` | non | Secret de l'API entrante n8n, en-tête `X-Api-Secret`. Absent = API désactivée (`503`). |
+| `N8N_IMPORT_WEBHOOK_URL` | non | Webhook des événements `import.*`. Absent = aucune notification. |
+| `DOCTOLIB_PRESENCES_URL` | non | ⚠️ Brique 0 non livrée : **laisser vide**. |
+| `DOCTOLIB_PRESENCES_SECRET` | non | ⚠️ Brique 0 non livrée : **laisser vide**. |
+| `IMPORT_EN_ARRIERE_PLAN` | non | Absente = tâche de fond. `0` = synchrone, réservé aux tests. |
 | `PORT` | — | Fournie par Railway, lue par gunicorn. |
 
 ## Déploiement
@@ -87,15 +100,35 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
+- API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - Règles de contribution et interdits : [`CLAUDE.md`](CLAUDE.md)
 
 ## Structure
 
 ```
 config/      réglages, URLs, WSGI/ASGI
-comptes/     Personne, Compte, connexion par lien, mails, admin, commandes
+comptes/     Personne, Compte, connexion par lien, mails, contrôle de rôle, admin
 audit/       EvenementAudit et service de journalisation
 socle/       page de santé, accueil, gabarits communs
-docs/        déploiement et webhook n8n
+presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
+n8n/         API entrante appelée par n8n (sans modèle)
+docs/        déploiement et webhooks n8n
 reference/   version 1 du skill de planning, à titre de référence (non exécutée)
 ```
+
+## Importer des présences
+
+Avec le compte **cabinet**, sur `/presences/importer/`, déposer le résultat de
+`consulter_jours_travail` en mode « tous », tel qu'il a été enregistré (wrapper
+de l'interface ou payload direct). Un mois s'affiche en semaines complètes, ce
+qui demande **une ou deux fenêtres** d'appel de 31 jours au plus — donc un ou
+deux fichiers.
+
+L'enveloppe annoncée dans le message (`… ouvert(s), … atypique(s), …`) est
+**recomptée sur le détail** : un fichier tronqué ou altéré est refusé en bloc,
+et rien n'entre dans l'écran. Une ligne d'import n'est jamais modifiée ni
+supprimée ; un import plus récent l'emporte simplement sur un plus ancien pour
+les jours qu'ils partagent.
+
+Le mois se consulte sur `/presences/<AAAA-MM>/`, ouvert aux rôles `cabinet` et
+`principale`.

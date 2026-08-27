@@ -74,6 +74,8 @@ INSTALLED_APPS = [
     "comptes",
     "audit",
     "socle",
+    "presences",
+    "n8n",
 ]
 
 MIDDLEWARE = [
@@ -197,3 +199,26 @@ N8N_WEBHOOK_SECRET = os.environ.get("N8N_WEBHOOK_SECRET", "").strip()
 
 # Adresse du compte « cabinet » assuré au pré-déploiement.
 CABINET_EMAIL = os.environ.get("CABINET_EMAIL", "").strip()
+
+# --- Présences (brique 1b) --------------------------------------------------
+
+# Endpoint « présences » du serveur MCP Doctolib (brique 0, NON LIVRÉE). Absents
+# = chemin endpoint inactif : un tir demandé par n8n aboutit en échec
+# « endpoint inactif », sans aucun appel réseau.
+DOCTOLIB_PRESENCES_URL = os.environ.get("DOCTOLIB_PRESENCES_URL", "").strip()
+DOCTOLIB_PRESENCES_SECRET = os.environ.get("DOCTOLIB_PRESENCES_SECRET", "").strip()
+
+# Webhook n8n destinataire des événements import.termine / import.echec
+# (voir docs/n8n/IMPORT_PRESENCES.md). Absent = aucune notification
+# (fail-closed). Le secret est N8N_WEBHOOK_SECRET, en-tête X-Webhook-Secret.
+N8N_IMPORT_WEBHOOK_URL = os.environ.get("N8N_IMPORT_WEBHOOK_URL", "").strip()
+
+# Secret de l'API entrante n8n -> application (en-tête X-Api-Secret).
+# Absent = API désactivée (503), sans exception.
+N8N_API_SECRET = os.environ.get("N8N_API_SECRET", "").strip()
+
+# Tirs endpoint en tâche de fond (thread). 0 = synchrone, réservé aux tests.
+IMPORT_EN_ARRIERE_PLAN = _env_bool("IMPORT_EN_ARRIERE_PLAN", True)
+
+# Péremption du verrou d'import et des lignes « en cours », en minutes.
+VERROU_IMPORT_PEREMPTION_MINUTES = 15
