@@ -103,5 +103,7 @@ saisissez cette adresse, vous recevrez un lien.
 
 Depuis la page `/connexion/` de l'application, saisir une adresse ayant un
 compte actif. Dans n8n, l'exécution doit apparaître avec un statut « Success ».
-Si elle apparaît en erreur `401`, le secret ne concorde pas entre Railway et la
-credential Header Auth.
+Si elle apparaît en erreur `403`, le secret ne concorde pas entre Railway et la
+credential Header Auth. C'est bien un `403` que renvoie le nœud Webhook en
+`Header Auth` sur un secret invalide — mesuré en phase 5 (contrôle négatif R5),
+et non le `401` attendu a priori.

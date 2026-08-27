@@ -61,10 +61,27 @@ python -m venv .venv                      # une seule fois
   contenant un `@`.
 - **Réponses neutres** : la page `/connexion/` renvoie exactement la même chose
   que l'adresse existe ou non. Ne jamais introduire de différence observable.
-- **Pré-déploiement** : `preDeployCommand` vaut `python manage.py pre_deploiement`,
-  qui enchaîne `migrate` puis `assurer_compte_cabinet`. Railway n'exécute pas le
-  pre-deploy dans un shell : une seule commande. Ne jamais y remettre de `&&` —
-  seule la première commande tournerait.
+- **Pré-déploiement** : une seule commande, `python manage.py pre_deploiement`.
+  Voir « Leçons de déploiement Railway » ci-dessous.
+
+## Leçons de déploiement Railway (brique 1a)
+
+Constats de la mise en ligne du 27/08/2026. À relire avant toute intervention
+sur le déploiement.
+
+- **Railway n'exécute PAS le `preDeployCommand` dans un shell** : une seule
+  commande, jamais de `&&`. Un `&&` n'y est pas interprété — seule la première
+  commande tourne, la suivante est perdue en silence, sans erreur dans les logs.
+  La commande `socle/pre_deploiement` enchaîne donc `migrate` puis
+  `assurer_compte_cabinet` depuis Python.
+- **Le builder affiché « RAILPACK » dans le dashboard est ignoré** :
+  `railway.json` impose `DOCKERFILE`, et c'est bien le `Dockerfile` qui est
+  construit (vérifié dans les logs de build). Ne pas se fier à l'affichage.
+- **`ALLOWED_HOSTS` doit contenir `healthcheck.railway.app`** : sans lui, la
+  sonde de santé reçoit un `400` et le déploiement est déclaré en échec, alors
+  que l'application tourne.
+- **gunicorn ne démarre pas sous Windows** : en local, `runserver` uniquement.
+  gunicorn ne sert qu'en production, dans l'image Docker.
 
 ## Périmètre
 
