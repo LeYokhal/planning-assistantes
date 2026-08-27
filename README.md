@@ -73,7 +73,8 @@ Tests :
 ## Déploiement
 
 Hébergement Railway, image Docker, sonde de santé sur `/sante/`, migrations et
-création du compte cabinet au pré-déploiement.
+création du compte cabinet au pré-déploiement par `python manage.py pre_deploiement`.
+Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)

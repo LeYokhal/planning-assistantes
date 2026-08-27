@@ -50,12 +50,14 @@ et `APP_URL` (étape 3). Le déploiement se relance à chaque modification.
 
 `railway.json` définit :
 
-- **`preDeployCommand`** : `python manage.py migrate --noinput && python manage.py assurer_compte_cabinet`.
-  Les deux commandes sont chaînées par `&&` dans une chaîne unique : le schéma
-  Railway accepte une chaîne ou un tableau d'**un seul** élément — il n'y a pas
-  d'autre façon d'en enchaîner deux.
-  `assurer_compte_cabinet` est idempotente et ne lève jamais d'exception : un
-  échec de sa part ne doit jamais bloquer un déploiement futur.
+- **`preDeployCommand`** : `python manage.py pre_deploiement`.
+  Railway n'exécute pas le pre-deploy dans un shell : une seule commande. Un
+  `&&` n'y est jamais interprété — seule la première commande tournerait, ce qui
+  s'est produit le 27/08 : les migrations ont tourné, pas la création du compte.
+  `pre_deploiement` enchaîne donc elle-même `migrate` puis
+  `assurer_compte_cabinet`. Un échec de migration fait échouer le déploiement ;
+  `assurer_compte_cabinet`, idempotente, ne lève jamais d'exception : un échec
+  de sa part ne doit jamais bloquer un déploiement futur.
 - **`healthcheckPath`** : `/sante/`, avec un délai de 120 s. La page renvoie
   `200 {"statut":"ok","base":"ok","migrations_en_attente":0}` quand tout va bien,
   `503` sinon.

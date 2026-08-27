@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "preDeployCommand": ["python manage.py migrate --noinput && python manage.py assurer_compte_cabinet"],
+    "preDeployCommand": "python manage.py pre_deploiement",
     "healthcheckPath": "/sante/",
     "healthcheckTimeout": 120,
     "restartPolicyType": "ON_FAILURE",
