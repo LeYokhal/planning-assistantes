@@ -4,6 +4,15 @@ Application Django pour le planning des assistantes du cabinet. Ce dépôt en es
 au **socle (brique 1a)** : comptes, connexion sans mot de passe, journal
 d'audit, page de santé et fichiers de déploiement.
 
+## État
+
+- **Brique 1a livrée le 27/08/2026** : socle Django 5.2 (Python 3.14), connexion
+  par lien magique (django-sesame, 15 minutes, usage unique), rôles `cabinet` /
+  `principale` / `salariee`, journal d'audit, page `/sante/`, envoi de mail via
+  webhook n8n. Déployée sur Railway (projet dédié, PostgreSQL dédié).
+- **Prochaine étape** : brique 1b — import des présences S7, écran « présences du
+  mois », API n8n.
+
 ## Périmètre de la brique 1a
 
 | Livré | Pas encore |
