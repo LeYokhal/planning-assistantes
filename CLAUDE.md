@@ -61,6 +61,10 @@ python -m venv .venv                      # une seule fois
   contenant un `@`.
 - **Réponses neutres** : la page `/connexion/` renvoie exactement la même chose
   que l'adresse existe ou non. Ne jamais introduire de différence observable.
+- **Pré-déploiement** : `preDeployCommand` vaut `python manage.py pre_deploiement`,
+  qui enchaîne `migrate` puis `assurer_compte_cabinet`. Railway n'exécute pas le
+  pre-deploy dans un shell : une seule commande. Ne jamais y remettre de `&&` —
+  seule la première commande tournerait.
 
 ## Périmètre
 
