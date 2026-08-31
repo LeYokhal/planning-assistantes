@@ -11,11 +11,12 @@ lecture des exports Doctolib, écran « présences du mois », API n8n.
   par lien magique (django-sesame, 15 minutes, usage unique), rôles `cabinet` /
   `principale` / `salariee`, journal d'audit, page `/sante/`, envoi de mail via
   webhook n8n. Déployée sur Railway (projet dédié, PostgreSQL dédié).
-- **Brique 1b, en recette** : import des présences par fichier depuis
-  l'application (compte cabinet), invariant de recompte, écran « présences du
-  mois », API entrante n8n (santé, déclenchement d'import) et webhooks
-  `import.termine` / `import.echec`. Le chemin « endpoint » vers le serveur MCP
-  Doctolib est câblé mais **inactif** : il dépend de la brique 0, non livrée.
+- **Brique 1b livrée le 31/08/2026** (`24ed48f`) : import des présences par
+  fichier depuis l'application (compte cabinet), invariant de recompte, écran
+  « présences du mois », API entrante n8n (santé, déclenchement d'import) et
+  webhooks `import.termine` / `import.echec`. Le chemin « endpoint » vers le
+  serveur MCP Doctolib est câblé mais **inactif** : il dépend de la brique 0,
+  non livrée.
 - **Prochaine étape** : brique 2 — personnes et appariement des agendas.
 
 ## Périmètre
@@ -101,6 +102,10 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
+- JSON des deux workflows n8n d'import (à importer tels quels, puis credentials
+  et adresse à renseigner) :
+  [`docs/n8n/n8n_planning_import_reception.json`](docs/n8n/n8n_planning_import_reception.json),
+  [`docs/n8n/n8n_planning_declencher_import.json`](docs/n8n/n8n_planning_declencher_import.json)
 - Règles de contribution et interdits : [`CLAUDE.md`](CLAUDE.md)
 
 ## Structure

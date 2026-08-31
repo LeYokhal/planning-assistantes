@@ -134,6 +134,15 @@ côté application.
 
 ## 3. Workflow « Planning assistantes – Import (réception) »
 
+Les deux workflows existent en JSON dans ce dossier
+(`n8n_planning_import_reception.json`, `n8n_planning_declencher_import.json`) :
+Workflows → Create workflow → ⋯ → Import from File. Après import, quatre
+réglages : la credential Header Auth sur le nœud Webhook (réception) ou HTTP
+Request (déclencheur), le champ **To** des nœuds Gmail (adresse saisie dans
+n8n, jamais dans ce dépôt), puis **Settings → Timezone `Europe/Paris`** et
+**« Available in MCP » décoché** — un import n'applique pas forcément les
+settings.
+
 Il reçoit les événements et prévient par mail.
 
 ### Nœud 1 — Webhook
@@ -165,7 +174,10 @@ Aucun secret nouveau n'est à créer côté Railway pour ce workflow : il réuti
 ### Réglages du workflow
 
 - **Available in MCP : décoché.** Ce workflow ne doit jamais être appelable par
-  un assistant.
+  un assistant. Cocher cette case ajoute un nœud « When chat message received »
+  au workflow : le retirer si la case a été cochée par erreur. Exposé à MCP,
+  « Déclencher import » serait exécutable depuis n'importe quelle session
+  Claude branchée sur n8n.
 - Activer le workflow, puis copier l'URL de **production** (elle contient
   `/webhook/`, pas `/webhook-test/`) et la reporter dans
   `N8N_IMPORT_WEBHOOK_URL` sur Railway.
@@ -197,7 +209,10 @@ Condition : `{{ $json.statusCode }}` **différent de** `202` → branche vraie v
 un nœud Gmail d'alerte (patron du canari du mail sortant). Une réponse `409`
 signifie simplement qu'un import tourne déjà : ce n'est pas une panne.
 
-- **Available in MCP : décoché.**
+- **Available in MCP : décoché.** Cocher cette case ajoute un nœud « When chat
+  message received » au workflow : le retirer si la case a été cochée par
+  erreur. Exposé à MCP, « Déclencher import » serait exécutable depuis
+  n'importe quelle session Claude branchée sur n8n.
 
 ## 5. Vérification
 
@@ -215,7 +230,9 @@ signifie simplement qu'un import tourne déjà : ce n'est pas une panne.
 4. **Déclenchement** — exécuter « Déclencher import » à la main : le nœud HTTP
    doit afficher `202`, l'administration doit montrer une ligne `endpoint` en
    échec « endpoint inactif (brique 0 non livrée) », et le workflow de réception
-   doit recevoir `import.echec`.
+   doit recevoir `import.echec`. C'est aussi le geste de revalidation à
+   privilégier après une correction de configuration : il exerce le verrou,
+   l'audit et le webhook sans toucher aux imports fichier.
 5. **Contrôles négatifs** — avec une credential volontairement fausse :
    - sur le déclencheur, le nœud HTTP doit afficher `401` ;
    - sur le récepteur, l'appel doit être refusé par le nœud Webhook (c'est un

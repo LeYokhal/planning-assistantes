@@ -1,0 +1,157 @@
+{
+  "name": "Planning assistantes – Déclencher import",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "8aa350c7-d086-4e2f-828c-85fc22d732d5",
+      "name": "Execute workflow (manuel)",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -600,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://planning-assistantes-production.up.railway.app/api/n8n/imports/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "{\"mois\": \"2026-10\"}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "6157568b-499f-4a52-96d4-7a2ba9405f4d",
+      "name": "POST /api/n8n/imports/",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -320,
+        0
+      ],
+      "retryOnFail": false,
+      "onError": "continueErrorOutput",
+      "notes": "Credential Header Auth à sélectionner après import : Name X-Api-Secret, Value = N8N_API_SECRET (Railway). Le mois est fixé dans le corps JSON."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "08a5abd0-c7cc-4947-a84f-c916a2e9b30c",
+              "leftValue": "={{ $json.statusCode }}",
+              "rightValue": 202,
+              "operator": {
+                "type": "number",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "70767fd9-1750-46ae-8d4c-1e9ae2e6ff3d",
+      "name": "HTTP != 202 ?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -40,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "REMPLACER_PAR_TON_ADRESSE@exemple.fr",
+        "subject": "=⚠️ Planning assistantes — déclenchement import : HTTP {{ $json.statusCode || 'sans réponse' }}",
+        "emailType": "text",
+        "message": "=Tir du {{ $now.setZone('Europe/Paris').toFormat('dd/MM/yyyy HH:mm:ss') }} (Europe/Paris)\nStatut HTTP : {{ $json.statusCode || 'sans réponse — timeout ou application injoignable' }}\n\nRéponse :\n{{ JSON.stringify($json.body || $json.error || $json, null, 2) }}\n\nWorkflow n8n « Planning assistantes – Déclencher import » — règle : alerte si HTTP ≠ 202 ou erreur réseau. Un 409 signifie seulement qu'un import tourne déjà.",
+        "options": {}
+      },
+      "id": "817acb31-a7af-4d7c-b852-aaca6b38a738",
+      "name": "Alerte email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        240,
+        80
+      ],
+      "webhookId": "b8821772-78cd-4c5a-bc96-1b3d19608208",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CpuAkptSDN5w4q4M",
+          "name": "Perso"
+        }
+      },
+      "notes": "Remplacer le champ To par ton adresse (celle du canari)."
+    }
+  ],
+  "connections": {
+    "Execute workflow (manuel)": {
+      "main": [
+        [
+          {
+            "node": "POST /api/n8n/imports/",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "POST /api/n8n/imports/": {
+      "main": [
+        [
+          {
+            "node": "HTTP != 202 ?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alerte email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP != 202 ?": {
+      "main": [
+        [
+          {
+            "node": "Alerte email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "pinData": {},
+  "tags": []
+}
