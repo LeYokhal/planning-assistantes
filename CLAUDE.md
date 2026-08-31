@@ -92,8 +92,14 @@ python -m venv .venv                      # une seule fois
   `BaseCache.incr`, qui lit puis écrit sans verrou — les incréments se perdent
   sous les deux workers gunicorn — et repousse la durée de vie à chaque appel,
   ce qui transforme une fenêtre fixe en blocage glissant. Ne pas y revenir.
-  L'adresse IP est le **dernier** élément de `X-Forwarded-For` : c'est le seul
-  saut écrit par le proxy de confiance, les autres sont sous contrôle du client.
+  Railway supprime l'en-tête `X-Forwarded-For` du client et le reconstruit : IP
+  cliente d'abord, puis des sauts internes en 100.0.0.0/8. `adresse_ip` parcourt
+  l'en-tête de droite à gauche en sautant les adresses internes ou privées
+  (recette 2 : le dernier élément était un saut interne, partagé par tous). Ne
+  pas revenir au dernier élément.
+- **Comptes et personnes** : pour un départ, désactiver (`is_active`, `actif`),
+  ne pas supprimer ; une suppression est journalisée mais efface l'auteur des
+  événements du compte (`qui` en SET_NULL).
 - **Pré-déploiement** : une seule commande, `python manage.py pre_deploiement`.
   Voir « Leçons de déploiement Railway » ci-dessous.
 

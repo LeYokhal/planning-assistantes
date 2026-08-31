@@ -120,9 +120,50 @@ def test_depasse_au_dela_du_plafond():
 # --- Adresse IP --------------------------------------------------------------
 
 
-def test_adresse_ip_prend_le_dernier_element_transmis(rf):
-    """Seul le dernier saut est écrit par le proxy de confiance."""
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.1, 192.0.2.10")
+def test_adresse_ip_saute_le_saut_interne_railway(rf):
+    """Railway ajoute son saut interne après l'IP cliente : on le saute."""
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4")
+
+    assert adresse_ip(requete) == "198.51.100.7"
+
+
+def test_adresse_ip_saute_plusieurs_sauts_internes(rf):
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4, 100.70.1.1")
+
+    assert adresse_ip(requete) == "198.51.100.7"
+
+
+def test_adresse_ip_ignore_l_element_usurpe_avant_le_client(rf):
+    """En-tête client conservé puis complété : le client réel précède les sauts."""
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="203.0.113.9, 198.51.100.7, 100.64.3.4")
+
+    assert adresse_ip(requete) == "198.51.100.7"
+
+
+def test_adresse_ip_client_ipv6(rf):
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="2001:db8::10, 100.64.3.4")
+
+    assert adresse_ip(requete) == "2001:db8::10"
+
+
+def test_adresse_ip_saute_un_element_illisible(rf):
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="pas-une-ip, 198.51.100.7, 100.64.3.4")
+
+    assert adresse_ip(requete) == "198.51.100.7"
+
+
+def test_adresse_ip_element_unique_illisible_retombe_sur_remote_addr(rf):
+    requete = rf.get(
+        "/", HTTP_X_FORWARDED_FOR="n-importe-quoi", REMOTE_ADDR="192.0.2.10"
+    )
+
+    assert adresse_ip(requete) == "192.0.2.10"
+
+
+def test_adresse_ip_que_des_sauts_internes_retombe_sur_remote_addr(rf):
+    requete = rf.get(
+        "/", HTTP_X_FORWARDED_FOR="100.64.3.4, 10.0.0.9", REMOTE_ADDR="192.0.2.10"
+    )
 
     assert adresse_ip(requete) == "192.0.2.10"
 
@@ -133,17 +174,18 @@ def test_adresse_ip_sans_entete_transmise(rf):
     assert adresse_ip(requete) == "192.0.2.10"
 
 
-def test_adresse_ip_entete_vide_retombe_sur_remote_addr(rf):
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="  ,  ", REMOTE_ADDR="192.0.2.10")
-
-    assert adresse_ip(requete) == "192.0.2.10"
-
-
 def test_adresse_ip_inconnue(rf):
     requete = rf.get("/")
     requete.META.pop("REMOTE_ADDR", None)
 
     assert adresse_ip(requete) == "inconnue"
+
+
+def test_adresse_ip_element_public_unique_sans_saut(rf):
+    """Robustesse : si aucun saut n'est ajouté, l'unique adresse suffit."""
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7")
+
+    assert adresse_ip(requete) == "198.51.100.7"
 
 
 # --- Décorateur --------------------------------------------------------------

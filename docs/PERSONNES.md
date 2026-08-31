@@ -104,6 +104,8 @@ Dans l'ordre, et pas autrement :
 Le mail d'invitation ne contient **aucun jeton** : il renvoie vers
 `/connexion/`, où la personne saisit son adresse et reçoit un lien.
 
+Un départ se traite par désactivation, jamais par suppression.
+
 ## 5. Rôle « assistante principale »
 
 Le rôle `principale` voit la liste des personnes et les présences, en lecture
@@ -129,6 +131,9 @@ le journal d'audit en garde trace (`lien_refuse`, motif `debit`).
 Les compteurs vivent dans la table `socle_compteurdebit`, une ligne par fenêtre
 et par empreinte, purgée d'elle-même. L'adresse n'y est stockée que sous forme
 d'empreinte tronquée, et n'apparaît jamais dans les logs.
+
+L'adresse IP est lue dans `X-Forwarded-For` en ignorant les sauts internes de
+Railway.
 
 ## 7. `regles/regles.json`
 

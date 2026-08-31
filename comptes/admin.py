@@ -38,6 +38,7 @@ class PersonneAdmin(admin.ModelAdmin):
         "actif",
         "code",
         "agenda_doctolib",
+        "couleur",
     )
     list_filter = ("role_metier", "planifiee", "actif", FiltreAgendaDoctolib)
     search_fields = ("nom", "prenom", "code")
@@ -60,6 +61,19 @@ class PersonneAdmin(admin.ModelAdmin):
             qui=request.user,
             objet=obj,
         )
+
+    def delete_model(self, request, obj):
+        """Supprimer efface l'objet mais pas sa trace : l'événement porte le
+        type et l'identifiant. Pour un départ, désactiver plutôt que supprimer.
+        """
+        journaliser(Action.PERSONNE_SUPPRIMEE, qui=request.user, objet=obj)
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """Suppression groupée : une trace par objet, avant l'effacement."""
+        for objet in queryset:
+            journaliser(Action.PERSONNE_SUPPRIMEE, qui=request.user, objet=objet)
+        super().delete_queryset(request, queryset)
 
     @admin.action(
         description="Créer les comptes de connexion (salariées avec adresse, sans compte)"
@@ -147,6 +161,19 @@ class CompteAdmin(admin.ModelAdmin):
             qui=request.user,
             objet=obj,
         )
+
+    def delete_model(self, request, obj):
+        """Supprimer efface l'objet mais pas sa trace : l'événement porte le
+        type et l'identifiant. Pour un départ, désactiver plutôt que supprimer.
+        """
+        journaliser(Action.COMPTE_SUPPRIME, qui=request.user, objet=obj)
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """Suppression groupée : une trace par objet, avant l'effacement."""
+        for objet in queryset:
+            journaliser(Action.COMPTE_SUPPRIME, qui=request.user, objet=objet)
+        super().delete_queryset(request, queryset)
 
     @admin.action(description="Envoyer une invitation")
     def envoyer_invitation(self, request, queryset):
