@@ -9,9 +9,14 @@ from sesame.views import LoginView as LoginViewSesame
 
 from audit.models import Action
 from audit.services import journaliser
+from socle.debit import depasse, limite_par_ip
 
 from .forms import FormulaireConnexion
 from .mails import OBJET_LIEN, envoyer_mail, texte_lien
+
+# Plafonds par défaut si le réglage manque : les mêmes que `config/settings.py`.
+DEBIT_IP_DEFAUT = (10, 900)
+DEBIT_ADRESSE_DEFAUT = (5, 3600)
 
 
 def construire_lien(compte):
@@ -24,11 +29,26 @@ def _contexte_envoye():
     return {"formulaire": FormulaireConnexion(), "envoye": True}
 
 
+def _reponse_429(request):
+    """Page de blocage par adresse IP. Seul cas où la page de connexion diffère."""
+    return render(
+        request,
+        "comptes/connexion.html",
+        {"formulaire": FormulaireConnexion(), "bloque": True},
+        status=429,
+    )
+
+
+@limite_par_ip(
+    "connexion", "DEBIT_CONNEXION_IP", reponse=_reponse_429, defaut=DEBIT_IP_DEFAUT
+)
 def demander_lien(request):
     """Formulaire de demande d'un lien de connexion.
 
     Quel que soit le sort de la demande — adresse inconnue, compte inactif,
-    envoi impossible — la page renvoyée est strictement la même.
+    envoi impossible, débit dépassé sur l'adresse — la page renvoyée est
+    strictement la même. Seul le plafond par IP répond différemment (429) : il
+    protège la page elle-même, et ne dit rien d'un compte en particulier.
     """
     formulaire = FormulaireConnexion(request.POST or None)
 
@@ -41,6 +61,17 @@ def demander_lien(request):
         return render(request, "comptes/connexion.html", _contexte_envoye())
 
     email = formulaire.cleaned_data["email"]
+
+    # Plafond par adresse, AVANT toute requête sur `Compte` : le temps de
+    # réponse ne doit pas trahir l'existence du compte.
+    if depasse(
+        "connexion-adresse",
+        email,
+        getattr(settings, "DEBIT_CONNEXION_ADRESSE", DEBIT_ADRESSE_DEFAUT),
+    ):
+        journaliser(Action.LIEN_REFUSE, motif="debit")
+        return render(request, "comptes/connexion.html", _contexte_envoye())
+
     Compte = get_user_model()
     compte = Compte.objects.filter(email__iexact=email).first()
 

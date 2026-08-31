@@ -83,3 +83,74 @@ def test_sante_refuse_le_post(client, poser_secret):
 
     assert reponse.status_code == 405
     assert reponse.json() == {"erreur": "methode_non_autorisee"}
+
+
+# --- Limitation de débit -----------------------------------------------------
+
+IP_TEST = "192.0.2.10"
+
+
+def test_plafond_par_ip_repond_429(client, poser_secret, settings):
+    settings.DEBIT_API_N8N_IP = (60, 60)
+
+    codes = [
+        client.get(
+            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST
+        ).status_code
+        for _ in range(61)
+    ]
+
+    assert codes[:60] == [200] * 60
+    assert codes[60] == 429
+
+
+def test_plafond_atteint_meme_sans_secret(client, poser_secret, settings):
+    """Un appelant sans secret ne doit pas pouvoir marteler la route."""
+    settings.DEBIT_API_N8N_IP = (2, 60)
+
+    codes = [
+        client.get(SANTE, HTTP_X_FORWARDED_FOR=IP_TEST).status_code for _ in range(3)
+    ]
+
+    assert codes == [401, 401, 429]
+
+
+def test_debit_precede_le_503(client, settings):
+    """API désactivée : le plafond s'applique quand même, et passe devant."""
+    settings.N8N_API_SECRET = ""
+    settings.DEBIT_API_N8N_IP = (2, 60)
+
+    codes = [
+        client.get(SANTE, HTTP_X_FORWARDED_FOR=IP_TEST).status_code for _ in range(3)
+    ]
+
+    assert codes == [503, 503, 429]
+
+
+def test_reponse_429_en_json(client, poser_secret, settings, caplog):
+    settings.DEBIT_API_N8N_IP = (1, 60)
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST)
+
+    with caplog.at_level(logging.WARNING, logger="n8n.securite"):
+        reponse = client.get(
+            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST
+        )
+
+    assert reponse.status_code == 429
+    assert reponse.json() == {"verdict": "too_many"}
+    assert "debit depasse" in caplog.text
+    # Ni l'adresse ni le secret ne doivent atterrir dans les logs.
+    assert IP_TEST not in caplog.text
+    assert SECRET not in caplog.text
+
+
+def test_adresses_differentes_comptent_separement(client, poser_secret, settings):
+    settings.DEBIT_API_N8N_IP = (1, 60)
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.1")
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.1")
+
+    reponse = client.get(
+        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.2"
+    )
+
+    assert reponse.status_code == 200

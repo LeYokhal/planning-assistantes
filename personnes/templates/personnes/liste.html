@@ -1,0 +1,61 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Personnes — Planning Assistantes{% endblock %}
+{% block entete %}Personnes{% endblock %}
+{% block classe_corps %}large{% endblock %}
+
+{% block tete %}
+  <style>
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
+    th { background: rgba(0,0,0,.04); }
+    td.vide { color: #888; }
+  </style>
+{% endblock %}
+
+{% block contenu %}
+  <p class="message">
+    Règles : {{ regles.total }} nom{{ regles.total|pluralize }} dans
+    <code>regles.json</code>, {{ regles.resolus }} résolu{{ regles.resolus|pluralize }}.
+    {% if regles.non_resolus %}
+      <br>Non résolus : {{ regles.non_resolus|join:", " }}.
+    {% endif %}
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Nom</th><th>Prénom</th><th>Rôle</th><th>Planifiée</th>
+        <th>Heures</th><th>Jours fixes</th><th>Agenda Doctolib</th>
+        <th>Code</th><th>Compte</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for personne in personnes %}
+        <tr>
+          <td>{{ personne.nom }}</td>
+          <td>{{ personne.prenom }}</td>
+          <td>{{ personne.get_role_metier_display }}</td>
+          <td>{% if personne.planifiee %}oui{% else %}non{% endif %}</td>
+          <td>{{ personne.heures_hebdo|default_if_none:"—" }}</td>
+          <td>{% if personne.jours_fixes %}{{ personne.jours_fixes|join:", " }}{% else %}—{% endif %}</td>
+          <td {% if not personne.agenda_doctolib %}class="vide"{% endif %}>
+            {{ personne.agenda_doctolib|default:"—" }}
+          </td>
+          <td>{{ personne.code|default_if_none:"—" }}</td>
+          <td>{{ personne.libelle_compte }}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="9">Aucune personne. Importez la fiche personnel.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
+
+{% block navigation %}
+  {% if peut_agir %}
+    <a href="{% url 'personnes:importer' %}">Importer la fiche</a> —
+    <a href="{% url 'personnes:appariement' %}">Appariement Doctolib</a> —
+  {% endif %}
+  <a href="/">Accueil</a>
+{% endblock %}

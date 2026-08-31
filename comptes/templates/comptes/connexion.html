@@ -4,19 +4,23 @@
 {% block entete %}Connexion{% endblock %}
 
 {% block contenu %}
-  {% if envoye %}
-    <p class="message">
-      Si cette adresse correspond à un compte actif, un lien de connexion vient
-      d'être envoyé. Il est valable 15 minutes et ne sert qu'une fois.
-    </p>
+  {% if bloque %}
+    <p class="message">Trop de demandes. Réessayez dans quelques minutes.</p>
   {% else %}
-    <p>Saisissez votre adresse e-mail : vous recevrez un lien de connexion.
-       Il n'y a pas de mot de passe.</p>
-  {% endif %}
+    {% if envoye %}
+      <p class="message">
+        Si cette adresse correspond à un compte actif, un lien de connexion vient
+        d'être envoyé. Il est valable 15 minutes et ne sert qu'une fois.
+      </p>
+    {% else %}
+      <p>Saisissez votre adresse e-mail : vous recevrez un lien de connexion.
+         Il n'y a pas de mot de passe.</p>
+    {% endif %}
 
-  <form method="post" action="/connexion/">
-    {% csrf_token %}
-    {{ formulaire.as_p }}
-    <button type="submit">Recevoir un lien</button>
-  </form>
+    <form method="post" action="/connexion/">
+      {% csrf_token %}
+      {{ formulaire.as_p }}
+      <button type="submit">Recevoir un lien</button>
+    </form>
+  {% endif %}
 {% endblock %}

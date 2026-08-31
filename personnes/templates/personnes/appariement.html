@@ -1,0 +1,81 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Appariement Doctolib — Planning Assistantes{% endblock %}
+{% block entete %}Appariement Doctolib{% endblock %}
+{% block classe_corps %}large{% endblock %}
+
+{% block tete %}
+  <style>
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; margin-bottom: 1.5rem; }
+    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
+    th { background: rgba(0,0,0,.04); }
+    td.vide { color: #888; }
+    td.change { font-weight: 600; }
+  </style>
+{% endblock %}
+
+{% block contenu %}
+  {% if not agendas %}
+    <p class="message">Aucun import de présences réussi : il n'y a pas encore
+       d'agenda Doctolib à apparier. Importez d'abord un fichier de présences.</p>
+  {% else %}
+    <p>{{ agendas|length }} agenda{{ agendas|length|pluralize }} du dernier lot
+       d'import, confronté{{ agendas|length|pluralize }} aux praticiens
+       planifiés. Rien n'est écrit tant que vous n'appliquez pas.</p>
+
+    <h2>Propositions</h2>
+    <table>
+      <thead>
+        <tr><th>Praticien</th><th>Agenda proposé</th><th>Mode</th><th>Agenda actuel</th></tr>
+      </thead>
+      <tbody>
+        {% for proposition in rapport.propositions %}
+          <tr>
+            <td>{{ proposition.personne.nom }} {{ proposition.personne.prenom }}</td>
+            <td {% if not proposition.agenda %}class="vide"{% endif %}>
+              {{ proposition.agenda|default:"—" }}
+            </td>
+            <td>{{ proposition.mode }}</td>
+            <td {% if proposition.change %}class="change"{% endif %}>
+              {{ proposition.agenda_actuel|default:"—" }}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4">Aucun praticien planifié.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <h2>Agendas orphelins</h2>
+    <table>
+      <thead>
+        <tr><th>Agenda</th><th>Personne reconnue (non planifiée)</th></tr>
+      </thead>
+      <tbody>
+        {% for orphelin in rapport.orphelins %}
+          <tr>
+            <td>{{ orphelin.agenda }}</td>
+            <td {% if not orphelin.personne %}class="vide"{% endif %}>
+              {% if orphelin.personne %}
+                {{ orphelin.personne.nom }} {{ orphelin.personne.prenom }} —
+                case « Planning » non cochée ?
+              {% else %}inconnue{% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="2">Aucun.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <form method="post">
+      {% csrf_token %}
+      <button type="submit">Appliquer</button>
+    </form>
+  {% endif %}
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'personnes:liste' %}">Retour aux personnes</a> —
+  <a href="/">Accueil</a>
+{% endblock %}

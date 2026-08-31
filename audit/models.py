@@ -5,7 +5,7 @@ from django.db import models
 
 
 class Action(models.TextChoices):
-    """Actions journalisées par les briques 1a et 1b."""
+    """Actions journalisées par les briques 1a, 1b et 2."""
 
     LIEN_DEMANDE = "lien_demande", "Lien de connexion demandé"
     LIEN_REFUSE = "lien_refuse", "Lien de connexion refusé"
@@ -23,6 +23,9 @@ class Action(models.TextChoices):
     IMPORT_REUSSI = "import_reussi", "Import réussi"
     IMPORT_ECHEC = "import_echec", "Import en échec"
     ACCES_REFUSE = "acces_refuse", "Accès refusé (rôle)"
+    PERSONNES_IMPORTEES = "personnes_importees", "Fiche personnel importée"
+    APPARIEMENT_APPLIQUE = "appariement_applique", "Appariement Doctolib appliqué"
+    COMPTES_CREES = "comptes_crees", "Comptes de connexion créés"
 
 
 class EvenementAudit(models.Model):

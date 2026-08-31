@@ -4,6 +4,8 @@ from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
 
+from .noms import code_pour
+
 
 class Personne(models.Model):
     """Une personne du cabinet (assistante, secrétaire ou praticien).
@@ -20,15 +22,16 @@ class Personne(models.Model):
         SECRETAIRE = "secretaire", "Secrétaire"
         PRATICIEN = "praticien", "Praticien"
 
-    # `null=True` est obligatoire : le code n'est renseigné qu'en brique 2, et
-    # deux chaînes vides violeraient la contrainte d'unicité dès la 2e Personne.
+    # `null=True` est obligatoire : deux chaînes vides violeraient la contrainte
+    # d'unicité dès la 2e Personne sans code.
     code = models.CharField(
         "code",
         max_length=30,
         unique=True,
         null=True,
         blank=True,
-        help_text="Renseigné à partir de la brique 2. Laisser vide pour l'instant.",
+        help_text="Posé automatiquement à la création s'il est libre. "
+        "À saisir à la main en cas de collision.",
     )
     nom = models.CharField("nom", max_length=80)
     prenom = models.CharField("prénom", max_length=80)
@@ -64,9 +67,40 @@ class Personne(models.Model):
         verbose_name = "personne"
         verbose_name_plural = "personnes"
         ordering = ["nom", "prenom"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["nom", "prenom"], name="personne_nom_prenom_unique"
+            )
+        ]
 
     def __str__(self):
         return f"{self.prenom} {self.nom}".strip()
+
+    def save(self, *args, **kwargs):
+        """Pose le code à la création s'il est libre.
+
+        En cas de collision (même prénom, mêmes trois premières lettres de
+        nom), le code reste vide : l'import le signale en avertissement et le
+        cabinet le saisit à la main. Poser un code faux serait pire que ne pas
+        en poser.
+        """
+        # Un `save(update_fields=…)` qui ne porte pas `code` ne pourrait pas
+        # l'écrire : inutile d'interroger la base, et surtout pas de poser en
+        # mémoire une valeur que la base n'aura jamais.
+        champs = kwargs.get("update_fields")
+        if not self.code and (champs is None or "code" in champs):
+            candidat = code_pour(self.prenom, self.nom)
+            if candidat and not (
+                Personne.objects.filter(code=candidat)
+                .exclude(pk=self.pk)
+                .exists()
+            ):
+                self.code = candidat
+            else:
+                # NULL et non chaîne vide : `code` est unique, et deux chaînes
+                # vides se heurteraient dès la seconde personne sans code.
+                self.code = None
+        super().save(*args, **kwargs)
 
 
 class CompteManager(BaseUserManager):

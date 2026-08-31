@@ -13,7 +13,11 @@ intervention sur ce dépôt.
 - ⚠️ **Aucune suppression de fichier** sans demander d'abord.
 - ⚠️ **Aucun secret, aucune adresse e-mail réelle, aucune donnée patient** dans
   le code, les tests, les fixtures, les gabarits, les commentaires ou les logs.
-  Les tests utilisent exclusivement le domaine `example.org`.
+  Les tests utilisent exclusivement le domaine `example.org`, des noms fictifs
+  (« DUPONT Alice », « MARTIN Bob »…) et des IP de documentation (RFC 5737,
+  `192.0.2.x`). Seule exception assumée par le cadrage : `regles/regles.json`,
+  copie conforme de `reference/skill-v1/regles.json`, porte les noms de la
+  fiche — déjà versionnés dans ce dépôt.
 - ⚠️ **Aucune installation hors du `.venv` du projet.** Pas de `pip install`
   global, pas de `winget`, pas de `npm`.
 - ⚠️ Les exports S7 vivent **hors du dépôt** (`_entrees/`, ignoré par git). Ils
@@ -70,7 +74,26 @@ python -m venv .venv                      # une seule fois
   est portée par la clé étrangère `qui`. Un garde-fou masque toute valeur
   contenant un `@`.
 - **Réponses neutres** : la page `/connexion/` renvoie exactement la même chose
-  que l'adresse existe ou non. Ne jamais introduire de différence observable.
+  que l'adresse existe ou non — y compris quand le plafond de débit par adresse
+  se déclenche. Ne jamais introduire de différence observable. Seul le plafond
+  par IP répond différemment (`429`) : il ne dit rien d'un compte en particulier.
+- **Fiche personnel** : elle n'entre que par le JSON à **cinq colonnes**
+  (`Name`, `Department`, `Planning`, `Heures hebdomadaire`, `Jours de travail`).
+  L'application **refuse le fichier entier** dès qu'une autre colonne apparaît,
+  et son message ne cite que des noms de colonnes, jamais une valeur. Un import
+  n'écrit que ces colonnes : `email_contact`, `agenda_doctolib`, `couleur`,
+  `code` et `actif` ne sont jamais écrasés.
+- **`regles/regles.json` est la source des règles** du planning, chargée et
+  validée au démarrage (un fichier invalide empêche le démarrage). Elle se
+  modifie par PR uniquement. `reference/skill-v1/` en est la référence
+  historique et **reste non exécutée**.
+- **Limitation de débit** : compteur en base (`socle.CompteurDebit` +
+  `socle/debit.py`), jamais le cache Django. `DatabaseCache.incr` hérite de
+  `BaseCache.incr`, qui lit puis écrit sans verrou — les incréments se perdent
+  sous les deux workers gunicorn — et repousse la durée de vie à chaque appel,
+  ce qui transforme une fenêtre fixe en blocage glissant. Ne pas y revenir.
+  L'adresse IP est le **dernier** élément de `X-Forwarded-For` : c'est le seul
+  saut écrit par le proxy de confiance, les autres sont sous contrôle du client.
 - **Pré-déploiement** : une seule commande, `python manage.py pre_deploiement`.
   Voir « Leçons de déploiement Railway » ci-dessous.
 
@@ -128,8 +151,16 @@ Le **chemin endpoint** (`presences/client_doctolib.py`) est câblé mais
 « endpoint inactif » sans aucun appel réseau — c'est voulu. Son contrat sera
 réaligné sur celui de la brique 0 le jour où elle existera.
 
-L'appariement agenda ↔ `Personne`, la paie, la génération du planning et la
-purge relèvent des briques **2 à 5** et ne sont pas ici.
+La brique **2** livre les personnes et les règles : import de la fiche
+personnel Notion (`personnes/lecture_fiche.py`, `personnes/services.py`),
+`regles/regles.json` et son chargeur validant (`regles/chargeur.py`),
+appariement des agendas Doctolib aux praticiens avec rapport
+(`personnes/appariement.py`, écran `/personnes/appariement/`), création des
+comptes des salariées en masse (action d'admin sur `Personne`) et limitation de
+débit sur `/connexion/` et sur l'API n8n (`socle/debit.py`).
+
+La paie, la génération du planning et la purge relèvent des briques **3 à 5**
+et ne sont pas ici.
 
 `reference/skill-v1/` contient la version 1 du skill de planning, décompressée
 telle quelle à titre de référence. Elle n'est **pas** exécutée par
