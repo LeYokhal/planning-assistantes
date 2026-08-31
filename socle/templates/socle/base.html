@@ -10,6 +10,8 @@
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
       max-width: 40rem; margin: 3rem auto; padding: 0 1.25rem; line-height: 1.55;
     }
+    /* Les écrans à tableaux (présences) ont besoin de toute la largeur. */
+    body.large { max-width: 90rem; }
     h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
     .sous-titre { color: #666; margin-top: 0; }
     form p { margin: 0.75rem 0; }
@@ -17,15 +19,25 @@
     input[type="email"] { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
     button { padding: 0.55rem 1.1rem; font-size: 1rem; cursor: pointer; }
     .message { border-left: 3px solid #4a7; padding: 0.75rem 1rem; background: rgba(68,170,119,.08); }
+    .messages { list-style: none; padding: 0; margin: 0 0 1.5rem; }
+    .messages li { border-left: 3px solid #4a7; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: rgba(68,170,119,.08); }
+    .messages li.info { border-left-color: #1764D8; background: rgba(23,100,216,.08); }
+    .messages li.error { border-left-color: #c33; background: rgba(204,51,51,.08); }
     nav { margin-top: 2.5rem; font-size: 0.9rem; }
   </style>
+  {% block tete %}{% endblock %}
 </head>
-<body>
+<body class="{% block classe_corps %}{% endblock %}">
   <header>
     <h1>{% block entete %}Planning Assistantes{% endblock %}</h1>
     <p class="sous-titre">Espace K Dentaire</p>
   </header>
   <main>
+    {% if messages %}
+      <ul class="messages">
+        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
+      </ul>
+    {% endif %}
     {% block contenu %}{% endblock %}
   </main>
   <nav>{% block navigation %}{% endblock %}</nav>

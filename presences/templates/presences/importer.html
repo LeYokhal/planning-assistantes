@@ -1,0 +1,25 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Importer un fichier S7 — Planning Assistantes{% endblock %}
+{% block entete %}Importer un fichier S7{% endblock %}
+
+{% block contenu %}
+  <p>Déposez le payload de <code>consulter_jours_travail</code> en mode « tous »,
+     tel qu'il a été enregistré : wrapper de l'interface ou payload direct, les
+     deux sont acceptés. Un mois se couvre avec une ou deux fenêtres, donc un ou
+     deux fichiers.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ formulaire.as_p }}
+    <button type="submit">Importer</button>
+  </form>
+
+  <p>L'enveloppe du message est recomptée sur le détail : un fichier tronqué ou
+     altéré est refusé, et rien n'entre dans l'écran des présences.</p>
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'presences:courant' %}">Retour aux présences</a> —
+  <a href="/">Accueil</a>
+{% endblock %}

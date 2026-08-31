@@ -17,7 +17,9 @@ intervention sur ce dépôt.
 - ⚠️ **Aucune installation hors du `.venv` du projet.** Pas de `pip install`
   global, pas de `winget`, pas de `npm`.
 - ⚠️ Les exports S7 vivent **hors du dépôt** (`_entrees/`, ignoré par git). Ils
-  ne sont jamais copiés dans le dépôt, ni affichés, ni ouverts.
+  ne sont jamais copiés dans le dépôt, ni affichés, ni ouverts. **Le jeu S7 réel
+  ne sert qu'à la recette manuelle depuis le navigateur** : les tests n'utilisent
+  que des payloads fictifs, fabriqués par `presences/tests/fabrique.py`.
 - ⚠️ Si une vérification préalable échoue : s'arrêter et le dire. Ne pas
   improviser de contournement.
 
@@ -55,6 +57,14 @@ python -m venv .venv                      # une seule fois
   `AUTHENTICATION_BACKENDS` ne contient que `sesame.backends.ModelBackend`.
 - **Django 5.2 LTS, pas 6.x.** django-sesame 3.2.3 déclare Django 4.2 → 5.2
   seulement ; 5.2 LTS supporte Python 3.14 et reste maintenue jusqu'en avril 2028.
+- **Contrôle de rôle** : un seul mécanisme, le décorateur
+  `comptes.acces.role_requis(*roles)`. Il redirige un anonyme vers `/connexion/`
+  et refuse un rôle absent par un `403` journalisé (`acces_refuse`).
+  `is_superuser` ne contourne pas le rôle. Ne pas en écrire un second.
+- **Imports de présences** : une ligne `ImportPresences` n'est **jamais modifiée
+  après sa fin, ni supprimée** — c'est la preuve de ce qui est entré dans
+  l'application. Un import fautif est dépassé par un import plus récent couvrant
+  les mêmes jours ; tout recalcul repart du payload brut conservé sur la ligne.
 - **Journal d'audit** : passer par `audit.services.journaliser()`. Le champ
   `details` ne contient jamais d'adresse, de jeton ni de secret — l'identité
   est portée par la clé étrangère `qui`. Un garde-fou masque toute valeur
@@ -87,8 +97,23 @@ sur le déploiement.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
 `EvenementAudit`, connexion par lien magique, journal d'audit, page de santé,
-fichiers de déploiement. L'import S7 et l'écran « présences du mois » relèvent
-de la brique **1b** et ne sont pas ici.
+fichiers de déploiement.
+
+La brique **1b** livre les présences : lecture d'un payload
+`consulter_jours_travail` avec invariant de recompte (`presences/lecture.py`),
+import par fichier depuis `/presences/importer/` (rôle cabinet), écran
+« présences du mois », verrou d'import, API entrante n8n (`n8n/`) et webhooks
+sortants `import.termine` / `import.echec`.
+
+Le **chemin endpoint** (`presences/client_doctolib.py`) est câblé mais
+**inactif** : il interroge le serveur MCP Doctolib, qui relève de la brique
+**0**, non livrée. Tant que `DOCTOLIB_PRESENCES_URL` et
+`DOCTOLIB_PRESENCES_SECRET` sont absentes, un tir demandé par n8n échoue
+« endpoint inactif » sans aucun appel réseau — c'est voulu. Son contrat sera
+réaligné sur celui de la brique 0 le jour où elle existera.
+
+L'appariement agenda ↔ `Personne`, la paie, la génération du planning et la
+purge relèvent des briques **2 à 5** et ne sont pas ici.
 
 `reference/skill-v1/` contient la version 1 du skill de planning, décompressée
 telle quelle à titre de référence. Elle n'est **pas** exécutée par

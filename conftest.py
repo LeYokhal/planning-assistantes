@@ -14,8 +14,37 @@ os.environ["N8N_MAIL_WEBHOOK_URL"] = ""
 os.environ["N8N_WEBHOOK_SECRET"] = ""
 os.environ["CABINET_EMAIL"] = ""
 os.environ["APP_URL"] = "http://testserver"
+os.environ["N8N_IMPORT_WEBHOOK_URL"] = ""
+os.environ["N8N_API_SECRET"] = ""
+os.environ["DOCTOLIB_PRESENCES_URL"] = ""
+os.environ["DOCTOLIB_PRESENCES_SECRET"] = ""
+# Les lots endpoint tournent en synchrone dans les tests : aucun thread sur la
+# base de test.
+os.environ["IMPORT_EN_ARRIERE_PLAN"] = "0"
 
 import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def reglages_fail_closed(settings):
+    """Force les réglages sensibles, quel que soit le `.env` de la machine.
+
+    Le bloc `os.environ` ci-dessus ne suffit PAS : pytest-django configure
+    Django avant d'exécuter le corps de ce conftest, si bien que les réglages
+    ont déjà lu l'environnement — et le `.env` local. Sans cette fixture, un
+    poste dont le `.env` porte une vraie URL de webhook ferait sortir les tests
+    sur le réseau, et les lots endpoint partiraient dans un thread.
+
+    Un test qui a besoin d'une valeur la pose lui-même : la fixture `settings`
+    demandée explicitement s'applique après celle-ci.
+    """
+    settings.N8N_MAIL_WEBHOOK_URL = ""
+    settings.N8N_IMPORT_WEBHOOK_URL = ""
+    settings.N8N_WEBHOOK_SECRET = ""
+    settings.N8N_API_SECRET = ""
+    settings.DOCTOLIB_PRESENCES_URL = ""
+    settings.DOCTOLIB_PRESENCES_SECRET = ""
+    settings.IMPORT_EN_ARRIERE_PLAN = False
 
 
 @pytest.fixture(autouse=True)

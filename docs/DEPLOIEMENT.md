@@ -1,4 +1,4 @@
-# Déploiement sur Railway — brique 1a
+# Déploiement sur Railway — briques 1a et 1b
 
 Recette pas-à-pas pour mettre en ligne le socle. Rien de ce qui suit n'est
 exécuté par l'outillage : ce sont les gestes à faire dans l'interface Railway.
@@ -38,6 +38,11 @@ Service applicatif → onglet **Variables**.
 | `N8N_MAIL_WEBHOOK_URL` | URL de **production** du webhook n8n | Voir `docs/n8n/MAIL_SORTANT.md`. Absente = aucun mail envoyé (comportement fail-closed, sans erreur visible). |
 | `N8N_WEBHOOK_SECRET` | une chaîne aléatoire | Envoyée dans l'en-tête `X-Mail-Secret`. Doit être **identique** à la valeur du credential Header Auth côté n8n. |
 | `CABINET_EMAIL` | l'adresse du compte cabinet | Compte créé automatiquement au pré-déploiement. Absente = aucun compte créé, et le déploiement continue quand même. |
+| `N8N_API_SECRET` | une chaîne aléatoire d'au moins 32 caractères, **neuve** | Secret de l'API entrante n8n (en-tête `X-Api-Secret`). Doit être identique à la credential Header Auth du workflow « Déclencher import ». Absente = API désactivée (`503`), sans exception. |
+| `N8N_IMPORT_WEBHOOK_URL` | URL de **production** du webhook n8n « Import (réception) » | Voir `docs/n8n/IMPORT_PRESENCES.md`. Absente = aucune notification d'import (fail-closed). Le secret est `N8N_WEBHOOK_SECRET`, envoyé en `X-Webhook-Secret`. |
+| `DOCTOLIB_PRESENCES_URL` | *(rien à saisir)* | ⚠️ **NE PAS POSER avant la brique 0.** Endpoint « présences » du serveur MCP Doctolib. Absente = chemin endpoint inactif, ce qui est le comportement attendu en 1b. |
+| `DOCTOLIB_PRESENCES_SECRET` | *(rien à saisir)* | ⚠️ **NE PAS POSER avant la brique 0.** Envoyé en `X-Presences-Secret`. |
+| `IMPORT_EN_ARRIERE_PLAN` | *(rien à saisir)* | Absente = tâche de fond (comportement normal). `0` fait tourner les lots en synchrone : réservé aux tests. |
 | `PORT` | *(rien à saisir)* | Fournie par Railway ; lue par gunicorn dans le `Dockerfile`. |
 
 ## 4. Générer le domaine
@@ -73,6 +78,11 @@ et `APP_URL` (étape 3). Le déploiement se relance à chaque modification.
 5. Dans l'administration, `Journal d'audit` : les événements `lien_demande` et
    `connexion` sont présents, et aucune adresse n'apparaît dans la colonne
    « détails ».
+6. `https://<domaine>/presences/importer/` (compte cabinet) : déposer un export
+   S7 du mois. L'import doit être « réussi », invariant OK.
+7. `https://<domaine>/presences/<AAAA-MM>/` : le mois s'affiche en semaines
+   complètes, un agenda par ligne. Recette détaillée de l'API et des deux
+   workflows n8n : `docs/n8n/IMPORT_PRESENCES.md`.
 
 ## 7. Si n8n est indisponible
 
