@@ -15,8 +15,7 @@ from .forms import FormulaireConnexion
 from .mails import OBJET_LIEN, envoyer_mail, texte_lien
 
 # Plafonds par défaut si le réglage manque : les mêmes que `config/settings.py`.
-# DEBIT_IP_DEFAUT provisoirement large (brique 2-ter) : voir config/settings.py.
-DEBIT_IP_DEFAUT = (100, 900)
+DEBIT_IP_DEFAUT = (10, 900)
 DEBIT_ADRESSE_DEFAUT = (5, 3600)
 
 

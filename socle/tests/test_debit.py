@@ -36,7 +36,7 @@ T0 = 1_000_020
 def _drapeaux_releve():
     """Chaque test repart avec les drapeaux « une fois par processus » à zéro."""
     debit._topologie_relevee = False
-    debit._repli_signale = False
+    debit._avertissement_emis = False
     yield
 
 
@@ -138,58 +138,56 @@ def test_depasse_au_dela_du_plafond():
 # --- Adresse IP --------------------------------------------------------------
 
 
-def test_adresse_ip_saute_le_saut_interne_railway(rf):
-    """Railway ajoute son saut interne après l'IP cliente : on le saute."""
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4")
+def test_adresse_ip_prend_x_real_ip(rf):
+    """Seul X-Real-IP compte : X-Forwarded-For est ignoré, quel qu'il soit."""
+    requete = rf.get(
+        "/",
+        HTTP_X_REAL_IP="198.51.100.7",
+        HTTP_X_FORWARDED_FOR="203.0.113.9, 198.51.100.200",
+    )
 
     assert adresse_ip(requete) == "198.51.100.7"
 
 
-def test_adresse_ip_saute_plusieurs_sauts_internes(rf):
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4, 100.70.1.1")
-
-    assert adresse_ip(requete) == "198.51.100.7"
-
-
-def test_adresse_ip_ignore_l_element_usurpe_avant_le_client(rf):
-    """En-tête client conservé puis complété : le client réel précède les sauts."""
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="203.0.113.9, 198.51.100.7, 100.64.3.4")
-
-    assert adresse_ip(requete) == "198.51.100.7"
-
-
-def test_adresse_ip_client_ipv6(rf):
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="2001:db8::10, 100.64.3.4")
+def test_adresse_ip_x_real_ip_ipv6(rf):
+    requete = rf.get("/", HTTP_X_REAL_IP="2001:db8::10")
 
     assert adresse_ip(requete) == "2001:db8::10"
 
 
-def test_adresse_ip_saute_un_element_illisible(rf):
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="pas-une-ip, 198.51.100.7, 100.64.3.4")
-
-    assert adresse_ip(requete) == "198.51.100.7"
-
-
-def test_adresse_ip_element_unique_illisible_retombe_sur_remote_addr(rf):
+def test_adresse_ip_sans_x_real_ip_derriere_proxy_avertit_une_fois(rf, caplog):
+    """X-Real-IP manquant alors qu'un proxy est là : repli signalé une seule fois."""
     requete = rf.get(
-        "/", HTTP_X_FORWARDED_FOR="n-importe-quoi", REMOTE_ADDR="192.0.2.10"
+        "/", HTTP_X_FORWARDED_FOR="203.0.113.9, 198.51.100.200", REMOTE_ADDR="192.0.2.10"
     )
+
+    with caplog.at_level(logging.WARNING, logger="socle.debit"):
+        premier = adresse_ip(requete)
+        second = adresse_ip(requete)
+
+    assert premier == second == "192.0.2.10"
+    assert caplog.text.count("X-Real-IP absent ou illisible") == 1
+    # Aucune valeur d'adresse ne doit fuiter dans le journal.
+    assert "203.0.113.9" not in caplog.text
+    assert "198.51.100.200" not in caplog.text
+    assert "192.0.2.10" not in caplog.text
+
+
+def test_adresse_ip_x_real_ip_illisible_retombe_sur_remote_addr(rf):
+    requete = rf.get("/", HTTP_X_REAL_IP="pas-une-ip", REMOTE_ADDR="192.0.2.10")
 
     assert adresse_ip(requete) == "192.0.2.10"
 
 
-def test_adresse_ip_que_des_sauts_internes_retombe_sur_remote_addr(rf):
-    requete = rf.get(
-        "/", HTTP_X_FORWARDED_FOR="100.64.3.4, 10.0.0.9", REMOTE_ADDR="192.0.2.10"
-    )
-
-    assert adresse_ip(requete) == "192.0.2.10"
-
-
-def test_adresse_ip_sans_entete_transmise(rf):
+def test_adresse_ip_sans_proxy_ne_previent_pas(rf, caplog):
+    """En local (runserver), aucun en-tête proxy : REMOTE_ADDR, sans bruit."""
     requete = rf.get("/", REMOTE_ADDR="192.0.2.10")
 
-    assert adresse_ip(requete) == "192.0.2.10"
+    with caplog.at_level(logging.WARNING, logger="socle.debit"):
+        resultat = adresse_ip(requete)
+
+    assert resultat == "192.0.2.10"
+    assert "X-Real-IP absent ou illisible" not in caplog.text
 
 
 def test_adresse_ip_inconnue(rf):
@@ -197,13 +195,6 @@ def test_adresse_ip_inconnue(rf):
     requete.META.pop("REMOTE_ADDR", None)
 
     assert adresse_ip(requete) == "inconnue"
-
-
-def test_adresse_ip_element_public_unique_sans_saut(rf):
-    """Robustesse : si aucun saut n'est ajouté, l'unique adresse suffit."""
-    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7")
-
-    assert adresse_ip(requete) == "198.51.100.7"
 
 
 # --- Relevé de topologie -----------------------------------------------------
@@ -255,20 +246,6 @@ def test_releve_topologie_une_seule_fois_par_processus(rf, caplog):
         relever_topologie(requete)
 
     assert caplog.text.count("topologie proxy") == 1
-
-
-def test_avertissement_repli_une_fois_si_aucune_publique(rf, caplog):
-    with caplog.at_level(logging.WARNING, logger="socle.debit"):
-        adresse_ip(rf.get("/", HTTP_X_FORWARDED_FOR="100.64.3.4, 10.0.0.9"))
-
-    assert caplog.text.count("repli sur REMOTE_ADDR") == 1
-
-
-def test_pas_d_avertissement_repli_si_publique(rf, caplog):
-    with caplog.at_level(logging.WARNING, logger="socle.debit"):
-        adresse_ip(rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7"))
-
-    assert "repli sur REMOTE_ADDR" not in caplog.text
 
 
 # --- Décorateur --------------------------------------------------------------
