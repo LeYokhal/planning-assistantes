@@ -95,7 +95,7 @@ def test_plafond_par_ip_repond_429(client, poser_secret, settings):
 
     codes = [
         client.get(
-            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST
+            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP=IP_TEST
         ).status_code
         for _ in range(61)
     ]
@@ -109,7 +109,7 @@ def test_plafond_atteint_meme_sans_secret(client, poser_secret, settings):
     settings.DEBIT_API_N8N_IP = (2, 60)
 
     codes = [
-        client.get(SANTE, HTTP_X_FORWARDED_FOR=IP_TEST).status_code for _ in range(3)
+        client.get(SANTE, HTTP_X_REAL_IP=IP_TEST).status_code for _ in range(3)
     ]
 
     assert codes == [401, 401, 429]
@@ -121,7 +121,7 @@ def test_debit_precede_le_503(client, settings):
     settings.DEBIT_API_N8N_IP = (2, 60)
 
     codes = [
-        client.get(SANTE, HTTP_X_FORWARDED_FOR=IP_TEST).status_code for _ in range(3)
+        client.get(SANTE, HTTP_X_REAL_IP=IP_TEST).status_code for _ in range(3)
     ]
 
     assert codes == [503, 503, 429]
@@ -129,11 +129,11 @@ def test_debit_precede_le_503(client, settings):
 
 def test_reponse_429_en_json(client, poser_secret, settings, caplog):
     settings.DEBIT_API_N8N_IP = (1, 60)
-    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST)
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP=IP_TEST)
 
     with caplog.at_level(logging.WARNING, logger="n8n.securite"):
         reponse = client.get(
-            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=IP_TEST
+            SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP=IP_TEST
         )
 
     assert reponse.status_code == 429
@@ -146,33 +146,43 @@ def test_reponse_429_en_json(client, poser_secret, settings, caplog):
 
 def test_adresses_differentes_comptent_separement(client, poser_secret, settings):
     settings.DEBIT_API_N8N_IP = (1, 60)
-    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.1")
-    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.1")
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP="192.0.2.1")
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP="192.0.2.1")
 
     reponse = client.get(
-        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR="192.0.2.2"
+        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_REAL_IP="192.0.2.2"
     )
 
     assert reponse.status_code == 200
 
 
-def test_deux_clients_derriere_le_meme_saut_comptent_separement(
+def test_deux_clients_derriere_le_meme_edge_comptent_separement(
     client, poser_secret, settings
 ):
-    """Le saut interne Railway est partagé : c'est l'IP cliente qui compte."""
+    """Le nœud d'entrée est partagé : c'est X-Real-IP qui identifie le client."""
     settings.DEBIT_API_N8N_IP = (1, 60)
-    premier = "198.51.100.1, 100.64.3.4"
-    second = "198.51.100.2, 100.64.3.4"
+    edge = "203.0.113.9, 198.51.100.200"
 
     # Le premier client sature son propre plafond.
-    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=premier)
+    client.get(
+        SANTE,
+        headers={"X-Api-Secret": SECRET},
+        HTTP_X_REAL_IP="198.51.100.1",
+        HTTP_X_FORWARDED_FOR=edge,
+    )
     sature = client.get(
-        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=premier
+        SANTE,
+        headers={"X-Api-Secret": SECRET},
+        HTTP_X_REAL_IP="198.51.100.1",
+        HTTP_X_FORWARDED_FOR=edge,
     )
 
-    # Le second, derrière le même saut interne, n'est pas affecté.
+    # Le second, derrière le même nœud d'entrée, n'est pas affecté.
     autre = client.get(
-        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=second
+        SANTE,
+        headers={"X-Api-Secret": SECRET},
+        HTTP_X_REAL_IP="198.51.100.2",
+        HTTP_X_FORWARDED_FOR=edge,
     )
 
     assert sature.status_code == 429

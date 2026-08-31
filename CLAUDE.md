@@ -92,10 +92,13 @@ python -m venv .venv                      # une seule fois
   `BaseCache.incr`, qui lit puis écrit sans verrou — les incréments se perdent
   sous les deux workers gunicorn — et repousse la durée de vie à chaque appel,
   ce qui transforme une fenêtre fixe en blocage glissant. Ne pas y revenir.
-  L'identification de l'IP cliente derrière Railway est EN COURS (brique 2-ter :
-  relevé de topologie dans les logs, sans valeur). Ne pas resserrer les plafonds
-  par IP avant que `adresse_ip` soit validée en production (recette : 60 × 401
-  puis 429 au 61e, avec et sans en-tête injecté).
+  IP cliente = `X-Real-IP`, réécrit par Railway — prouvé par sonde le
+  31/08/2026 (valeurs illisibles injectées dans X-Real-IP et X-Forwarded-For,
+  ressorties « publique ») ; `X-Forwarded-For` = [client, edge], son dernier
+  élément est un nœud partagé. Le relevé « topologie proxy » (une ligne par
+  processus, sans valeur) reste en place : toute dérive s'y lira. Ne pas changer
+  d'en-tête sans re-mesurer (recette : 60 × 401 puis 429 au 61e, avec et sans
+  en-têtes injectés).
 - **Comptes et personnes** : pour un départ, désactiver (`is_active`, `actif`),
   ne pas supprimer ; une suppression est journalisée mais efface l'auteur des
   événements du compte (`qui` en SET_NULL).

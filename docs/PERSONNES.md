@@ -118,13 +118,9 @@ Les points d'entrée publics sont plafonnés par fenêtres fixes :
 
 | Portée | Plafond | Fenêtre | Réponse au-delà |
 |---|---|---|---|
-| `/connexion/` par adresse IP | 100 POST | 15 min | `429` + « Trop de demandes » |
+| `/connexion/` par adresse IP | 10 POST | 15 min | `429` + « Trop de demandes » |
 | `/connexion/` par adresse e-mail | 5 POST | 1 h | **page neutre habituelle** |
-| API n8n par adresse IP | 600 appels | 1 min | `429` `{"verdict": "too_many"}` |
-
-Plafonds par IP provisoirement larges (brique 2-ter) : derrière Railway, l'IP
-cliente n'est pas encore identifiée de façon fiable et le compteur est
-collectif ; le plafond par adresse e-mail reste la garde individuelle.
+| API n8n par adresse IP | 60 appels | 1 min | `429` `{"verdict": "too_many"}` |
 
 Le plafond par adresse e-mail renvoie **exactement la même page** qu'une
 demande normale : rien ne doit permettre de deviner qu'un compte existe. Seul
@@ -136,8 +132,7 @@ Les compteurs vivent dans la table `socle_compteurdebit`, une ligne par fenêtre
 et par empreinte, purgée d'elle-même. L'adresse n'y est stockée que sous forme
 d'empreinte tronquée, et n'apparaît jamais dans les logs.
 
-L'adresse IP est lue dans `X-Forwarded-For` en ignorant les sauts internes de
-Railway.
+L'adresse IP est lue dans `X-Real-IP`, imposé par Railway.
 
 ## 7. `regles/regles.json`
 

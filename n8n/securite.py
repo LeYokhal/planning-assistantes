@@ -35,8 +35,7 @@ EN_TETE = "X-Api-Secret"
 CLE_META = "HTTP_X_API_SECRET"
 
 # Plafond par défaut si le réglage manque : le même que `config/settings.py`.
-# Provisoirement large (brique 2-ter) : voir config/settings.py.
-DEBIT_DEFAUT = (600, 60)
+DEBIT_DEFAUT = (60, 60)
 
 
 def secret_n8n_requis(vue):

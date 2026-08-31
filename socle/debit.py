@@ -48,26 +48,6 @@ def empreinte(texte):
     return hashlib.sha256(normalise.encode("utf-8")).hexdigest()[:16]
 
 
-# Réseaux d'où ne vient jamais un client : sauts internes Railway (100.0.0.0/8,
-# réponse officielle de Railway), plages privées et boucle locale, IPv4 et IPv6.
-RESEAUX_INTERNES = tuple(
-    ipaddress.ip_network(reseau)
-    for reseau in (
-        "100.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
-        "fc00::/7", "fe80::/10", "::1/128",
-    )
-)
-
-
-def _interne(texte):
-    """Vrai pour un saut à ignorer : adresse interne, privée, locale, ou illisible."""
-    try:
-        adresse = ipaddress.ip_address(texte)
-    except ValueError:
-        return True
-    return any(adresse in reseau for reseau in RESEAUX_INTERNES)
-
-
 # En-têtes où un proxy place parfois l'IP cliente, à confronter au relevé.
 EN_TETES_CANDIDATS = (
     "HTTP_X_REAL_IP",
@@ -90,7 +70,7 @@ RESEAUX_PRIVES = tuple(
 )
 
 _topologie_relevee = False
-_repli_signale = False
+_avertissement_emis = False
 
 
 def _classe(texte):
@@ -136,42 +116,29 @@ def relever_topologie(request):
     )
 
 
-def _avertir_repli(n):
-    """Signale UNE fois que X-Forwarded-For n'a livré aucune adresse publique."""
-    global _repli_signale
-    if _repli_signale:
-        return
-    _repli_signale = True
-    logger.warning(
-        "adresse_ip : aucune adresse publique dans X-Forwarded-For "
-        "(%s element(s)), repli sur REMOTE_ADDR",
-        n,
-    )
-
-
 def adresse_ip(request):
     """Adresse IP publique de l'appelant, derrière le proxy Railway.
 
-    Railway supprime l'en-tête `X-Forwarded-For` du client et le reconstruit :
-    l'IP cliente d'abord, puis un ou plusieurs sauts internes en 100.0.0.0/8.
-    On parcourt donc l'en-tête de droite à gauche en sautant les adresses
-    internes ou privées : la première adresse publique est le client. La règle
-    reste juste si le proxy AJOUTE à un en-tête fourni par le client (chaîne
-    « usurpé, client, saut ») : le client réel précède toujours les sauts.
-    Recette de la brique 2 : lire le dernier élément prenait un saut interne,
-    partagé par tous les visiteurs — le plafond n'était plus individuel.
+    Mesuré en production (brique 2-ter, 31/08/2026) : Railway réécrit
+    `X-Real-IP` et `X-Forwarded-For` — une sonde injectant des valeurs
+    illisibles dans les deux en-têtes ressort classée « publique » partout.
+    `X-Real-IP` porte donc l'IP cliente, imposée par l'infrastructure ; c'est
+    la seule source utilisée. `X-Forwarded-For` vaut [client, edge] : son
+    dernier élément est un nœud d'entrée partagé (deux valeurs observées),
+    jamais un identifiant individuel — ne pas y revenir.
+    En local (runserver, sans proxy), l'en-tête est absent : REMOTE_ADDR.
     """
     relever_topologie(request)
-    elements = [
-        e.strip()
-        for e in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
-        if e.strip()
-    ]
-    for element in reversed(elements):
-        if not _interne(element):
-            return element
-    if elements:
-        _avertir_repli(len(elements))
+    reel = request.META.get("HTTP_X_REAL_IP", "").strip()
+    if reel and _classe(reel) != "illisible":
+        return reel
+    global _avertissement_emis
+    if not _avertissement_emis and request.META.get("HTTP_X_FORWARDED_FOR"):
+        _avertissement_emis = True
+        logger.warning(
+            "adresse_ip : X-Real-IP absent ou illisible derriere un proxy, "
+            "repli sur REMOTE_ADDR"
+        )
     return request.META.get("REMOTE_ADDR") or "inconnue"
 
 

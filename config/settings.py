@@ -234,10 +234,8 @@ REGLES_FICHIER = BASE_DIR / "regles" / "regles.json"
 # Compteur en base (`socle.CompteurDebit`), pas de cache Django : l'application
 # tourne sur deux workers gunicorn, et un cache par processus compterait deux
 # fois. Voir socle/debit.py.
-# PROVISOIRE (brique 2-ter) : tant que l'IP cliente n'est pas identifiée de façon
-# fiable derrière le proxy Railway, le compteur par IP est collectif. Ces plafonds
-# ne gardent que contre une inondation ; la garde individuelle est le plafond par
-# adresse e-mail. À resserrer (10 / 900 et 60 / 60) dès l'IP cliente établie.
-DEBIT_CONNEXION_IP = (100, 900)       # demandes de lien par adresse IP (provisoire)
-DEBIT_CONNEXION_ADRESSE = (5, 3600)   # demandes de lien par adresse e-mail (empreinte)
-DEBIT_API_N8N_IP = (600, 60)          # appels de l'API n8n par adresse IP (provisoire)
+# Limitation de débit : (nombre maximal d'appels, fenêtre fixe en secondes).
+# L'identifiant par IP est X-Real-IP, réécrit par Railway (mesure 2-ter/2-quater).
+DEBIT_CONNEXION_IP = (10, 900)
+DEBIT_CONNEXION_ADRESSE = (5, 3600)
+DEBIT_API_N8N_IP = (60, 60)
