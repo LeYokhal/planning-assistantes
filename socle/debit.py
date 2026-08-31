@@ -19,6 +19,7 @@ nouvelle ligne repart à 1 et les anciennes sont purgées.
 
 import functools
 import hashlib
+import ipaddress
 import logging
 import time
 
@@ -47,18 +48,42 @@ def empreinte(texte):
     return hashlib.sha256(normalise.encode("utf-8")).hexdigest()[:16]
 
 
-def adresse_ip(request):
-    """Adresse IP de l'appelant.
+# Réseaux d'où ne vient jamais un client : sauts internes Railway (100.0.0.0/8,
+# réponse officielle de Railway), plages privées et boucle locale, IPv4 et IPv6.
+RESEAUX_INTERNES = tuple(
+    ipaddress.ip_network(reseau)
+    for reseau in (
+        "100.0.0.0/8", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
+        "fc00::/7", "fe80::/10", "::1/128",
+    )
+)
 
-    Railway termine TLS devant l'application et ajoute son propre saut à
-    `X-Forwarded-For`. Le DERNIER élément est celui écrit par le proxy de
-    confiance : c'est le seul qu'un client ne peut pas fabriquer, les éléments
-    de gauche étant sous son contrôle.
+
+def _interne(texte):
+    """Vrai pour un saut à ignorer : adresse interne, privée, locale, ou illisible."""
+    try:
+        adresse = ipaddress.ip_address(texte)
+    except ValueError:
+        return True
+    return any(adresse in reseau for reseau in RESEAUX_INTERNES)
+
+
+def adresse_ip(request):
+    """Adresse IP publique de l'appelant, derrière le proxy Railway.
+
+    Railway supprime l'en-tête `X-Forwarded-For` du client et le reconstruit :
+    l'IP cliente d'abord, puis un ou plusieurs sauts internes en 100.0.0.0/8.
+    On parcourt donc l'en-tête de droite à gauche en sautant les adresses
+    internes ou privées : la première adresse publique est le client. La règle
+    reste juste si le proxy AJOUTE à un en-tête fourni par le client (chaîne
+    « usurpé, client, saut ») : le client réel précède toujours les sauts.
+    Recette de la brique 2 : lire le dernier élément prenait un saut interne,
+    partagé par tous les visiteurs — le plafond n'était plus individuel.
     """
     transmis = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    elements = [element.strip() for element in transmis.split(",") if element.strip()]
-    if elements:
-        return elements[-1]
+    for element in reversed([e.strip() for e in transmis.split(",") if e.strip()]):
+        if not _interne(element):
+            return element
     return request.META.get("REMOTE_ADDR") or "inconnue"
 
 

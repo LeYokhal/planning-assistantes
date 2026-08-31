@@ -19,6 +19,8 @@ class Action(models.TextChoices):
     COMPTE_MODIFIE = "compte_modifie", "Compte modifié"
     PERSONNE_CREEE = "personne_creee", "Personne créée"
     PERSONNE_MODIFIEE = "personne_modifiee", "Personne modifiée"
+    PERSONNE_SUPPRIMEE = "personne_supprimee", "Personne supprimée"
+    COMPTE_SUPPRIME = "compte_supprime", "Compte supprimé"
     IMPORT_DEMANDE = "import_demande", "Import demandé"
     IMPORT_REUSSI = "import_reussi", "Import réussi"
     IMPORT_ECHEC = "import_echec", "Import en échec"

@@ -154,3 +154,26 @@ def test_adresses_differentes_comptent_separement(client, poser_secret, settings
     )
 
     assert reponse.status_code == 200
+
+
+def test_deux_clients_derriere_le_meme_saut_comptent_separement(
+    client, poser_secret, settings
+):
+    """Le saut interne Railway est partagé : c'est l'IP cliente qui compte."""
+    settings.DEBIT_API_N8N_IP = (1, 60)
+    premier = "198.51.100.1, 100.64.3.4"
+    second = "198.51.100.2, 100.64.3.4"
+
+    # Le premier client sature son propre plafond.
+    client.get(SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=premier)
+    sature = client.get(
+        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=premier
+    )
+
+    # Le second, derrière le même saut interne, n'est pas affecté.
+    autre = client.get(
+        SANTE, headers={"X-Api-Secret": SECRET}, HTTP_X_FORWARDED_FOR=second
+    )
+
+    assert sature.status_code == 429
+    assert autre.status_code == 200
