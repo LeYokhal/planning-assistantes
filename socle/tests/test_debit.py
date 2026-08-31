@@ -4,12 +4,22 @@ Aucune adresse réelle : les IP sont de documentation (RFC 5737), les adresses
 e-mail du domaine example.org.
 """
 
+import logging
 from unittest.mock import patch
 
 import pytest
 from django.http import HttpResponse
 
-from socle.debit import adresse_ip, compter, depasse, empreinte, limite_par_ip
+import socle.debit as debit
+from socle.debit import (
+    _classe,
+    adresse_ip,
+    compter,
+    depasse,
+    empreinte,
+    limite_par_ip,
+    relever_topologie,
+)
 from socle.models import CompteurDebit
 
 pytestmark = pytest.mark.django_db
@@ -20,6 +30,14 @@ AUTRE_IP = "192.0.2.11"
 # Horodatage aligné sur une frontière de fenêtre de 60 s : les décalages du
 # test tombent alors exactement où on les attend.
 T0 = 1_000_020
+
+
+@pytest.fixture(autouse=True)
+def _drapeaux_releve():
+    """Chaque test repart avec les drapeaux « une fois par processus » à zéro."""
+    debit._topologie_relevee = False
+    debit._repli_signale = False
+    yield
 
 
 # --- Comptage ----------------------------------------------------------------
@@ -186,6 +204,71 @@ def test_adresse_ip_element_public_unique_sans_saut(rf):
     requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7")
 
     assert adresse_ip(requete) == "198.51.100.7"
+
+
+# --- Relevé de topologie -----------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "texte, attendu",
+    [
+        ("100.64.3.4", "interne"),
+        ("10.1.2.3", "privee"),
+        ("127.0.0.1", "privee"),
+        ("fe80::1", "privee"),
+        ("198.51.100.7", "publique"),
+        ("2001:db8::10", "publique"),
+        ("n-importe-quoi", "illisible"),
+        ("", "illisible"),
+    ],
+)
+def test_classe(texte, attendu):
+    assert _classe(texte) == attendu
+
+
+def test_releve_topologie_classe_sans_valeur(rf, caplog):
+    requete = rf.get(
+        "/",
+        HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4",
+        HTTP_X_REAL_IP="198.51.100.7",
+        REMOTE_ADDR="100.70.1.1",
+    )
+
+    with caplog.at_level(logging.INFO, logger="socle.debit"):
+        relever_topologie(requete)
+
+    assert "x_forwarded_for=['publique', 'interne']" in caplog.text
+    assert "x_real_ip=publique" in caplog.text
+    assert "x_envoy_external_address=absent" in caplog.text
+    assert "remote_addr=interne" in caplog.text
+    # Aucune valeur d'adresse ne doit fuiter dans le journal.
+    assert "198.51.100.7" not in caplog.text
+    assert "100.64.3.4" not in caplog.text
+    assert "100.70.1.1" not in caplog.text
+
+
+def test_releve_topologie_une_seule_fois_par_processus(rf, caplog):
+    requete = rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7, 100.64.3.4")
+
+    with caplog.at_level(logging.INFO, logger="socle.debit"):
+        relever_topologie(requete)
+        relever_topologie(requete)
+
+    assert caplog.text.count("topologie proxy") == 1
+
+
+def test_avertissement_repli_une_fois_si_aucune_publique(rf, caplog):
+    with caplog.at_level(logging.WARNING, logger="socle.debit"):
+        adresse_ip(rf.get("/", HTTP_X_FORWARDED_FOR="100.64.3.4, 10.0.0.9"))
+
+    assert caplog.text.count("repli sur REMOTE_ADDR") == 1
+
+
+def test_pas_d_avertissement_repli_si_publique(rf, caplog):
+    with caplog.at_level(logging.WARNING, logger="socle.debit"):
+        adresse_ip(rf.get("/", HTTP_X_FORWARDED_FOR="198.51.100.7"))
+
+    assert "repli sur REMOTE_ADDR" not in caplog.text
 
 
 # --- Décorateur --------------------------------------------------------------
