@@ -68,6 +68,87 @@ def _interne(texte):
     return any(adresse in reseau for reseau in RESEAUX_INTERNES)
 
 
+# En-têtes où un proxy place parfois l'IP cliente, à confronter au relevé.
+EN_TETES_CANDIDATS = (
+    "HTTP_X_REAL_IP",
+    "HTTP_X_ENVOY_EXTERNAL_ADDRESS",
+    "HTTP_FASTLY_CLIENT_IP",
+    "HTTP_CF_CONNECTING_IP",
+)
+
+# Plages « privées » au sens du relevé : RFC 1918, boucle locale, lien-local,
+# unique-local IPv6. On n'utilise PAS `ipaddress.is_private`, dont l'appartenance
+# a changé selon les versions de Python (les plages de documentation RFC 5737 /
+# RFC 3849 y sont entrées depuis 3.12) : ici une adresse de documentation tient
+# lieu de vraie IP cliente publique et doit rester « publique ».
+RESEAUX_PRIVES = tuple(
+    ipaddress.ip_network(reseau)
+    for reseau in (
+        "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16", "127.0.0.0/8",
+        "169.254.0.0/16", "::1/128", "fe80::/10", "fc00::/7",
+    )
+)
+
+_topologie_relevee = False
+_repli_signale = False
+
+
+def _classe(texte):
+    """« interne », « privee », « publique » ou « illisible » — jamais la valeur."""
+    try:
+        adresse = ipaddress.ip_address(texte)
+    except ValueError:
+        return "illisible"
+    if adresse in ipaddress.ip_network("100.0.0.0/8"):
+        return "interne"
+    if any(adresse in reseau for reseau in RESEAUX_PRIVES):
+        return "privee"
+    return "publique"
+
+
+def relever_topologie(request):
+    """Journalise UNE fois par processus la forme des en-têtes proxy, sans valeur.
+
+    Sert à établir où voyage l'IP cliente derrière Railway (recette 2-bis : ni le
+    dernier ni le premier élément public de X-Forwarded-For ne l'étaient).
+    """
+    global _topologie_relevee
+    if _topologie_relevee:
+        return
+    _topologie_relevee = True
+    xff = [
+        e.strip()
+        for e in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
+        if e.strip()
+    ]
+    classes_xff = [_classe(e) for e in xff]
+    autres = " ".join(
+        f"{nom[5:].lower()}="
+        f"{_classe(request.META[nom]) if nom in request.META else 'absent'}"
+        for nom in EN_TETES_CANDIDATS
+    )
+    remote = _classe(request.META.get("REMOTE_ADDR", ""))
+    logger.info(
+        "topologie proxy : x_forwarded_for=%s %s remote_addr=%s",
+        classes_xff,
+        autres,
+        remote,
+    )
+
+
+def _avertir_repli(n):
+    """Signale UNE fois que X-Forwarded-For n'a livré aucune adresse publique."""
+    global _repli_signale
+    if _repli_signale:
+        return
+    _repli_signale = True
+    logger.warning(
+        "adresse_ip : aucune adresse publique dans X-Forwarded-For "
+        "(%s element(s)), repli sur REMOTE_ADDR",
+        n,
+    )
+
+
 def adresse_ip(request):
     """Adresse IP publique de l'appelant, derrière le proxy Railway.
 
@@ -80,10 +161,17 @@ def adresse_ip(request):
     Recette de la brique 2 : lire le dernier élément prenait un saut interne,
     partagé par tous les visiteurs — le plafond n'était plus individuel.
     """
-    transmis = request.META.get("HTTP_X_FORWARDED_FOR", "")
-    for element in reversed([e.strip() for e in transmis.split(",") if e.strip()]):
+    relever_topologie(request)
+    elements = [
+        e.strip()
+        for e in request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")
+        if e.strip()
+    ]
+    for element in reversed(elements):
         if not _interne(element):
             return element
+    if elements:
+        _avertir_repli(len(elements))
     return request.META.get("REMOTE_ADDR") or "inconnue"
 
 

@@ -25,6 +25,7 @@ appariement des agendas Doctolib, comptes des salariées.
   rapport, création des comptes des salariées en masse, limitation de débit sur
   `/connexion/` et sur l'API n8n.
 - **Brique 2-bis** : IP cliente derrière Railway corrigée, audit des suppressions.
+- **Brique 2-ter** : relevé de topologie proxy, plafonds par IP provisoires.
 - **Prochaine étape** : brique 3 — absences des salariées.
 
 ## Périmètre
