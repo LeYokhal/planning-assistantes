@@ -11,12 +11,38 @@ from .mails import OBJET_INVITATION, envoyer_mail, texte_invitation
 from .models import Compte, Personne
 
 
+class FiltreAgendaDoctolib(admin.SimpleListFilter):
+    """Renseigné / vide : de quoi retrouver d'un coup les praticiens non appariés."""
+
+    title = "Agenda Doctolib"
+    parameter_name = "agenda"
+
+    def lookups(self, request, model_admin):
+        return (("oui", "renseigné"), ("non", "vide"))
+
+    def queryset(self, request, queryset):
+        if self.value() == "oui":
+            return queryset.exclude(agenda_doctolib="")
+        if self.value() == "non":
+            return queryset.filter(agenda_doctolib="")
+        return queryset
+
+
 @admin.register(Personne)
 class PersonneAdmin(admin.ModelAdmin):
-    list_display = ("nom", "prenom", "role_metier", "planifiee", "actif", "code")
-    list_filter = ("role_metier", "planifiee", "actif")
+    list_display = (
+        "nom",
+        "prenom",
+        "role_metier",
+        "planifiee",
+        "actif",
+        "code",
+        "agenda_doctolib",
+    )
+    list_filter = ("role_metier", "planifiee", "actif", FiltreAgendaDoctolib)
     search_fields = ("nom", "prenom", "code")
     readonly_fields = ("cree_le", "modifie_le")
+    actions = ("creer_comptes",)
     fieldsets = (
         (None, {"fields": ("nom", "prenom", "role_metier", "actif", "code")}),
         (
@@ -33,6 +59,40 @@ class PersonneAdmin(admin.ModelAdmin):
             Action.PERSONNE_MODIFIEE if change else Action.PERSONNE_CREEE,
             qui=request.user,
             objet=obj,
+        )
+
+    @admin.action(
+        description="Créer les comptes de connexion (salariées avec adresse, sans compte)"
+    )
+    def creer_comptes(self, request, queryset):
+        """Crée un compte par personne sélectionnée qui en manque un.
+
+        Ne crée QUE le compte : aucune invitation n'est envoyée ici, et
+        `invite_le` n'est pas touché. L'envoi reste un geste séparé et explicite
+        (action « Envoyer une invitation » sur les comptes).
+        """
+        crees = 0
+        ignores = 0
+        for personne in queryset:
+            adresse = (personne.email_contact or "").strip()
+            if not adresse or getattr(personne, "compte", None) is not None:
+                ignores += 1
+                continue
+            if Compte.objects.filter(email__iexact=adresse).exists():
+                ignores += 1
+                continue
+
+            compte = Compte.objects.create_user(email=adresse, personne=personne)
+            journaliser(Action.COMPTE_CREE, qui=request.user, objet=compte)
+            crees += 1
+
+        journaliser(
+            Action.COMPTES_CREES, qui=request.user, crees=crees, ignores=ignores
+        )
+        self.message_user(
+            request,
+            f"{crees} compte(s) créé(s), {ignores} ignoré(s).",
+            messages.SUCCESS if crees else messages.WARNING,
         )
 
 

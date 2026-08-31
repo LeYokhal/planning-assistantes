@@ -1,0 +1,51 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Importer la fiche personnel — Planning Assistantes{% endblock %}
+{% block entete %}Importer la fiche personnel{% endblock %}
+
+{% block contenu %}
+  {% if rapport %}
+    <p class="message">
+      {{ rapport.lues }} ligne{{ rapport.lues|pluralize }} exploitable{{ rapport.lues|pluralize }} :
+      {{ rapport.creees }} créée{{ rapport.creees|pluralize }},
+      {{ rapport.mises_a_jour }} mise{{ rapport.mises_a_jour|pluralize }} à jour,
+      {{ rapport.inchangees }} inchangée{{ rapport.inchangees|pluralize }}.
+    </p>
+
+    {% if rapport.ignorees %}
+      <h2>Lignes ignorées</h2>
+      <ul>
+        {% for numero, libelle, motif in rapport.ignorees %}
+          <li>Ligne {{ numero }} — {{ libelle }} : {{ motif }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    {% if rapport.avertissements %}
+      <h2>Avertissements</h2>
+      <ul>
+        {% for avertissement in rapport.avertissements %}<li>{{ avertissement }}</li>{% endfor %}
+      </ul>
+    {% endif %}
+
+    <p><a href="{% url 'personnes:liste' %}">Voir les personnes</a></p>
+  {% else %}
+    <p>Déposez l'export JSON de la fiche personnel, avec exactement ces cinq
+       colonnes : <code>Name</code>, <code>Department</code>,
+       <code>Planning</code>, <code>Heures hebdomadaire</code>,
+       <code>Jours de travail</code>.</p>
+    <p>Toute autre colonne fait refuser le fichier entier : la fiche Notion
+       porte aussi des données qui n'ont pas à entrer ici.</p>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ formulaire.as_p }}
+    <button type="submit">Importer</button>
+  </form>
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'personnes:liste' %}">Retour aux personnes</a> —
+  <a href="/">Accueil</a>
+{% endblock %}

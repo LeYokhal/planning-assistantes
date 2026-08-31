@@ -2,8 +2,10 @@
 
 Application Django pour le planning des assistantes du cabinet. Ce dépôt porte
 le **socle (brique 1a)** — comptes, connexion sans mot de passe, journal
-d'audit, page de santé, déploiement — et l'**import des présences (brique 1b)** :
-lecture des exports Doctolib, écran « présences du mois », API n8n.
+d'audit, page de santé, déploiement —, l'**import des présences (brique 1b)** :
+lecture des exports Doctolib, écran « présences du mois », API n8n, et les
+**personnes et règles (brique 2)** : import de la fiche personnel, `regles.json`,
+appariement des agendas Doctolib, comptes des salariées.
 
 ## État
 
@@ -17,21 +19,28 @@ lecture des exports Doctolib, écran « présences du mois », API n8n.
   webhooks `import.termine` / `import.echec`. Le chemin « endpoint » vers le
   serveur MCP Doctolib est câblé mais **inactif** : il dépend de la brique 0,
   non livrée.
-- **Prochaine étape** : brique 2 — personnes et appariement des agendas.
+- **Brique 2 en recette** : import de la fiche personnel Notion (cinq colonnes,
+  toute autre colonne fait refuser le fichier), `regles/regles.json` chargé et
+  validé au démarrage, appariement des agendas Doctolib aux praticiens avec
+  rapport, création des comptes des salariées en masse, limitation de débit sur
+  `/connexion/` et sur l'API n8n.
+- **Prochaine étape** : brique 3 — absences des salariées.
 
 ## Périmètre
 
 | Livré | Pas encore |
 |---|---|
-| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Appariement agenda ↔ personne (brique 2) |
-| Modèles `Personne`, `Compte`, `EvenementAudit` | Fiches de paie (brique 3) |
-| Connexion par lien magique (django-sesame), 15 min, usage unique | Génération du planning (brique 4) |
-| Journal d'audit consultable, non modifiable | Publication et purge (briques 4 et 5) |
-| Page de santé `/sante/` pour la sonde Railway | Appel direct de Doctolib (brique 0) |
+| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Absences des salariées (brique 3) |
+| Modèles `Personne`, `Compte`, `EvenementAudit`, `CompteurDebit` | Génération du planning (brique 4) |
+| Connexion par lien magique (django-sesame), 15 min, usage unique | Publication et purge (briques 4 et 5) |
+| Journal d'audit consultable, non modifiable | Appel direct de Doctolib (brique 0) |
+| Page de santé `/sante/` pour la sonde Railway | |
 | Envoi de mails délégué à un webhook n8n → Gmail | |
 | Import des présences S7 par fichier, avec invariant de recompte | |
 | Écran « présences du mois », rôles `cabinet` et `principale` | |
 | API n8n `/api/n8n/` et webhooks `import.*` | |
+| Import de la fiche personnel, `regles.json`, appariement Doctolib | |
+| Comptes des salariées en masse, limitation de débit | |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -100,6 +109,7 @@ création du compte cabinet au pré-déploiement par `python manage.py pre_deplo
 Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
+- Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - JSON des deux workflows n8n d'import (à importer tels quels, puis credentials
@@ -112,12 +122,14 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
 ```
 config/      réglages, URLs, WSGI/ASGI
-comptes/     Personne, Compte, connexion par lien, mails, contrôle de rôle, admin
+comptes/     Personne, Compte, connexion par lien, mails, normalisation des noms, admin
 audit/       EvenementAudit et service de journalisation
-socle/       page de santé, accueil, gabarits communs
+socle/       page de santé, accueil, gabarits communs, limitation de débit
 presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
+personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
+regles/      regles.json et son chargeur validant (sans modèle)
 n8n/         API entrante appelée par n8n (sans modèle)
-docs/        déploiement et webhooks n8n
+docs/        déploiement, personnes, webhooks n8n
 reference/   version 1 du skill de planning, à titre de référence (non exécutée)
 ```
 
@@ -137,3 +149,24 @@ les jours qu'ils partagent.
 
 Le mois se consulte sur `/presences/<AAAA-MM>/`, ouvert aux rôles `cabinet` et
 `principale`.
+
+## Personnes
+
+Avec le compte **cabinet**, sur `/personnes/importer/`, déposer l'export JSON de
+la fiche personnel Notion. Il doit porter **exactement cinq colonnes** :
+`Name`, `Department`, `Planning`, `Heures hebdomadaire`, `Jours de travail`.
+Toute autre colonne fait **refuser le fichier entier** — la fiche Notion porte
+aussi des données qui n'ont pas à entrer ici.
+
+L'import est rejouable et n'écrit que ces colonnes : l'adresse de contact,
+l'agenda Doctolib, la couleur et le code ne sont jamais écrasés.
+
+`/personnes/appariement/` propose un agenda Doctolib par praticien planifié, à
+partir du dernier lot d'import de présences réussi, et **n'écrit rien** tant que
+« Appliquer » n'est pas cliqué.
+
+La liste `/personnes/` est ouverte aux rôles `cabinet` et `principale`.
+
+Le détail des gestes — production du fichier, lecture du rapport, appariement,
+création des comptes et invitations, seuils de débit — est dans
+[`docs/PERSONNES.md`](docs/PERSONNES.md).

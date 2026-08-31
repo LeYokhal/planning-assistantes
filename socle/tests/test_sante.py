@@ -26,3 +26,14 @@ def test_accueil_anonyme_redirige_vers_connexion(client):
     reponse = client.get("/")
     assert reponse.status_code == 302
     assert reponse["Location"].startswith("/connexion/")
+
+
+@pytest.mark.django_db
+def test_sante_jamais_limitee_en_debit(client):
+    """Railway sonde `/sante/` sans relâche : aucun plafond ne doit s'y appliquer."""
+    codes = {
+        client.get("/sante/", HTTP_X_FORWARDED_FOR="192.0.2.10").status_code
+        for _ in range(100)
+    }
+
+    assert codes == {200}

@@ -76,6 +76,8 @@ INSTALLED_APPS = [
     "socle",
     "presences",
     "n8n",
+    "regles",
+    "personnes",
 ]
 
 MIDDLEWARE = [
@@ -222,3 +224,16 @@ IMPORT_EN_ARRIERE_PLAN = _env_bool("IMPORT_EN_ARRIERE_PLAN", True)
 
 # Péremption du verrou d'import et des lignes « en cours », en minutes.
 VERROU_IMPORT_PEREMPTION_MINUTES = 15
+
+# --- Personnes et débit (brique 2) ------------------------------------------
+
+# Fichier de règles du planning (binômes, exclusives, gabarits…), chargé et validé au démarrage.
+REGLES_FICHIER = BASE_DIR / "regles" / "regles.json"
+
+# Limitation de débit : (nombre maximal d'appels, fenêtre fixe en secondes).
+# Compteur en base (`socle.CompteurDebit`), pas de cache Django : l'application
+# tourne sur deux workers gunicorn, et un cache par processus compterait deux
+# fois. Voir socle/debit.py.
+DEBIT_CONNEXION_IP = (10, 900)        # demandes de lien par adresse IP
+DEBIT_CONNEXION_ADRESSE = (5, 3600)   # demandes de lien par adresse e-mail (empreinte)
+DEBIT_API_N8N_IP = (60, 60)           # appels de l'API n8n par adresse IP

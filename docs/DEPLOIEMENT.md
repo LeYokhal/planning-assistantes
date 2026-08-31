@@ -1,4 +1,4 @@
-# Déploiement sur Railway — briques 1a et 1b
+# Déploiement sur Railway — briques 1a, 1b et 2
 
 Recette pas-à-pas pour mettre en ligne le socle. Rien de ce qui suit n'est
 exécuté par l'outillage : ce sont les gestes à faire dans l'interface Railway.
@@ -89,6 +89,19 @@ et `APP_URL` (étape 3). Le déploiement se relance à chaque modification.
 7. `https://<domaine>/presences/<AAAA-MM>/` : le mois s'affiche en semaines
    complètes, un agenda par ligne. Recette détaillée de l'API et des deux
    workflows n8n : `docs/n8n/IMPORT_PRESENCES.md`.
+8. `https://<domaine>/personnes/importer/` (compte cabinet) : déposer l'export
+   de la fiche personnel. Le rapport donne les comptages, les lignes ignorées
+   et les avertissements. Contrôle négatif : un export portant une colonne de
+   plus doit être **refusé en bloc**, en citant le nom de la colonne fautive et
+   rien d'autre.
+9. `https://<domaine>/personnes/` : la liste s'affiche, et le bandeau de tête
+   dit combien de noms de `regles.json` sont résolus. Recette détaillée des
+   personnes, de l'appariement et des comptes : `docs/PERSONNES.md`.
+
+> **Aucune variable d'environnement nouvelle en brique 2.** La table
+> `socle_compteurdebit`, qui porte les compteurs de la limitation de débit,
+> naît de la migration `socle.0001` — il n'y a rien à créer à la main, et aucun
+> cache Django n'est utilisé.
 
 ## 7. Si n8n est indisponible
 

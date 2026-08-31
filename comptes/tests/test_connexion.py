@@ -16,6 +16,9 @@ ADRESSE_CONNUE = "assistante@example.org"
 ADRESSE_INCONNUE = "personne-sans-compte@example.org"
 ADRESSE_INACTIVE = "ancienne@example.org"
 
+# Adresse IP de documentation (RFC 5737).
+IP_TEST = "192.0.2.10"
+
 
 @pytest.fixture
 def compte_actif(db):
@@ -177,3 +180,107 @@ def test_admin_accessible_apres_connexion(client):
 
     reponse = client.get("/admin/")
     assert reponse.status_code == 200
+
+
+# --- Limitation de débit -----------------------------------------------------
+
+
+@pytest.mark.django_db
+def test_plafond_par_ip_repond_429(client, compte_actif, settings):
+    """Onzième POST depuis la même IP : la page se ferme, sans rien révéler."""
+    settings.DEBIT_CONNEXION_IP = (10, 900)
+
+    with patch("comptes.views.envoyer_mail", return_value=True):
+        codes = [
+            client.post(
+                "/connexion/", {"email": ADRESSE_INCONNUE}, HTTP_X_FORWARDED_FOR=IP_TEST
+            ).status_code
+            for _ in range(11)
+        ]
+
+    assert codes[:10] == [200] * 10
+    assert codes[10] == 429
+
+
+@pytest.mark.django_db
+def test_page_429_dit_de_reessayer(client, settings):
+    settings.DEBIT_CONNEXION_IP = (1, 900)
+    client.post("/connexion/", {"email": ADRESSE_INCONNUE}, HTTP_X_FORWARDED_FOR=IP_TEST)
+
+    reponse = client.post(
+        "/connexion/", {"email": ADRESSE_INCONNUE}, HTTP_X_FORWARDED_FOR=IP_TEST
+    )
+
+    assert reponse.status_code == 429
+    assert "Trop de demandes" in reponse.content.decode()
+
+
+@pytest.mark.django_db
+def test_get_ne_consomme_pas_le_plafond(client, settings):
+    settings.DEBIT_CONNEXION_IP = (1, 900)
+
+    for _ in range(5):
+        assert client.get("/connexion/", HTTP_X_FORWARDED_FOR=IP_TEST).status_code == 200
+
+
+@pytest.mark.django_db
+def test_plafond_par_adresse_reste_neutre(client, compte_actif, settings):
+    """Sixième demande sur la même adresse : page identique, aucun envoi.
+
+    Chaque appel vient d'une IP différente pour que seul le plafond par adresse
+    puisse se déclencher.
+    """
+    settings.DEBIT_CONNEXION_ADRESSE = (5, 3600)
+
+    with patch("comptes.views.envoyer_mail", return_value=True) as envoi:
+        reponses = [
+            client.post(
+                "/connexion/",
+                {"email": ADRESSE_CONNUE},
+                HTTP_X_FORWARDED_FOR=f"192.0.2.{numero}",
+            )
+            for numero in range(1, 7)
+        ]
+
+    # Cinq envois seulement : le sixième est coupé avant toute requête.
+    assert envoi.call_count == 5
+    assert reponses[5].status_code == 200
+    assert _reponses_identiques(reponses[4], reponses[5])
+
+    refus = EvenementAudit.objects.filter(action="lien_refuse")
+    assert refus.count() == 1
+    assert refus.get().details == {"motif": "debit"}
+
+
+@pytest.mark.django_db
+def test_plafond_par_adresse_insensible_a_la_casse(client, compte_actif, settings):
+    settings.DEBIT_CONNEXION_ADRESSE = (1, 3600)
+
+    with patch("comptes.views.envoyer_mail", return_value=True) as envoi:
+        client.post(
+            "/connexion/", {"email": ADRESSE_CONNUE}, HTTP_X_FORWARDED_FOR="192.0.2.1"
+        )
+        client.post(
+            "/connexion/",
+            {"email": ADRESSE_CONNUE.upper()},
+            HTTP_X_FORWARDED_FOR="192.0.2.2",
+        )
+
+    assert envoi.call_count == 1
+
+
+@pytest.mark.django_db
+def test_adresses_differentes_comptent_separement(client, compte_actif, settings):
+    settings.DEBIT_CONNEXION_ADRESSE = (1, 3600)
+
+    with patch("comptes.views.envoyer_mail", return_value=True) as envoi:
+        client.post(
+            "/connexion/", {"email": ADRESSE_CONNUE}, HTTP_X_FORWARDED_FOR="192.0.2.1"
+        )
+        client.post(
+            "/connexion/", {"email": ADRESSE_INCONNUE}, HTTP_X_FORWARDED_FOR="192.0.2.2"
+        )
+
+    # Le second n'est pas bloqué : il n'a simplement pas de compte.
+    assert envoi.call_count == 1
+    assert not EvenementAudit.objects.filter(action="lien_refuse", details={"motif": "debit"}).exists()

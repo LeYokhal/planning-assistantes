@@ -363,6 +363,37 @@ def _jours_par_date(import_):
     }
 
 
+def agendas_recents():
+    """Agendas Doctolib du dernier lot d'import réussi. Tuple vide si aucun.
+
+    Le LOT, pas l'import seul : un mois se couvre en une ou deux fenêtres, et
+    un praticien absent de la première peut figurer dans la seconde. Prendre le
+    dernier import isolé amputerait la liste.
+    """
+    dernier = (
+        ImportPresences.objects.filter(statut=ImportPresences.Statut.REUSSI)
+        .order_by("-importe_le", "-id")
+        .first()
+    )
+    if dernier is None:
+        return ()
+
+    agendas = set()
+    for import_ in ImportPresences.objects.filter(
+        statut=ImportPresences.Statut.REUSSI, lot=dernier.lot
+    ):
+        for jour in ((import_.payload or {}).get("donnees") or {}).get("jours") or []:
+            if not isinstance(jour, dict):
+                continue
+            for ligne in jour.get("praticiens") or []:
+                if isinstance(ligne, dict):
+                    agenda = str(ligne.get("praticien", "")).strip()
+                    if agenda:
+                        agendas.add(agenda)
+
+    return tuple(sorted(agendas, key=str.casefold))
+
+
 def couverture(debut, fin):
     """Assemble la couverture de la plage `debut`→`fin` pour l'écran du mois.
 
