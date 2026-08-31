@@ -140,6 +140,19 @@ sur le déploiement.
   échappements `\u00e9` et le texte lu est normalisé NFC ; vérifier à l'octet
   près qu'un outil d'édition ne les a pas décodés.
 
+### Leçons de la brique 2
+
+- **Sur l'infrastructure d'un tiers, mesurer avant d'écrire** : les réponses
+  officielles Railway sur `X-Forwarded-For` étaient fausses deux fois pour notre
+  trafic ; seul le relevé de topologie (classes sans valeur) et la sonde à
+  en-têtes illisibles ont établi que `X-Real-IP` est réécrit par Railway. Toute
+  rafale de validation : 60 × 401 puis 429 au 61e, avec ET sans en-têtes
+  injectés, calée juste après un début de minute (fenêtres fixes alignées sur
+  l'horloge).
+- **Les commandes `git commit -m` s'écrivent sur une seule ligne** : le shell
+  d'exécution est bash, un here-string PowerShell y produit un sujet « @ »
+  (incident 2, rattrapé par `--amend` avant push).
+
 ## Périmètre
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /

@@ -19,16 +19,14 @@ appariement des agendas Doctolib, comptes des salariées.
   webhooks `import.termine` / `import.echec`. Le chemin « endpoint » vers le
   serveur MCP Doctolib est câblé mais **inactif** : il dépend de la brique 0,
   non livrée.
-- **Brique 2 en recette** : import de la fiche personnel Notion (cinq colonnes,
-  toute autre colonne fait refuser le fichier), `regles/regles.json` chargé et
-  validé au démarrage, appariement des agendas Doctolib aux praticiens avec
-  rapport, création des comptes des salariées en masse, limitation de débit sur
-  `/connexion/` et sur l'API n8n.
-- **Brique 2-bis** : IP cliente derrière Railway corrigée, audit des suppressions.
-- **Brique 2-ter** : relevé de topologie proxy, plafonds par IP provisoires.
-- **Brique 2-quater** : IP cliente établie (X-Real-IP), plafonds de débit aux
-  valeurs cibles.
-- **Prochaine étape** : brique 3 — absences des salariées.
+- **Brique 2 livrée le 31/08/2026** (`7ba2a27`, puis 2-bis `488a3f1`, 2-ter
+  `b07464b`, 2-quater `951a764`) : la fiche personnel vit dans l'application
+  (import rejouable à cinq colonnes), `regles.json` chargé et validé au
+  démarrage, appariement Doctolib avec rapport, comptes des salariées créés en
+  masse (invitations à la main du cabinet), limitation de débit sur
+  `/connexion/` et l'API — IP cliente `X-Real-IP`, établie par mesure.
+- **Prochaine étape** : brique 3 — absences des salariées, ou brique 0
+  (endpoint présences, projet VoiceDoctolib).
 
 ## Périmètre
 
