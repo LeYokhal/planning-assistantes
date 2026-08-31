@@ -93,13 +93,29 @@ sur le déploiement.
 - **gunicorn ne démarre pas sous Windows** : en local, `runserver` uniquement.
   gunicorn ne sert qu'en production, dans l'image Docker.
 
+### Leçons de la brique 1b
+
+- **pytest-django importe les réglages avant d'exécuter le `conftest.py`
+  racine** : un bloc `os.environ` dans ce conftest n'atteint jamais `settings`.
+  Les réglages sensibles sont forcés par la fixture autouse
+  `reglages_fail_closed` ; un test qui a besoin d'une valeur la pose lui-même
+  via la fixture `settings`.
+- **Deux `patch` imbriqués sur `x.requests.post` et `y.requests.post` visent le
+  même module** : un seul bouchon, qui aiguille sur l'URL (voir
+  `presences/tests/test_endpoint.py`).
+- **`makemigrations --skip-checks`** tant que les `urls.py` d'une nouvelle app
+  n'existent pas, puis `--check --dry-run` sans option.
+- **Les accents qui comptent pour un motif** (`presences/lecture.py`) sont en
+  échappements `\u00e9` et le texte lu est normalisé NFC ; vérifier à l'octet
+  près qu'un outil d'édition ne les a pas décodés.
+
 ## Périmètre
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
 `EvenementAudit`, connexion par lien magique, journal d'audit, page de santé,
 fichiers de déploiement.
 
-La brique **1b** livre les présences : lecture d'un payload
+La brique **1b** (livrée le 31/08/2026) livre les présences : lecture d'un payload
 `consulter_jours_travail` avec invariant de recompte (`presences/lecture.py`),
 import par fichier depuis `/presences/importer/` (rôle cabinet), écran
 « présences du mois », verrou d'import, API entrante n8n (`n8n/`) et webhooks

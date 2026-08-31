@@ -45,6 +45,12 @@ Service applicatif → onglet **Variables**.
 | `IMPORT_EN_ARRIERE_PLAN` | *(rien à saisir)* | Absente = tâche de fond (comportement normal). `0` fait tourner les lots en synchrone : réservé aux tests. |
 | `PORT` | *(rien à saisir)* | Fournie par Railway ; lue par gunicorn dans le `Dockerfile`. |
 
+> ⚠️ Après avoir ajouté une variable, vérifier qu'elle figure bien dans la
+> liste du service et que le déploiement déclenché est vert. Leçon de la
+> recette 1b : `N8N_IMPORT_WEBHOOK_URL` n'avait pas été posée ; l'application,
+> fail-closed, l'a seulement signalé par une ligne « webhook import non
+> configure » dans les logs, sans erreur visible.
+
 ## 4. Générer le domaine
 
 Service applicatif → **Settings** → **Networking** → **Generate Domain**.

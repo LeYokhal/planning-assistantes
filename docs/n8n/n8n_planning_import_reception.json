@@ -1,0 +1,71 @@
+{
+  "name": "Planning assistantes – Import (réception)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "import-planning",
+        "authentication": "headerAuth",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "38e6f5bc-1239-466d-8c11-2cb381656023",
+      "name": "Webhook import.*",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        0
+      ],
+      "webhookId": "c282af93-9539-4b88-b567-b22f0ba69f42",
+      "notes": "Credential Header Auth à sélectionner après import : Name X-Webhook-Secret, Value = N8N_WEBHOOK_SECRET (Railway). Copier l'URL de PRODUCTION (/webhook/) dans N8N_IMPORT_WEBHOOK_URL."
+    },
+    {
+      "parameters": {
+        "sendTo": "REMPLACER_PAR_TON_ADRESSE@exemple.fr",
+        "subject": "=Planning assistantes — {{ $json.body.evenement }} (lot {{ $json.body.lot }})",
+        "emailType": "text",
+        "message": "={{ JSON.stringify($json.body, null, 2) }}",
+        "options": {}
+      },
+      "id": "433aae51-1ed8-464a-9be5-205d67fde0f4",
+      "name": "Mail Yohan",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -100,
+        0
+      ],
+      "webhookId": "5b91a8eb-ec8f-4f93-8013-c51c398c5088",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CpuAkptSDN5w4q4M",
+          "name": "Perso"
+        }
+      },
+      "notes": "Remplacer le champ To par ton adresse (celle du canari)."
+    }
+  ],
+  "connections": {
+    "Webhook import.*": {
+      "main": [
+        [
+          {
+            "node": "Mail Yohan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Europe/Paris",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  },
+  "pinData": {},
+  "tags": []
+}
