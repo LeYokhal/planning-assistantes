@@ -8,12 +8,15 @@
   <p>Les présences des praticiens importées depuis Doctolib sont consultables ;
      le planning des assistantes arrive en brique 4.</p>
   {% if user.role == "salariee" %}
-    <p class="message">Votre compte est actif. L'espace de saisie des absences
-       arrive avec la prochaine version.</p>
+    <p class="message">Votre compte est actif. Déclarez vos absences et suivez
+       l'état de vos demandes depuis « Mes absences ».</p>
   {% endif %}
 {% endblock %}
 
 {% block navigation %}
+  {% if user.role == "salariee" %}<a href="{% url 'absences:mes_absences' %}">Mes absences</a> —{% endif %}
+  {% if user.role == "salariee" %}<a href="{% url 'comptes:profil' %}">Mon profil</a> —{% endif %}
+  {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'absences:decider' %}">Absences</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'personnes:liste' %}">Personnes</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'presences:courant' %}">Présences</a> —{% endif %}
   {% if user.is_staff %}<a href="/admin/">Administration</a> —{% endif %}

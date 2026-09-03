@@ -6,15 +6,26 @@ seuls le fait de l'envoi et le code de statut HTTP sont journalisés.
 
 import logging
 
-import requests
+# ⚠️ NE PAS RETIRER cet import, bien que l'appel réseau soit passé dans
+# `socle.client_n8n` (brique 3, décision J). Six tests de `test_mails.py`
+# patchent `comptes.mails.requests.post` : `mock.patch` résout ce chemin par
+# `getattr(comptes.mails, "requests")`, et tomberait en `AttributeError` sans
+# lui. Le patch reste efficace parce qu'il mute l'attribut `post` du module
+# `requests` PARTAGÉ, celui-là même qu'appelle le client factorisé.
+import requests  # noqa: F401
 from django.conf import settings
+
+from socle import client_n8n
 
 logger = logging.getLogger(__name__)
 
-DELAI_SECONDES = 10
+DELAI_SECONDES = client_n8n.DELAI_SECONDES
+
+EN_TETE_SECRET = "X-Mail-Secret"
 
 OBJET_LIEN = "Votre lien de connexion — Planning Assistantes"
 OBJET_INVITATION = "Votre accès à Planning Assistantes"
+OBJET_ADRESSE = "Confirmez votre nouvelle adresse — Planning Assistantes"
 
 
 def texte_lien(lien):
@@ -37,36 +48,46 @@ def texte_invitation():
     )
 
 
+def texte_adresse(lien):
+    """Corps du mail de confirmation d'un changement d'adresse.
+
+    Envoyé à la NOUVELLE adresse : c'est le clic qui prouve qu'elle est bien
+    relevée par la salariée.
+    """
+    return (
+        "Vous avez demandé à utiliser cette adresse pour vous connecter à "
+        "Planning Assistantes. Confirmez en ouvrant ce lien (valable 1 heure) :\n"
+        f"{lien}\n"
+        "Si vous n'êtes pas à l'origine de cette demande, ignorez ce message : "
+        "rien ne sera changé."
+    )
+
+
 def envoyer_mail(destinataire, objet, texte):
     """Demande à n8n d'envoyer un mail. Renvoie True si n8n l'a accepté.
 
     Comportement fail-closed : si l'URL du webhook ou le secret est absent,
     aucun envoi n'est tenté et la fonction renvoie False.
     """
-    url = getattr(settings, "N8N_MAIL_WEBHOOK_URL", "")
-    secret = getattr(settings, "N8N_WEBHOOK_SECRET", "")
-    if not url or not secret:
+    resultat = client_n8n.poster(
+        getattr(settings, "N8N_MAIL_WEBHOOK_URL", ""),
+        EN_TETE_SECRET,
+        getattr(settings, "N8N_WEBHOOK_SECRET", ""),
+        {"destinataire": destinataire, "objet": objet, "texte": texte},
+    )
+
+    if resultat.motif == client_n8n.MOTIF_NON_CONFIGURE:
         logger.warning("webhook mail non configure : aucun envoi effectue")
         return False
 
-    try:
-        reponse = requests.post(
-            url,
-            json={"destinataire": destinataire, "objet": objet, "texte": texte},
-            headers={
-                "X-Mail-Secret": secret,
-                "Content-Type": "application/json",
-            },
-            timeout=DELAI_SECONDES,
-        )
-    except requests.RequestException as erreur:
+    if resultat.motif == client_n8n.MOTIF_RESEAU:
         # On ne journalise que le type d'erreur : son message peut contenir l'URL.
-        logger.warning("envoi de mail impossible (%s)", type(erreur).__name__)
+        logger.warning("envoi de mail impossible (%s)", resultat.erreur)
         return False
 
-    if reponse.status_code >= 400:
-        logger.warning("envoi de mail refuse par le webhook (statut %s)", reponse.status_code)
+    if resultat.motif == client_n8n.MOTIF_STATUT:
+        logger.warning("envoi de mail refuse par le webhook (statut %s)", resultat.statut)
         return False
 
-    logger.info("mail transmis au webhook (statut %s)", reponse.status_code)
+    logger.info("mail transmis au webhook (statut %s)", resultat.statut)
     return True

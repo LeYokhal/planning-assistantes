@@ -1,0 +1,18 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Mes absences — Planning Assistantes{% endblock %}
+{% block entete %}Mes absences{% endblock %}
+
+{% block contenu %}
+  <p class="message">Votre compte n'est pas encore rattaché à une fiche du
+     personnel. La saisie des absences sera possible dès que le cabinet aura
+     fait le rattachement — signalez-le-lui.</p>
+{% endblock %}
+
+{% block navigation %}
+  <a href="/">Accueil</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

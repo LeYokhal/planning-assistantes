@@ -24,6 +24,13 @@ BASE = {
     "couleurs": {"DUPONT Alice": "yellow", "MARTIN Bob": "blue"},
     "praticiens_a_part": {"liste": [{"nom": "LEROY Chloe", "etiquette": "ortho"}]},
     "heures_par_brique": {"_doc": "ignoré", "J": 9.75, "C": 6.75},
+    # Section ajoutée en brique 3 : elle est obligatoire, comme les gabarits.
+    "periodes_ouverture": {
+        "liste": [
+            {"a_partir_du": None, "jours": ["Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi"]},
+            {"a_partir_du": "2026-10-05", "jours": ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi"]},
+        ]
+    },
     "etudiantes": {
         "liste": [
             {

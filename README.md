@@ -126,12 +126,13 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 config/      réglages, URLs, WSGI/ASGI
 comptes/     Personne, Compte, connexion par lien, mails, normalisation des noms, admin
 audit/       EvenementAudit et service de journalisation
-socle/       page de santé, accueil, gabarits communs, limitation de débit
+socle/       page de santé, accueil, gabarits communs, limitation de débit, fériés, client n8n
 presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
 personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
 regles/      regles.json et son chargeur validant (sans modèle)
+absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision
 n8n/         API entrante appelée par n8n (sans modèle)
-docs/        déploiement, personnes, webhooks n8n
+docs/        déploiement, personnes, absences, webhooks n8n
 reference/   version 1 du skill de planning, à titre de référence (non exécutée)
 ```
 

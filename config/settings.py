@@ -78,6 +78,7 @@ INSTALLED_APPS = [
     "n8n",
     "regles",
     "personnes",
+    "absences",
 ]
 
 MIDDLEWARE = [
@@ -236,6 +237,18 @@ REGLES_FICHIER = BASE_DIR / "regles" / "regles.json"
 # fois. Voir socle/debit.py.
 # Limitation de débit : (nombre maximal d'appels, fenêtre fixe en secondes).
 # L'identifiant par IP est X-Real-IP, réécrit par Railway (mesure 2-ter/2-quater).
+# --- Absences (brique 3) ----------------------------------------------------
+
+# Retention des absences, en jours depuis leur dernier jour. ABSENTE = aucune
+# purge et aucune echeance posee (fail-closed, decision F) : la commande
+# `purger_absences` rattrape le stock le jour ou la valeur est fixee.
+RETENTION_ABSENCES_JOURS = os.environ.get("RETENTION_ABSENCES_JOURS", "").strip()
+
+# Webhook n8n des evenements absence.demandee / absence.declaree /
+# absence.decidee. Absent = aucune notification (fail-closed). Le secret est
+# N8N_WEBHOOK_SECRET, en-tete X-Webhook-Secret.
+N8N_ABSENCE_WEBHOOK_URL = os.environ.get("N8N_ABSENCE_WEBHOOK_URL", "").strip()
+
 DEBIT_CONNEXION_IP = (10, 900)
 DEBIT_CONNEXION_ADRESSE = (5, 3600)
 DEBIT_API_N8N_IP = (60, 60)
