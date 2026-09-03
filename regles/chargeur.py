@@ -12,13 +12,14 @@ Les clés commençant par « _ » sont de la documentation dans le fichier : ell
 sont ignorées à tous les niveaux.
 """
 
+import datetime
 import json
 from dataclasses import dataclass, field
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 
-from comptes.noms import normaliser
+from comptes.noms import jour_canonique, normaliser
 
 BRIQUES = ("J", "C")
 
@@ -52,10 +53,19 @@ class Etudiante:
 
 
 @dataclass(frozen=True)
+class PeriodeOuverture:
+    """Jours d'ouverture du cabinet à partir d'une date. `a_partir_du` nul = origine."""
+
+    a_partir_du: datetime.date
+    jours: tuple
+
+
+@dataclass(frozen=True)
 class Regles:
     """Les règles du planning, figées et prêtes à lire."""
 
     gabarits: dict = field(default_factory=dict)
+    periodes_ouverture: tuple = ()
     binomes: tuple = ()
     praticiens_exclusifs: tuple = ()
     creneaux_administratifs: tuple = ()
@@ -226,6 +236,75 @@ def _heures(brut):
     return resultat
 
 
+def _periodes_ouverture(brut):
+    """Périodes d'ouverture datées, dans l'ordre chronologique.
+
+    La PREMIÈRE porte `a_partir_du` nul — c'est le régime d'origine, et c'est
+    lui qui garantit qu'une date quelconque trouve toujours une période
+    applicable. Les suivantes portent une date, strictement croissante.
+    """
+    entrees = _liste(brut, "periodes_ouverture")
+    if not entrees:
+        raise _refus("aucune période d'ouverture")
+
+    periodes = []
+    precedente = None
+    for rang, entree in enumerate(entrees, start=1):
+        if not isinstance(entree, dict):
+            raise _refus(f"periodes_ouverture : entrée {rang} n'est pas un objet")
+
+        brute = entree.get("a_partir_du")
+        if rang == 1:
+            if brute is not None:
+                raise _refus(
+                    "periodes_ouverture : la première période est celle d'origine, "
+                    "son « a_partir_du » doit être nul"
+                )
+            debut = None
+        else:
+            if not isinstance(brute, str):
+                raise _refus(
+                    f"periodes_ouverture : entrée {rang}, « a_partir_du » doit être "
+                    "une date AAAA-MM-JJ"
+                )
+            try:
+                debut = datetime.date.fromisoformat(brute)
+            except ValueError:
+                raise _refus(
+                    f"periodes_ouverture : entrée {rang}, « {brute} » n'est pas une "
+                    "date AAAA-MM-JJ"
+                ) from None
+            if precedente is not None and debut <= precedente:
+                raise _refus(
+                    f"periodes_ouverture : entrée {rang}, les dates doivent être "
+                    "strictement croissantes"
+                )
+            precedente = debut
+
+        bruts = entree.get("jours")
+        if not isinstance(bruts, list) or not bruts:
+            raise _refus(
+                f"periodes_ouverture : entrée {rang}, « jours » doit être une liste "
+                "non vide"
+            )
+        jours = []
+        for brut_jour in bruts:
+            canonique = jour_canonique(brut_jour) if isinstance(brut_jour, str) else None
+            if canonique is None:
+                raise _refus(
+                    f"periodes_ouverture : entrée {rang}, jour « {brut_jour} » inconnu"
+                )
+            if canonique in jours:
+                raise _refus(
+                    f"periodes_ouverture : entrée {rang}, jour « {canonique} » en double"
+                )
+            jours.append(canonique)
+
+        periodes.append(PeriodeOuverture(a_partir_du=debut, jours=tuple(jours)))
+
+    return tuple(periodes)
+
+
 def _etudiantes(brut):
     etudiantes = []
     for rang, entree in enumerate(_liste(brut, "etudiantes"), start=1):
@@ -267,6 +346,7 @@ def _construire(brut):
     a_part = _a_part(brut)
     heures = _heures(brut)
     etudiantes = _etudiantes(brut)
+    periodes = _periodes_ouverture(brut)
 
     noms = []
     for nom in (
@@ -283,6 +363,7 @@ def _construire(brut):
 
     return Regles(
         gabarits=gabarits,
+        periodes_ouverture=periodes,
         binomes=binomes,
         praticiens_exclusifs=exclusifs,
         creneaux_administratifs=creneaux,
@@ -318,6 +399,22 @@ def charger(chemin=None):
 def couleur_de(nom):
     """Couleur d'une personne d'après les règles. Chaîne vide si elle n'y figure pas."""
     return charger().couleurs.get(normaliser(nom), "")
+
+
+def jours_ouverture(jour, regles=None):
+    """Jours d'ouverture du cabinet applicables à cette date.
+
+    On retient la DERNIÈRE période dont la date de début est déjà passée. La
+    période d'origine (`a_partir_du` nul) garantit qu'il y en a toujours une.
+    """
+    periodes = (regles or charger()).periodes_ouverture
+    applicable = periodes[0]
+    for periode in periodes[1:]:
+        if periode.a_partir_du <= jour:
+            applicable = periode
+        else:
+            break
+    return applicable.jours
 
 
 def verifier(personnes):

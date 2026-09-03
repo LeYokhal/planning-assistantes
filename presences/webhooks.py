@@ -13,16 +13,24 @@ comptages.
 
 import logging
 
-import requests
+# ⚠️ NE PAS RETIRER cet import, bien que l'appel réseau soit passé dans
+# `socle.client_n8n` (brique 3, décision J). Six tests de `test_webhooks.py`
+# patchent `presences.webhooks.requests.post`, et la fixture `Routeur` de
+# `test_endpoint.py` s'appuie sur le fait que ce module et
+# `presences.client_doctolib` partagent le module `requests`. Retirer l'import
+# ferait tomber ces tests en `AttributeError`.
+import requests  # noqa: F401
 from django.conf import settings
 from django.utils import timezone
+
+from socle import client_n8n
 
 from .fenetres import mois_de_fenetre
 from .models import ImportPresences
 
 logger = logging.getLogger(__name__)
 
-DELAI_SECONDES = 10
+DELAI_SECONDES = client_n8n.DELAI_SECONDES
 EN_TETE_SECRET = "X-Webhook-Secret"
 
 EVENEMENT_TERMINE = "import.termine"
@@ -78,35 +86,28 @@ def notifier_lot(imports):
     if not imports:
         return False
 
-    url = getattr(settings, "N8N_IMPORT_WEBHOOK_URL", "")
-    secret = getattr(settings, "N8N_WEBHOOK_SECRET", "")
-    if not url or not secret:
+    resultat = client_n8n.poster(
+        getattr(settings, "N8N_IMPORT_WEBHOOK_URL", ""),
+        EN_TETE_SECRET,
+        getattr(settings, "N8N_WEBHOOK_SECRET", ""),
+        corps_lot(imports),
+    )
+
+    if resultat.motif == client_n8n.MOTIF_NON_CONFIGURE:
         logger.warning("webhook import non configure : aucune notification")
         return False
 
-    corps = corps_lot(imports)
-
-    try:
-        reponse = requests.post(
-            url,
-            json=corps,
-            headers={
-                EN_TETE_SECRET: secret,
-                "Content-Type": "application/json",
-            },
-            timeout=DELAI_SECONDES,
-        )
-    except requests.RequestException as erreur:
-        logger.warning("webhook import impossible (%s)", type(erreur).__name__)
+    if resultat.motif == client_n8n.MOTIF_RESEAU:
+        logger.warning("webhook import impossible (%s)", resultat.erreur)
         return False
 
-    if reponse.status_code >= 400:
+    if resultat.motif == client_n8n.MOTIF_STATUT:
         logger.warning(
-            "webhook import refuse (statut %s)", reponse.status_code
+            "webhook import refuse (statut %s)", resultat.statut
         )
         return False
 
-    logger.info("webhook import transmis (statut %s)", reponse.status_code)
+    logger.info("webhook import transmis (statut %s)", resultat.statut)
     for import_ in imports:
         import_.webhook_envoye = True
         if import_.pk:

@@ -163,6 +163,12 @@ class Compte(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField("actif", default=True)
     is_staff = models.BooleanField("accès à l'administration", default=False)
     # is_superuser, groups et user_permissions viennent de PermissionsMixin.
+    # Adresse demandée par la salariée, en attente de confirmation par lien.
+    # Vidée à la confirmation : c'est ce vidage qui rend le jeton à usage unique
+    # (brique 3, décision L).
+    email_en_attente = models.EmailField(
+        "adresse en attente de confirmation", blank=True
+    )
     invite_le = models.DateTimeField("invité le", null=True, blank=True)
     active_le = models.DateTimeField("activé le", null=True, blank=True)
     date_creation = models.DateTimeField("date de création", auto_now_add=True)

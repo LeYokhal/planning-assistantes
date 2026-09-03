@@ -95,6 +95,31 @@
     "J": 9.75,
     "C": 6.75
   },
+  "periodes_ouverture": {
+    "_doc": "Jours d'ouverture du cabinet, par période datée. Sert UNIQUEMENT au calcul des jours comptés pour la paie : le planning affiche les jours d'après les présences Doctolib réelles. La première période porte a_partir_du null (origine) ; les suivantes une date de bascule, calée sur un lundi pour qu'aucune semaine ne soit à cheval sur deux régimes.",
+    "liste": [
+      {
+        "a_partir_du": null,
+        "jours": [
+          "Mardi",
+          "Mercredi",
+          "Jeudi",
+          "Vendredi",
+          "Samedi"
+        ]
+      },
+      {
+        "a_partir_du": "2026-10-05",
+        "jours": [
+          "Lundi",
+          "Mardi",
+          "Mercredi",
+          "Jeudi",
+          "Vendredi"
+        ]
+      }
+    ]
+  },
   "etudiantes": {
     "_doc": "Alternantes : rythme sans cours, et mot-clé des entrées Notion (Agenda cabinet, Type Ecole) qui portent leurs jours de cours. Chaque cours consomme la journée courte de sa semaine.",
     "liste": [

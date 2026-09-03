@@ -28,6 +28,17 @@ class Action(models.TextChoices):
     PERSONNES_IMPORTEES = "personnes_importees", "Fiche personnel importée"
     APPARIEMENT_APPLIQUE = "appariement_applique", "Appariement Doctolib appliqué"
     COMPTES_CREES = "comptes_crees", "Comptes de connexion créés"
+    # Brique 3. ⚠️ Aucun de ces événements ne porte le TYPE d'absence ni la
+    # PRÉCISION dans `details` : ce sont des données de santé potentielles, et
+    # le garde-fou « @ » ne les reconnaîtrait pas.
+    ABSENCE_DEMANDEE = "absence_demandee", "Absence demandée"
+    ABSENCE_DECLAREE = "absence_declaree", "Absence déclarée"
+    ABSENCE_DECIDEE = "absence_decidee", "Absence décidée"
+    ABSENCE_ANNULEE = "absence_annulee", "Absence annulée"
+    ABSENCE_CORRIGEE = "absence_corrigee", "Jours comptés corrigés"
+    ABSENCE_PURGEE = "absence_purgee", "Absence purgée (rétention)"
+    PAIE_CONSULTEE = "paie_consultee", "Données de paie consultées"
+    ADRESSE_CHANGEE = "adresse_changee", "Adresse de connexion changée"
 
 
 class EvenementAudit(models.Model):

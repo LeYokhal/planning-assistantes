@@ -1,0 +1,104 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Absences {{ libelle }} — Planning Assistantes{% endblock %}
+{% block entete %}Absences — {{ libelle }}{% endblock %}
+{% block classe_corps %}large{% endblock %}
+
+{% block tete %}
+  <style>
+    table { border-collapse: collapse; width: 100%; font-size: 0.88rem; margin-bottom: 2rem; }
+    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; vertical-align: top; }
+    th { background: rgba(0,0,0,.04); }
+    td.vide { color: #888; }
+    td.corrigee { font-weight: 600; }
+    .barre { display: flex; gap: 1rem; align-items: baseline; margin-bottom: 1.25rem; }
+    form.enligne { display: inline; }
+    input[type="number"] { width: 5rem; }
+  </style>
+{% endblock %}
+
+{% block contenu %}
+  <p class="barre">
+    <a href="?mois={{ precedent }}">← {{ precedent }}</a>
+    <a href="?mois={{ suivant }}">{{ suivant }} →</a>
+  </p>
+
+  <h2>Demandes en attente</h2>
+  <table>
+    <thead>
+      <tr><th>Personne</th><th>Du</th><th>Au</th><th>Motif</th><th>Précision</th><th>Décision</th></tr>
+    </thead>
+    <tbody>
+      {% for absence in en_attente %}
+        <tr>
+          <td>{{ absence.personne.nom }} {{ absence.personne.prenom }}</td>
+          <td>{{ absence.date_debut|date:"d/m/Y" }}</td>
+          <td>{{ absence.date_fin|date:"d/m/Y" }}</td>
+          <td>{{ absence.type.libelle }}</td>
+          <td {% if not absence.precision %}class="vide"{% endif %}>{{ absence.precision|default:"—" }}</td>
+          <td>
+            {% if absence.decidable %}
+              <form method="post" action="{% url 'absences:decider_une' absence.pk %}" class="enligne">
+                {% csrf_token %}
+                <button type="submit" name="decision" value="valider">Valider</button>
+                <button type="submit" name="decision" value="refuser">Refuser</button>
+              </form>
+            {% else %}
+              <span class="vide">Votre propre absence : seul le cabinet la tranche.</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="6">Aucune demande en attente.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Absences du mois</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Personne</th><th>Du</th><th>Au</th><th>Motif</th><th>État</th>
+        <th>Calculés</th><th>Retenus</th><th>Corriger</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for absence in du_mois %}
+        <tr>
+          <td>{{ absence.personne.nom }} {{ absence.personne.prenom }}</td>
+          <td>{{ absence.date_debut|date:"d/m/Y" }}</td>
+          <td>{{ absence.date_fin|date:"d/m/Y" }}</td>
+          <td>{{ absence.type.libelle }}</td>
+          <td>{{ absence.get_statut_display }}</td>
+          <td {% if absence.jours_comptes_calcules is None %}class="vide"{% endif %}>
+            {{ absence.jours_comptes_calcules|default_if_none:"—" }}
+          </td>
+          <td class="{% if absence.corrigee %}corrigee{% endif %}">
+            {{ absence.jours_comptes|default_if_none:"—" }}
+          </td>
+          <td>
+            <form method="post" action="{% url 'absences:corriger' absence.pk %}" class="enligne">
+              {% csrf_token %}
+              <input type="number" name="jours_comptes" step="0.5" min="0" required>
+              <button type="submit">Corriger</button>
+            </form>
+          </td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="8">Aucune absence effective sur ce mois.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="message">Les jours comptés vont par pas d'une demi-journée. Une
+     correction n'est jamais écrasée par le recalcul.</p>
+{% endblock %}
+
+{% block navigation %}
+  <a href="/">Accueil</a> —
+  {% if user.is_staff %}<a href="/admin/absences/absencesalariee/">Administration</a> —{% endif %}
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

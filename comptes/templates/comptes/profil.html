@@ -1,0 +1,32 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Mon profil — Planning Assistantes{% endblock %}
+{% block entete %}Mon profil{% endblock %}
+
+{% block contenu %}
+  <p>Adresse de connexion actuelle : <strong>{{ user.email }}</strong></p>
+
+  {% if envoye %}
+    <p class="message">Si cette adresse peut être utilisée, un lien de
+       confirmation vient d'y être envoyé. Ouvrez-le depuis cette adresse pour
+       terminer le changement — il est valable une heure.</p>
+  {% else %}
+    <p>Pour changer d'adresse, saisissez la nouvelle : vous y recevrez un lien
+       de confirmation. Rien ne change tant que vous ne l'avez pas ouvert.</p>
+  {% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    {{ formulaire.as_p }}
+    <button type="submit">Envoyer le lien de confirmation</button>
+  </form>
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'absences:mes_absences' %}">Mes absences</a> —
+  <a href="/">Accueil</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

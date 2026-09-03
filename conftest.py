@@ -2,6 +2,16 @@
 
 Les valeurs posées ici sont réservées aux tests : elles n'ont aucun rapport
 avec la production, et aucune adresse réelle n'y figure (domaine example.org).
+
+⚠️ Les fixtures de comptes importent Django et `sesame.utils` DANS LEUR CORPS,
+jamais en tête de module (brique 3, décision M). Ce conftest est importé au
+démarrage de pytest, avant que pytest-django n'ait configuré Django : un
+`from sesame.utils import ...` en tête lève `ImproperlyConfigured` et fait
+tomber la session entière avant le premier test.
+
+Les fixtures homonymes de `comptes/tests/test_acces.py` et
+`comptes/tests/test_admin.py` restent où elles sont : elles masquent
+volontairement celles-ci, et la déduplication s'arrête aux conftest d'app.
 """
 
 import os
@@ -21,6 +31,8 @@ os.environ["DOCTOLIB_PRESENCES_SECRET"] = ""
 # Les lots endpoint tournent en synchrone dans les tests : aucun thread sur la
 # base de test.
 os.environ["IMPORT_EN_ARRIERE_PLAN"] = "0"
+os.environ["N8N_ABSENCE_WEBHOOK_URL"] = ""
+os.environ["RETENTION_ABSENCES_JOURS"] = ""
 
 import pytest  # noqa: E402
 
@@ -45,6 +57,45 @@ def reglages_fail_closed(settings):
     settings.DOCTOLIB_PRESENCES_URL = ""
     settings.DOCTOLIB_PRESENCES_SECRET = ""
     settings.IMPORT_EN_ARRIERE_PLAN = False
+    settings.N8N_ABSENCE_WEBHOOK_URL = ""
+    settings.RETENTION_ABSENCES_JOURS = ""
+
+
+@pytest.fixture
+def cabinet(db):
+    """Compte cabinet : le rôle qui peut tout, y compris importer et apparier."""
+    from django.contrib.auth import get_user_model
+
+    return get_user_model().objects.create_superuser(email="cabinet@example.org")
+
+
+@pytest.fixture
+def principale(db):
+    """Assistante principale : consultation, et décision des absences."""
+    from django.contrib.auth import get_user_model
+
+    return get_user_model().objects.create_user(
+        email="principale@example.org", role="principale"
+    )
+
+
+@pytest.fixture
+def salariee(db):
+    """Salariée : son seul espace est celui de ses absences."""
+    from django.contrib.auth import get_user_model
+
+    return get_user_model().objects.create_user(email="salariee@example.org")
+
+
+@pytest.fixture
+def connecter():
+    """Ouvre une session par lien magique (le seul moyen de se connecter)."""
+    from sesame.utils import get_query_string
+
+    def _connecter(client, compte):
+        return client.get("/connexion/lien/" + get_query_string(compte))
+
+    return _connecter
 
 
 @pytest.fixture(autouse=True)

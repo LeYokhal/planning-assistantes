@@ -15,12 +15,14 @@ from comptes.views import VueDeconnexionAdmin
 urlpatterns = [
     # /sante/ puis / (accueil)
     path("", include("socle.urls")),
-    # /connexion/, /connexion/lien/, /deconnexion/
+    # /connexion/, /connexion/lien/, /deconnexion/, /mon-profil/
     path("", include("comptes.urls")),
     # /presences/, /presences/importer/, /presences/<AAAA-MM>/
     path("", include("presences.urls")),
     # /personnes/, /personnes/importer/, /personnes/appariement/
     path("", include("personnes.urls")),
+    # /mes-absences/, /mes-absences/nouvelle/, /absences/
+    path("", include("absences.urls")),
     # API entrante n8n : /api/n8n/sante/, /api/n8n/imports/
     path("api/n8n/", include("n8n.urls")),
     # L'administration n'a pas de connexion propre : tout passe par le lien magique.

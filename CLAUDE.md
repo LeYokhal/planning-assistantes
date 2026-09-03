@@ -99,6 +99,23 @@ python -m venv .venv                      # une seule fois
   processus, sans valeur) reste en place : toute dérive s'y lira. Ne pas changer
   d'en-tête sans re-mesurer (recette : 60 × 401 puis 429 au 61e, avec et sans
   en-têtes injectés).
+- **Absences : donnée de santé.** Le TYPE d'absence (« Maladie ») et la
+  PRÉCISION saisie par la salariée ne sortent jamais de la base : ni dans
+  `details` d'audit, ni dans les logs, ni dans un webhook, ni dans l'endpoint de
+  paie. Le garde-fou « @ » ne les reconnaît pas — c'est tenu à la main, et prouvé
+  par `absences/tests/test_confidentialite.py`. Relancer ces tests après toute
+  évolution de la brique.
+- **Jours comptés** : `min(J, max(0, B − F))` par semaine, où `J` exclut les
+  fériés et `F` ne compte que les fériés tombant un jour d'OUVERTURE. Un férié
+  un jour fermé (lundi de Pentecôte sous le régime mardi→samedi) ne retire
+  aucune brique : la revue de Phase 2 a rattrapé l'erreur inverse, qui coûtait un
+  jour de paie à la salariée. Les périodes d'ouverture sont datées dans
+  `regles.json`, la bascule est calée sur un lundi.
+- **Client n8n sortant** : un seul, `socle/client_n8n.py`. ⚠️ `comptes/mails.py`
+  et `presences/webhooks.py` **conservent leur `import requests`** bien qu'ils ne
+  l'utilisent plus directement : douze tests patchent `<module>.requests.post` et
+  tomberaient en `AttributeError` sans lui. Le patch reste efficace parce que les
+  trois modules partagent le module `requests`.
 - **Comptes et personnes** : pour un départ, désactiver (`is_active`, `actif`),
   ne pas supprimer ; une suppression est journalisée mais efface l'auteur des
   événements du compte (`qui` en SET_NULL).
@@ -180,7 +197,16 @@ appariement des agendas Doctolib aux praticiens avec rapport
 comptes des salariées en masse (action d'admin sur `Personne`) et limitation de
 débit sur `/connexion/` et sur l'API n8n (`socle/debit.py`).
 
-La paie, la génération du planning et la purge relèvent des briques **3 à 5**
+La brique **3** livre les absences : modèles `TypeAbsence` et `AbsenceSalariee`
+(`absences/`), espace de la salariée (`/mes-absences/`), écran de décision
+(`/absences/`, rôles `principale` et `cabinet`), calcul des jours comptés pour la
+paie (`absences/calcul.py`, fériés dans `socle/feries.py`), endpoint
+`GET /api/n8n/paie/<AAAA-MM>/`, webhooks `absence.demandee` / `absence.declaree`
+/ `absence.decidee`, rétention configurable, et changement de l'adresse de
+connexion par la salariée. Le client HTTP n8n sortant est factorisé dans
+`socle/client_n8n.py`. Voir `docs/ABSENCES.md`.
+
+La génération du planning et le mail comptable relèvent des briques **4 et 5**
 et ne sont pas ici.
 
 `reference/skill-v1/` contient la version 1 du skill de planning, décompressée

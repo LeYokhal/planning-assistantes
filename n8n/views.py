@@ -12,6 +12,7 @@ import uuid
 
 from django.http import JsonResponse
 
+from absences import paie as paie_absences
 from audit.models import Action
 from audit.services import journaliser
 from presences import verrou
@@ -107,3 +108,37 @@ def declencher_import(request):
         },
         status=202,
     )
+
+
+@secret_n8n_requis
+def paie(request, mois):
+    """Données de paie d'un mois : jours comptés par salariée, et paragraphe.
+
+    ⚠️ Ni type d'absence ni précision ne sortent d'ici (§ 3 du plan) : la
+    comptable a besoin d'un nombre de jours, pas d'un motif médical.
+
+    L'audit note le mois consulté et l'appelant, **jamais le contenu** — il
+    porterait des noms.
+    """
+    if request.method != "GET":
+        return _methode_non_autorisee()
+
+    # Plage CALENDAIRE, et non `plage_mois` : celle-ci rend des semaines
+    # complètes (l'outil du planning), et deux mois consécutifs s'y recouvrent
+    # de sept jours — une absence de fin septembre ressortait dans la paie
+    # d'octobre. Voir `absences/paie.py`.
+    try:
+        plage = paie_absences.plage_calendaire(mois)
+    except ValueError:
+        return JsonResponse({"erreur": "mois_invalide"}, status=400)
+
+    donnees = paie_absences.donnees_du_mois(mois, plage)
+
+    journaliser(
+        Action.PAIE_CONSULTEE,
+        mois=mois,
+        nb_salariees=len(donnees["salariees"]),
+    )
+    logger.info("paie %s consultee : %s salariee(s)", mois, len(donnees["salariees"]))
+
+    return JsonResponse(donnees)

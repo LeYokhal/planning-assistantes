@@ -1,0 +1,20 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Déclarer une absence — Planning Assistantes{% endblock %}
+{% block entete %}Déclarer une absence{% endblock %}
+
+{% block contenu %}
+  <p>Selon le motif, votre saisie est enregistrée directement ou soumise à
+     décision. Vous verrez l'état sur la page « Mes absences ».</p>
+
+  <form method="post">
+    {% csrf_token %}
+    {{ formulaire.as_p }}
+    <button type="submit">Envoyer</button>
+  </form>
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'absences:mes_absences' %}">Retour à mes absences</a> —
+  <a href="/">Accueil</a>
+{% endblock %}
