@@ -155,8 +155,14 @@ côté serveur** prêt à coller dans le mail de la comptable. Une salariée san
 absence comptée n'apparaît pas. Ni type d'absence, ni précision.
 
 Le détail de chaque absence expose **la portion du mois et le total de
-l'absence** (`jours_comptes`, `jours_comptes_absence`, `a_cheval`), pour que la
-comptable comprenne un chiffre partiel sans avoir à le recalculer.
+l'absence** (`jours_comptes`, `jours_comptes_absence`, `facture_partiellement`),
+pour que la comptable comprenne un chiffre partiel sans avoir à le recalculer.
+
+`facture_partiellement` dit que **la portion de ce mois diffère du total**, donc
+que le reste est facturé ailleurs. Il ne dit pas que l'absence traverse une
+frontière de mois : une absence à cheval dont la totalité est versée à un seul
+mois — le cas du contrat incomplet corrigé à la main — le laisse à faux, et
+c'est exact. C'est `repartition_calculee` qui porte l'alerte dans ce cas.
 
 L'audit note le mois consulté et le nombre de salariées — **jamais le contenu**,
 qui porte des noms.

@@ -186,7 +186,13 @@ def donnees_du_mois(mois, plage):
                 # comptable doit pouvoir comprendre un chiffre partiel.
                 "jours_comptes": str(portion),
                 "jours_comptes_absence": str(absence.jours_comptes),
-                "a_cheval": portion != absence.jours_comptes,
+                # Vrai quand la portion de ce mois diffère du total : le reste
+                # est facturé ailleurs. Ce drapeau ne dit PAS que l'absence
+                # traverse une frontière de mois — une absence à cheval dont
+                # tout est versé à un seul mois (contrat incomplet corrigé à la
+                # main, voir `portions_par_mois`) le laisse à faux, et c'est
+                # exact : rien n'est facturé ailleurs.
+                "facture_partiellement": portion != absence.jours_comptes,
                 "corrigee": absence.corrigee,
                 "repartition_calculee": reparti,
             }

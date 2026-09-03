@@ -209,11 +209,11 @@ def test_le_detail_expose_la_portion_et_le_total(principale):
 
     assert detail["jours_comptes"] == "2.0"
     assert detail["jours_comptes_absence"] == "4.0"
-    assert detail["a_cheval"] is True
+    assert detail["facture_partiellement"] is True
     assert detail["absence_id"] == absence.pk
 
 
-def test_une_absence_entierement_dans_le_mois_n_est_pas_a_cheval(principale):
+def test_une_absence_entierement_dans_le_mois_est_facturee_en_entier(principale):
     personne = fabrique.personne(heures_hebdo=39)
     _validee(
         personne,
@@ -225,7 +225,30 @@ def test_une_absence_entierement_dans_le_mois_n_est_pas_a_cheval(principale):
     detail = paie.donnees_du_mois("2026-10", paie.plage_calendaire("2026-10"))[
         "salariees"
     ][0]["absences"][0]
-    assert detail["a_cheval"] is False
+    assert detail["facture_partiellement"] is False
+
+
+def test_absence_a_cheval_versee_en_entier_n_est_pas_facturee_partiellement(principale):
+    """Le cas qui a motivé le renommage.
+
+    Contrat incomplet corrigé à la main : l'absence traverse bien une frontière
+    de mois, mais faute de jours retenus la totalité va à septembre. Le drapeau
+    reste donc à faux — et c'est exact, rien n'est facturé ailleurs. C'est
+    `repartition_calculee` qui porte l'alerte.
+    """
+    from decimal import Decimal
+
+    personne = fabrique.personne(heures_hebdo=None, jours_fixes=[])
+    absence = _validee(personne, principale=principale)
+    services.corriger(absence, Decimal("4"), principale)
+
+    detail = paie.donnees_du_mois("2026-09", paie.plage_calendaire("2026-09"))[
+        "salariees"
+    ][0]["absences"][0]
+
+    assert detail["facture_partiellement"] is False
+    assert detail["repartition_calculee"] is False
+    assert detail["jours_comptes"] == detail["jours_comptes_absence"] == "4.0"
 
 
 # --- Invariant du calcul ----------------------------------------------------
