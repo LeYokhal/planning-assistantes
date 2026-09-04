@@ -114,7 +114,7 @@ class VueConnexionLien(LoginViewSesame):
         return super().login_failed()
 
 
-@role_requis(Compte.Role.SALARIEE)
+@role_requis(Compte.Role.SALARIEE, Compte.Role.PRINCIPALE)
 def profil(request):
     """Demande de changement de l'adresse de connexion (décision L).
 

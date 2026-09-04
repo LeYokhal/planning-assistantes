@@ -7,6 +7,7 @@ import pytest
 from absences import services
 from absences.models import AbsenceSalariee, TypeAbsence
 from absences.tests import fabrique
+from audit.models import EvenementAudit
 
 pytestmark = pytest.mark.django_db
 
@@ -239,3 +240,117 @@ def test_l_accueil_ne_propose_pas_l_ecran_de_decision_a_la_salariee(
     connecter(client, salariee)
     contenu = client.get("/").content.decode()
     assert 'href="/absences/"' not in contenu
+
+
+# --- Brique 3-bis : la principale est aussi une salariée --------------------
+
+
+def test_la_principale_accede_a_son_espace(client, principale, connecter):
+    fabrique.lier(principale, fabrique.personne())
+    connecter(client, principale)
+
+    assert client.get(ESPACE_SALARIEE).status_code == 200
+    assert client.get(NOUVELLE).status_code == 200
+
+
+def test_la_principale_cree_une_demande(client, principale, connecter):
+    personne = fabrique.personne()
+    fabrique.lier(principale, personne)
+    type_ = fabrique.type_absence(categorie=TypeAbsence.Categorie.DEMANDE)
+
+    connecter(client, principale)
+    reponse = client.post(
+        NOUVELLE,
+        {"type": type_.pk, "date_debut": "2026-05-26", "date_fin": "2026-05-30"},
+    )
+
+    assert reponse.status_code == 302
+    absence = AbsenceSalariee.objects.get()
+    assert absence.personne == personne
+    assert absence.statut == AbsenceSalariee.Statut.EN_ATTENTE
+
+
+def test_la_principale_ne_decide_pas_sa_propre_demande(
+    client, principale, connecter
+):
+    """Règle K : la demande qu'elle vient de saisir n'est pas décidable par elle."""
+    personne = fabrique.personne()
+    fabrique.lier(principale, personne)
+    type_ = fabrique.type_absence(categorie=TypeAbsence.Categorie.DEMANDE)
+    connecter(client, principale)
+    client.post(
+        NOUVELLE,
+        {"type": type_.pk, "date_debut": "2026-05-26", "date_fin": "2026-05-30"},
+    )
+    absence = AbsenceSalariee.objects.get()
+
+    ecran = client.get(DECISION).content.decode()
+    assert "seul le cabinet la tranche" in ecran
+
+    reponse = client.post(
+        f"/absences/{absence.pk}/decider/", {"decision": "valider"}, follow=True
+    )
+
+    absence.refresh_from_db()
+    assert absence.statut == AbsenceSalariee.Statut.EN_ATTENTE
+    assert (
+        "Vous ne pouvez pas décider de votre propre absence"
+        in reponse.content.decode()
+    )
+
+
+def test_le_cabinet_decide_la_demande_de_la_principale(
+    client, principale, cabinet, connecter
+):
+    personne = fabrique.personne()
+    fabrique.lier(principale, personne)
+    absence = fabrique.absence(personne, fabrique.type_absence())
+
+    connecter(client, cabinet)
+    client.post(f"/absences/{absence.pk}/decider/", {"decision": "valider"})
+
+    absence.refresh_from_db()
+    assert absence.statut == AbsenceSalariee.Statut.VALIDEE
+    assert absence.decide_par == cabinet
+
+
+def test_le_cabinet_sans_personne_reste_exclu_de_l_espace(
+    client, cabinet, connecter
+):
+    """403 par le rôle, pas la page de repli : le cabinet n'a pas d'espace personnel."""
+    assert cabinet.personne_id is None
+    connecter(client, cabinet)
+
+    reponse = client.get(ESPACE_SALARIEE)
+
+    assert reponse.status_code == 403
+    assert EvenementAudit.objects.filter(action="acces_refuse", qui=cabinet).exists()
+
+
+def test_la_principale_sans_personne_voit_la_page_de_repli(
+    client, principale, connecter
+):
+    """Décision H, telle quelle : ni 500, ni 403."""
+    assert principale.personne_id is None
+    connecter(client, principale)
+
+    reponse = client.get(ESPACE_SALARIEE)
+
+    assert reponse.status_code == 200
+    assert "pas encore rattaché" in reponse.content.decode()
+
+
+def test_l_accueil_propose_son_espace_a_la_principale(
+    client, principale, connecter
+):
+    connecter(client, principale)
+    contenu = client.get("/").content.decode()
+    assert 'href="/mes-absences/"' in contenu
+    assert 'href="/mon-profil/"' in contenu
+
+
+def test_l_accueil_ne_propose_pas_l_espace_au_cabinet(client, cabinet, connecter):
+    connecter(client, cabinet)
+    contenu = client.get("/").content.decode()
+    assert 'href="/mes-absences/"' not in contenu
+    assert 'href="/mon-profil/"' not in contenu
