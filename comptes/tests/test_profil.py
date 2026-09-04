@@ -58,6 +58,12 @@ def test_profil_ouvert_a_la_salariee(client, salariee, connecter):
     assert client.get(PROFIL).status_code == 200
 
 
+def test_profil_ouvert_a_la_principale(client, principale, connecter):
+    """Brique 3-bis : la principale est aussi une salariée."""
+    connecter(client, principale)
+    assert client.get(PROFIL).status_code == 200
+
+
 # --- Demande ----------------------------------------------------------------
 
 

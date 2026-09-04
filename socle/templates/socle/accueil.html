@@ -14,8 +14,8 @@
 {% endblock %}
 
 {% block navigation %}
-  {% if user.role == "salariee" %}<a href="{% url 'absences:mes_absences' %}">Mes absences</a> —{% endif %}
-  {% if user.role == "salariee" %}<a href="{% url 'comptes:profil' %}">Mon profil</a> —{% endif %}
+  {% if user.role == "salariee" or user.role == "principale" %}<a href="{% url 'absences:mes_absences' %}">Mes absences</a> —{% endif %}
+  {% if user.role == "salariee" or user.role == "principale" %}<a href="{% url 'comptes:profil' %}">Mon profil</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'absences:decider' %}">Absences</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'personnes:liste' %}">Personnes</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'presences:courant' %}">Présences</a> —{% endif %}

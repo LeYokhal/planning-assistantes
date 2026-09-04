@@ -28,6 +28,9 @@ logger = logging.getLogger(__name__)
 CABINET = Compte.Role.CABINET
 PRINCIPALE = Compte.Role.PRINCIPALE
 SALARIEE = Compte.Role.SALARIEE
+# Brique 3-bis : la principale est aussi une salariée qui pose ses congés. Son
+# espace personnel lui est ouvert ; la règle K (`services.peut_decider`) fait
+# qu'elle ne tranche jamais sa propre demande. Le cabinet en reste exclu.
 
 
 def _sans_personne(request):
@@ -35,7 +38,7 @@ def _sans_personne(request):
     return render(request, "absences/sans_personne.html", status=200)
 
 
-@role_requis(SALARIEE)
+@role_requis(SALARIEE, PRINCIPALE)
 def mes_absences(request):
     """Les absences de la salariée connectée, et l'état de ses demandes."""
     personne = request.user.personne
@@ -52,7 +55,7 @@ def mes_absences(request):
     )
 
 
-@role_requis(SALARIEE)
+@role_requis(SALARIEE, PRINCIPALE)
 def nouvelle_absence(request):
     """Saisie d'une absence par la salariée."""
     personne = request.user.personne
@@ -88,7 +91,7 @@ def nouvelle_absence(request):
     return redirect("absences:mes_absences")
 
 
-@role_requis(SALARIEE)
+@role_requis(SALARIEE, PRINCIPALE)
 def annuler_absence(request, identifiant):
     """Annulation d'une demande en attente, par la salariée elle-même."""
     if request.method != "POST":
