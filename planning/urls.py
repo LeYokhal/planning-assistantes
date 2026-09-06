@@ -20,5 +20,13 @@ urlpatterns = [
         views.api_versions,
         name="versions",
     ),
+    re_path(
+        r"^api/planning/(?P<mois>\d{4}-\d{2})/versions/(?P<numero>\d+)/publier/$",
+        views.api_publier,
+        name="publier",
+    ),
     path("api/erreurs/", views.api_erreurs, name="erreurs"),
+    # Brique 4b : « Mes jours », l'espace de la salariée sur le planning publié.
+    path("mes-jours/", views.mes_jours_courant, name="mes_jours_courant"),
+    re_path(r"^mes-jours/(?P<mois>\d{4}-\d{2})/$", views.mes_jours, name="mes_jours"),
 ]

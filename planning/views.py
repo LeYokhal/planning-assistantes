@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 CABINET = Compte.Role.CABINET
 PRINCIPALE = Compte.Role.PRINCIPALE
+SALARIEE = Compte.Role.SALARIEE
 
 # Plafond applicatif du corps de l'API des versions, en plus de
 # `DATA_UPLOAD_MAX_MEMORY_SIZE` (2,5 Mo par défaut).
@@ -61,7 +62,9 @@ def _contexte_mois(request, mois):
     }
 
 
-def _meta(mois, numero, autonome):
+def _meta(mois, numero, autonome, publiee=0):
+    """`{mois, numero, autonome, publiee, urls}` : `publiee` = numéro de la version
+    publiée courante, 0 sinon ; `urls.publier` n'existe que s'il y a une version."""
     urls = {}
     if not autonome:
         urls = {
@@ -69,7 +72,22 @@ def _meta(mois, numero, autonome):
             "erreurs": reverse("planning:erreurs"),
             "copie": reverse("planning:copie", kwargs={"mois": mois}),
         }
-    return {"mois": mois, "numero": numero, "autonome": autonome, "urls": urls}
+        if numero > 0:
+            urls["publier"] = reverse(
+                "planning:publier", kwargs={"mois": mois, "numero": numero}
+            )
+    return {
+        "mois": mois,
+        "numero": numero,
+        "autonome": autonome,
+        "publiee": publiee,
+        "urls": urls,
+    }
+
+
+def _numero_publie(mois):
+    publiee = services.version_publiee(mois)
+    return publiee.numero if publiee else 0
 
 
 # --- Pages ---------------------------------------------------------------------
@@ -95,12 +113,13 @@ def planning_mois(request, mois):
         return render(request, "planning/sans_import.html", contexte)
 
     derniere = services.derniere_version(mois)
+    numero = derniere.numero if derniere else 0
     contexte.update(
         {
             "data": donnees.construire(mois),
             "state": derniere.state if derniere else services.etat_vide(),
-            "meta": _meta(mois, derniere.numero if derniere else 0, autonome=False),
-            "numero": derniere.numero if derniere else 0,
+            "meta": _meta(mois, numero, autonome=False, publiee=_numero_publie(mois)),
+            "numero": numero,
         }
     )
     return render(request, "planning/page.html", contexte)
@@ -135,7 +154,7 @@ def copie(request, mois):
         "libelle": libelle_mois(mois),
         "data": donnees.construire(mois),
         "state": derniere.state,
-        "meta": _meta(mois, derniere.numero, autonome=True),
+        "meta": _meta(mois, derniere.numero, autonome=True, publiee=_numero_publie(mois)),
     }
     contexte.update({cle: _statique(chemin) for cle, chemin in STATIQUES.items()})
     html = render_to_string("planning/copie.html", contexte, request=request)
@@ -203,6 +222,86 @@ def api_versions(request, mois):
         )
 
     return JsonResponse({"numero": version.numero}, status=201)
+
+
+@role_requis(CABINET, PRINCIPALE)
+def api_publier(request, mois, numero):
+    """`POST` → 200 `{numero, publie_le}` ou `{numero, deja_publiee}`, 409 `{derniere}`, 422 `{violations}`.
+
+    Le numéro est dans l'URL, le corps est ignoré. Même session et même CSRF
+    que l'enregistrement.
+    """
+    if request.method != "POST":
+        return _json_405()
+    try:
+        plage_mois(mois)
+    except ValueError:
+        return JsonResponse({"erreur": "mois_invalide"}, status=400)
+    numero = int(numero)
+    if numero == 0:
+        return JsonResponse({"erreur": "numero_invalide"}, status=400)
+
+    try:
+        version = services.publier(mois, numero, request.user)
+    except services.Conflit as conflit:
+        logger.info(
+            "planning %s : publication refusee, la version %s n'est plus la derniere (%s)",
+            mois,
+            numero,
+            conflit.derniere,
+        )
+        return JsonResponse({"derniere": conflit.derniere}, status=409)
+    except services.DejaPubliee:
+        return JsonResponse({"numero": numero, "deja_publiee": True}, status=200)
+    except services.Invalide as invalide:
+        logger.info(
+            "planning %s : publication refusee, %s violation(s)",
+            mois,
+            len(invalide.violations),
+        )
+        return JsonResponse(
+            {"violations": [v.en_dict() for v in invalide.violations]}, status=422
+        )
+
+    return JsonResponse(
+        {"numero": version.numero, "publie_le": version.publie_le.isoformat()},
+        status=200,
+    )
+
+
+# --- Mes jours (brique 4b) --------------------------------------------------------
+
+
+@role_requis(SALARIEE, PRINCIPALE)
+def mes_jours_courant(request):
+    """`/mes-jours/` → le mois en cours (fuseau Europe/Paris)."""
+    return redirect("planning:mes_jours", mois=timezone.localdate().strftime("%Y-%m"))
+
+
+@role_requis(SALARIEE, PRINCIPALE)
+def mes_jours(request, mois):
+    """« Mes jours » : les jours de la salariée dans le planning publié, sans `DATA`.
+
+    Un compte sans personne rattachée (décision H) voit un message, pas un 500.
+    Le log ne porte que le mois et un comptage.
+    """
+    _plage_ou_404(mois)
+    personne = request.user.personne
+    resultat = services.jours_publies(personne, mois) if personne is not None else None
+    logger.info("mes jours %s : %s jour(s)", mois, len(resultat["jours"]) if resultat else 0)
+    return render(
+        request,
+        "planning/mes_jours.html",
+        {
+            "mois": mois,
+            "libelle": libelle_mois(mois),
+            "precedent": mois_precedent(mois),
+            "suivant": mois_suivant(mois),
+            "personne": personne,
+            "sans_personne": personne is None,
+            "resultat": resultat,
+        },
+    )
 
 
 def _reponse_429(request):

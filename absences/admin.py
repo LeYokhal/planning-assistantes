@@ -144,6 +144,15 @@ class AbsenceSalarieeAdmin(admin.ModelAdmin):
             saisie_admin=True,
         )
 
+        # Brique 4b : une reprise qui DEVIENT effective peut contredire un
+        # planning déjà publié. Sur la transition seulement : une création, ou
+        # un changement de statut ; modifier la précision ou une date d'une
+        # absence déjà effective ne signale rien. `form` peut être absent
+        # (appel direct, hors interface) : la création vaut alors transition.
+        changes = getattr(form, "changed_data", None) or []
+        if (not change or "statut" in changes) and obj.effective:
+            services.signaler_conflits(obj, request.user)
+
     def delete_model(self, request, obj):
         """Supprimer efface l'objet mais pas sa trace : l'événement porte le
         type d'objet, l'identifiant, la personne, le statut et les dates. Hors

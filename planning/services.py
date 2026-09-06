@@ -10,22 +10,41 @@ la même seconde. `select_for_update` est proscrit (SQLite en développement,
 patron de `presences/verrou.py` : l'`IntegrityError` est attrapée HORS du bloc
 `atomic()`, puis le dernier numéro est relu pour répondre 409.
 
+Publication (brique 4b) : `publier` pose les champs de publication sur la
+dernière version du mois, après revérification sur `DATA` recalculé, en une
+seule instruction `UPDATE` conditionnelle (ni `select_for_update`, ni
+transaction : la condition SQL sérialise). `jours_publies` lit le `state` des
+versions publiées pour « Mes jours », sans jamais toucher à `DATA`.
+
 Le journal d'audit et les logs ne reçoivent que le mois, le numéro et des
 comptages : jamais un nom, jamais un type d'absence.
 """
 
+import datetime
 import logging
 
 from django.db import IntegrityError, transaction
+from django.db.models import Exists
+from django.utils import timezone
 
 from audit.models import Action
 from audit.services import journaliser
+from comptes.models import Personne
+from presences.fenetres import mois_precedent, mois_suivant, plage_mois
 
-from . import donnees
+from . import donnees, webhooks
 from .models import PlanningVersion
 from .verification import nettoyer, verifier
 
 logger = logging.getLogger(__name__)
+
+# Libellés des cases hors praticien, pour « Mes jours » : troisième élément de
+# `MISC` dans `planning/static/planning/moteur.js`, recopié tel quel.
+LIBELLES_MISC = {
+    "secretariat": "Secrétariat",
+    "sureffectif": "Sureffectif",
+    "administratif": "Administratif",
+}
 
 
 class Conflit(Exception):
@@ -44,9 +63,31 @@ class Invalide(Exception):
         self.violations = violations
 
 
+class DejaPubliee(Exception):
+    """La version demandée est déjà publiée : 200 `deja_publiee`, rien n'est écrit."""
+
+    def __init__(self, numero):
+        super().__init__(f"version {numero} déjà publiée")
+        self.numero = numero
+
+
 def derniere_version(mois):
     """La dernière version enregistrée du mois, ou None."""
     return PlanningVersion.objects.filter(mois=mois).order_by("-numero").first()
+
+
+def version_publiee(mois):
+    """La version publiée du mois : la dernière `publiee=True` par numéro, ou None.
+
+    Plusieurs versions d'un même mois peuvent porter `publiee=True` (une
+    correction est une nouvelle version, publiée à son tour) : la courante est
+    la dernière par numéro. Aucune dépublication.
+    """
+    return (
+        PlanningVersion.objects.filter(mois=mois, publiee=True)
+        .order_by("-numero")
+        .first()
+    )
 
 
 def numero_courant(mois):
@@ -117,3 +158,127 @@ def enregistrer(mois, version_de_base, state, qui, data=None):
         "planning %s : version %s enregistree (%s briques)", mois, version.numero, total
     )
     return version
+
+
+def publier(mois, numero, qui, data=None):
+    """Publie la version `numero` du mois, qui doit être la dernière, et la renvoie.
+
+    Lève `Conflit` si `numero` n'est pas (ou plus) le dernier numéro du mois,
+    `DejaPubliee` si elle l'est déjà, `Invalide` si la revérification sur
+    `DATA` recalculé trouve une règle stricte enfreinte (une absence devenue
+    effective, un mouvement Doctolib depuis l'enregistrement). Rien n'est
+    écrit dans ces trois cas.
+
+    Concurrence : l'écriture est une seule instruction `UPDATE` conditionnée
+    à « pas encore publiée » ET « aucune version plus récente » ; zéro ligne
+    touchée = relecture, puis `DejaPubliee` ou `Conflit`.
+    """
+    courant = numero_courant(mois)
+    if courant == 0 or numero != courant:
+        raise Conflit(courant)
+
+    version = PlanningVersion.objects.get(mois=mois, numero=numero)
+    if version.publiee:
+        raise DejaPubliee(numero)
+
+    if data is None:
+        data = donnees.construire(mois)
+    # Le `state` en base est déjà nettoyé : écrit par `enregistrer`.
+    violations = verifier(data, version.state)
+    if violations:
+        raise Invalide(violations)
+
+    auteur = qui if getattr(qui, "is_authenticated", False) else None
+    total = nb_briques(version.state)
+    maintenant = timezone.now()
+    plus_recente = PlanningVersion.objects.filter(mois=mois, numero__gt=numero)
+    rows = (
+        PlanningVersion.objects.filter(pk=version.pk, publiee=False)
+        .exclude(Exists(plus_recente))
+        .update(
+            publiee=True,
+            publie_le=maintenant,
+            publie_par=auteur,
+            verifications={
+                "verifie_le": maintenant.isoformat(),
+                "imports": data["meta"].get("imports", []),
+                "nb_briques": total,
+            },
+        )
+    )
+    version.refresh_from_db()
+    if rows == 0:
+        if version.publiee:
+            raise DejaPubliee(numero)
+        raise Conflit(numero_courant(mois))
+
+    journaliser(
+        Action.PLANNING_PUBLIE,
+        qui=qui,
+        objet=version,
+        mois=mois,
+        numero=numero,
+        nb_briques=total,
+    )
+    logger.info("planning %s : version %s publiee (%s briques)", mois, numero, total)
+    webhooks.notifier_publication(version, total)
+    return version
+
+
+def jours_publies(personne, mois):
+    """Les jours de `personne` dans le planning publié du mois, ou None.
+
+    Décision D : lit le `state` des versions publiées et les personnes, jamais
+    `DATA` (qui porte les congés de toutes les salariées). Décision P2 : toute
+    la plage (semaines complètes) de la version publiée du mois ; pour une date
+    que la version publiée du mois voisin porte aussi, celle du mois calendaire
+    de la date fait foi.
+
+    Rend `{"numero", "publie_le", "jours": [{date, t, x, slot, slot_libelle,
+    hors_mois, source_numero}]}`. Ni congé, ni note, ni férié, ni type.
+    """
+    version = version_publiee(mois)
+    if version is None:
+        return None
+    versions = {mois: version}
+    for voisin in (mois_precedent(mois), mois_suivant(mois)):
+        publiee_voisine = version_publiee(voisin)
+        if publiee_voisine is not None:
+            versions[voisin] = publiee_voisine
+
+    sid = donnees.identifiant(personne)
+    # Sans filtre `actif` : un praticien parti après la publication garde son
+    # libellé. Un slot introuvable (code changé, personne supprimée) reste brut.
+    praticiens = {
+        donnees.identifiant(p): str(p)
+        for p in Personne.objects.filter(role_metier=Personne.RoleMetier.PRATICIEN)
+    }
+
+    plage = plage_mois(mois)
+    jours = []
+    jour = plage.debut
+    while jour <= plage.fin:
+        iso = jour.isoformat()
+        cle = jour.strftime("%Y-%m")
+        source = versions.get(cle) or version
+        slots = (source.state.get("affectations") or {}).get(iso) or {}
+        for slot, arr in slots.items():
+            if not isinstance(arr, list):
+                continue
+            for brique in arr:
+                if not isinstance(brique, dict) or brique.get("s") != sid:
+                    continue
+                jours.append(
+                    {
+                        "date": jour,
+                        "t": brique.get("t"),
+                        "x": bool(brique.get("x")),
+                        "slot": slot,
+                        "slot_libelle": LIBELLES_MISC.get(slot) or praticiens.get(slot) or slot,
+                        "hors_mois": cle != mois,
+                        "source_numero": source.numero,
+                    }
+                )
+        jour += datetime.timedelta(days=1)
+
+    return {"numero": version.numero, "publie_le": version.publie_le, "jours": jours}

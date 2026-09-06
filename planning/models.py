@@ -9,8 +9,10 @@ Le `state` ne porte que quatre clés — `affectations`, `feries`, `feries_off`,
 ni nom : les congés viennent de `absences` à chaque rendu, jamais du `state`.
 
 Les champs de publication (`publiee`, `publie_le`, `publie_par`, `verifications`)
-sont créés ici pour n'avoir qu'une migration ; ils restent inertes jusqu'à la
-brique 4b.
+sont posés par `services.publier` (brique 4b), sur la dernière version du mois
+seulement. La « version publiée du mois » est la dernière `publiee=True` par
+numéro : une correction est une nouvelle version, publiée à son tour, qui
+supersède la précédente. Aucune dépublication.
 """
 
 from django.conf import settings
@@ -25,8 +27,7 @@ class PlanningVersion(models.Model):
     state = models.JSONField("état", default=dict)
     version_de_base = models.PositiveIntegerField(
         "version de base",
-        null=True,
-        blank=True,
+        default=0,
         help_text="Numéro de la version affichée quand celle-ci a été enregistrée. 0 = aucune.",
     )
     auteur = models.ForeignKey(
@@ -38,9 +39,10 @@ class PlanningVersion(models.Model):
         related_name="versions_planning",
     )
     cree_le = models.DateTimeField("créée le", auto_now_add=True)
-    # Résultat des vérifications strictes au moment de l'enregistrement.
-    # Toujours vide en 4a (toute violation refuse l'enregistrement) ; sert à la
-    # revérification à la publication, brique 4b.
+    # `[]` tant que la version n'est pas publiée (toute violation refuse
+    # l'enregistrement). À la publication, compte-rendu du contrôle réussi sur
+    # `DATA` recalculé : `{verifie_le, imports: [{id, empreinte}], nb_briques}`.
+    # Jamais de nom, jamais de type d'absence.
     verifications = models.JSONField("vérifications", default=list, blank=True)
     publiee = models.BooleanField("publiée", default=False)
     publie_le = models.DateTimeField("publiée le", null=True, blank=True)

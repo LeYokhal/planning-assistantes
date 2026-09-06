@@ -32,6 +32,7 @@ os.environ["DOCTOLIB_PRESENCES_SECRET"] = ""
 # base de test.
 os.environ["IMPORT_EN_ARRIERE_PLAN"] = "0"
 os.environ["N8N_ABSENCE_WEBHOOK_URL"] = ""
+os.environ["N8N_PLANNING_WEBHOOK_URL"] = ""
 os.environ["RETENTION_ABSENCES_JOURS"] = ""
 
 import pytest  # noqa: E402
@@ -58,6 +59,7 @@ def reglages_fail_closed(settings):
     settings.DOCTOLIB_PRESENCES_SECRET = ""
     settings.IMPORT_EN_ARRIERE_PLAN = False
     settings.N8N_ABSENCE_WEBHOOK_URL = ""
+    settings.N8N_PLANNING_WEBHOOK_URL = ""
     settings.RETENTION_ABSENCES_JOURS = ""
 
 

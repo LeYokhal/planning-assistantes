@@ -1,9 +1,11 @@
 """Webhooks n8n des événements d'absence.
 
-Trois événements : `absence.demandee` (création en attente de décision),
-`absence.declaree` (création immédiatement effective) et `absence.decidee`
-(passage en validée ou refusée). **L'annulation est auditée sans webhook** :
-elle ne demande d'action à personne.
+Quatre événements : `absence.demandee` (création en attente de décision),
+`absence.declaree` (création immédiatement effective), `absence.decidee`
+(passage en validée ou refusée) et, depuis la brique 4b, `absence.conflit`
+(une absence devenue effective tombe sur un jour du planning publié).
+**L'annulation est auditée sans webhook** : elle ne demande d'action à
+personne.
 
 ⚠️ Le corps ne porte **ni le type d'absence, ni la précision**. Il ne transporte
 que des identifiants, des dates, un statut et un lien : n8n envoie un mail
@@ -29,6 +31,7 @@ EN_TETE_SECRET = "X-Webhook-Secret"
 EVENEMENT_DEMANDEE = "absence.demandee"
 EVENEMENT_DECLAREE = "absence.declaree"
 EVENEMENT_DECIDEE = "absence.decidee"
+EVENEMENT_CONFLIT = "absence.conflit"
 
 
 def _lien(absence):
@@ -57,11 +60,29 @@ def notifier(evenement, absence):
     Ne lève jamais : un webhook muet ne doit pas empêcher une salariée de poser
     son absence.
     """
+    return _envoyer(corps(evenement, absence))
+
+
+def notifier_conflit(absence, liste):
+    """Prévient n8n qu'une absence effective tombe sur un planning publié.
+
+    Corps = celui de l'absence + `conflits` : mois, numéro de la version
+    publiée et dates. Ni slot, ni nom, ni type (décision L).
+    """
+    corps_ = corps(EVENEMENT_CONFLIT, absence)
+    corps_["conflits"] = [
+        {"mois": c["mois"], "numero": c["numero"], "dates": list(c["dates"])} for c in liste
+    ]
+    return _envoyer(corps_)
+
+
+def _envoyer(corps_):
+    """L'appel et sa journalisation, communs aux quatre événements."""
     resultat = client_n8n.poster(
         getattr(settings, "N8N_ABSENCE_WEBHOOK_URL", ""),
         EN_TETE_SECRET,
         getattr(settings, "N8N_WEBHOOK_SECRET", ""),
-        corps(evenement, absence),
+        corps_,
     )
 
     if resultat.motif == client_n8n.MOTIF_NON_CONFIGURE:

@@ -237,3 +237,40 @@ def test_la_paie_ne_porte_ni_type_ni_precision(principale):
     donnees = str(paie.donnees_du_mois("2026-05", paie.plage_calendaire("2026-05")))
     assert TYPE_SENSIBLE not in donnees
     assert "médical" not in donnees
+
+
+# --- Brique 4b : le conflit avec un planning publié reste muet -----------------
+
+
+def test_le_conflit_ne_journalise_ni_type_ni_precision(webhook_actif, cabinet):
+    from planning.models import PlanningVersion
+
+    personne = fabrique.personne()
+    PlanningVersion.objects.create(
+        mois="2026-05",
+        numero=1,
+        publiee=True,
+        state={
+            "affectations": {
+                "2026-05-26": {"secretariat": [{"s": personne.code, "t": "J", "x": False, "a": False}]}
+            },
+            "feries": {},
+            "feries_off": [],
+            "notes": {},
+        },
+    )
+    type_ = fabrique.type_absence(
+        libelle=TYPE_SENSIBLE, categorie=TypeAbsence.Categorie.DECLARE
+    )
+
+    with patch(
+        "socle.client_n8n.requests.post", return_value=Mock(status_code=200)
+    ) as poste:
+        services.creer(personne, type_, DEBUT, FIN, cabinet, precision=PRECISION_SENSIBLE)
+
+    assert EvenementAudit.objects.filter(action="absence_conflit_publication").exists()
+    corps = " ".join(str(appel[1]["json"]) for appel in poste.call_args_list)
+    for texte in (_journal(), corps):
+        assert TYPE_SENSIBLE not in texte
+        assert "médical" not in texte and "CHU" not in texte
+        assert "DUPONT" not in texte and "Alice" not in texte

@@ -14,6 +14,8 @@
     .barre { display: flex; gap: 1rem; align-items: baseline; margin-bottom: 1.25rem; }
     form.enligne { display: inline; }
     input[type="number"] { width: 5rem; }
+    .bandeau-conflit { border-left: 3px solid #c33; padding: 0.75rem 1rem; margin-bottom: 1.25rem; background: rgba(204,51,51,.08); }
+    .conflit { display: block; margin-top: 0.25rem; font-size: 0.82rem; font-weight: 600; color: #a8342e; }
   </style>
 {% endblock %}
 
@@ -22,6 +24,12 @@
     <a href="?mois={{ precedent }}">← {{ precedent }}</a>
     <a href="?mois={{ suivant }}">{{ suivant }} →</a>
   </p>
+
+  {% if nb_conflits %}
+    <p class="bandeau-conflit">{{ nb_conflits }} absence{{ nb_conflits|pluralize }}
+       tombe{{ nb_conflits|pluralize:"nt" }} sur un jour du planning publié — à
+       corriger dans <a href="{% url 'planning:mois' mois %}">Planning</a>.</p>
+  {% endif %}
 
   <h2>Demandes en attente</h2>
   <table>
@@ -69,7 +77,8 @@
           <td>{{ absence.date_debut|date:"d/m/Y" }}</td>
           <td>{{ absence.date_fin|date:"d/m/Y" }}</td>
           <td>{{ absence.type.libelle }}</td>
-          <td>{{ absence.get_statut_display }}</td>
+          <td>{{ absence.get_statut_display }}{% if absence.conflits %}<span class="conflit">conflit :
+            {% for c in absence.conflits %}<a href="{% url 'planning:mois' c.mois %}">{{ c.mois }} v{{ c.numero }}</a> ({{ c.dates|join:", " }}){% if not forloop.last %} ; {% endif %}{% endfor %}</span>{% endif %}</td>
           <td {% if absence.jours_comptes_calcules is None %}class="vide"{% endif %}>
             {{ absence.jours_comptes_calcules|default_if_none:"—" }}
           </td>

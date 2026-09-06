@@ -162,3 +162,22 @@ def test_un_webhook_muet_n_empeche_pas_la_saisie(poser_webhook, salariee):
         )
 
     assert AbsenceSalariee.objects.filter(pk=absence.pk).exists()
+
+
+def test_conflit_emet_absence_conflit(poser_webhook):
+    """Brique 4b : le corps de l'absence plus `conflits` (mois, numéro, dates). Ni slot, ni nom, ni type."""
+    absence = _absence()
+    liste = [{"mois": "2026-10", "numero": 3, "dates": ["2026-05-26", "2026-05-27"]}]
+
+    with patch(
+        "socle.client_n8n.requests.post", return_value=Mock(status_code=200)
+    ) as poste:
+        assert webhooks.notifier_conflit(absence, liste) is True
+
+    corps = poste.call_args[1]["json"]
+    assert corps["evenement"] == "absence.conflit"
+    assert corps["absence_id"] == absence.pk and corps["lien"] == "http://testserver/absences/"
+    assert corps["conflits"] == liste
+    assert set(corps) == {
+        "evenement", "absence_id", "personne_id", "debut", "fin", "statut", "lien", "horodatage", "conflits",
+    }

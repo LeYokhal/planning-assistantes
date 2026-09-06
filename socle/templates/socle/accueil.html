@@ -10,11 +10,13 @@
      « Planning », mois par mois.</p>
   {% if user.role == "salariee" %}
     <p class="message">Votre compte est actif. Déclarez vos absences et suivez
-       l'état de vos demandes depuis « Mes absences ».</p>
+       l'état de vos demandes depuis « Mes absences », et consultez vos jours
+       planifiés depuis « Mes jours ».</p>
   {% endif %}
 {% endblock %}
 
 {% block navigation %}
+  {% if user.role == "salariee" or user.role == "principale" %}<a href="{% url 'planning:mes_jours_courant' %}">Mes jours</a> —{% endif %}
   {% if user.role == "salariee" or user.role == "principale" %}<a href="{% url 'absences:mes_absences' %}">Mes absences</a> —{% endif %}
   {% if user.role == "salariee" or user.role == "principale" %}<a href="{% url 'comptes:profil' %}">Mon profil</a> —{% endif %}
   {% if user.role == "cabinet" or user.role == "principale" %}<a href="{% url 'absences:decider' %}">Absences</a> —{% endif %}

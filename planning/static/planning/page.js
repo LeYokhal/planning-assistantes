@@ -7,7 +7,11 @@
 
    La page propose si et seulement si `META.numero === 0` : aucun drapeau de
    l'état ne porte cette décision. En mode « autonome » (copie HTML), les
-   boutons d'API sont masqués et rien ne part vers le serveur. */
+   boutons d'API sont masqués et rien ne part vers le serveur.
+
+   Brique 4b : « Publier » (`META.urls.publier`, `META.publiee` = numéro de la
+   version publiée courante) et les cases « hors présence » (R4a-1-E1) qui
+   rendent visibles et manipulables les briques d'un praticien absent. */
 (() => {
 "use strict";
 const DATA = JSON.parse(document.getElementById("planning-data").textContent);
@@ -16,7 +20,7 @@ const META = JSON.parse(document.getElementById("planning-meta").textContent);
 const M = PlanningMoteur.creer(DATA, STATE);
 const state = M.state;
 const {WEEKS, SHOWN, SAL, PRAT, HB, ABS, MISC, MISC_LABEL, shownDays, isFerie, ferieName, congeDe, coursDe, attentesDe, nonCouvert, bloque,
-       presents, bricksAt, allBricksOfDay, need, reserve, heures, jauge, absences, reasonRefus, weekOf, manquantes, notesDe, nbCoursMois, quota, placed} = M;
+       presents, bricksAt, allBricksOfDay, orphelins, need, reserve, heures, jauge, absences, reasonRefus, weekOf, manquantes, notesDe, nbCoursMois, quota, placed} = M;
 const {DOW_ABR, MOIS, toDate, weekday, fmtJour, fmtH, heure} = PlanningMoteur;
 
 let ARMED = null;      // brique sélectionnée au clic : {s,t,x}
@@ -202,16 +206,21 @@ function render() {
   marquerViolations();
   majEntete();
 }
-function majEntete() {   // numéro de version, état « modifié », boutons d'API
+function majEntete() {   // numéro de version, publication, état « modifié », boutons d'API
   const modifie = M.empreinte() !== DERNIERE;
   const v = document.getElementById("version");
-  if (META.autonome) v.textContent = `Copie de la version ${META.numero}`;
-  else v.textContent = (META.numero ? `Version ${META.numero}` : "Aucune version enregistrée") + (modifie ? " · modifié, non enregistré" : "");
+  const pub = META.publiee ? (META.publiee === META.numero ? " · publiée" : ` · publiée : v${META.publiee}`) : "";
+  if (META.autonome) v.textContent = `Copie de la version ${META.numero}${pub}`;
+  else v.textContent = (META.numero ? `Version ${META.numero}${pub}` : "Aucune version enregistrée") + (modifie ? " · modifié, non enregistré" : "");
   v.classList.toggle("modifie", modifie && !META.autonome);
   document.getElementById("btnUndo").disabled = !M.peutAnnuler();
   document.getElementById("btnSave").disabled = META.autonome || !modifie;
   document.getElementById("btnCopie").disabled = META.autonome || modifie || !META.numero;
   document.getElementById("btnCopie").title = modifie ? "Enregistre d'abord : la copie reprend la dernière version enregistrée" : "Télécharger une copie HTML autonome de la dernière version enregistrée";
+  const deja = !!META.numero && META.publiee === META.numero;
+  const bp = document.getElementById("btnPublier");
+  bp.disabled = META.autonome || modifie || !META.numero || deja;
+  bp.title = modifie ? "Enregistre d'abord : la publication porte sur la dernière version enregistrée" : deja ? "Cette version est déjà publiée" : "Publier la dernière version enregistrée : chaque salariée la voit dans « Mes jours »";
 }
 function marquerViolations() {
   document.querySelectorAll(".slot.viol").forEach(x => x.classList.remove("viol"));
@@ -311,7 +320,19 @@ function dayEl(iso) {
     bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot:p.id, index:i}, warn: (b.t === "C" && l.fin && l.fin > "16:30") ? `journée courte : ${p.label} travaille jusqu'à ${heure(l.fin)}` : null})));
     sl.appendChild(bk); dropHandlers(sl, iso, p.id); prats.appendChild(sl);
   }
-  if (pres.length || nonCouvert(iso)) day.appendChild(prats);
+  // R4a-1-E1 : briques posées sur une case que la journée ne dessine pas (praticien absent ou jour fermé, slot inconnu) : visibles, retirables, déplaçables ; jamais une cible de dépôt
+  const orph = orphelins(iso);
+  for (const slot of orph) {
+    const bricks = bricksAt(iso, slot), p = PRAT[slot];
+    const sl = el("div", "slot prat orphelin" + (FILTER?.p && FILTER.p !== slot ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.dataset.slot = slot;
+    if (p) sl.style.setProperty("--pc", p.couleur[1]);
+    const motif = p ? (fer ? "jour fermé" : "absent ce jour-là") : "inconnu";
+    sl.appendChild(el("div", "sl", `<b>${esc(p?.label ?? slot)}</b><span class="et">hors présence · ${motif}</span>`));
+    sl.title = p ? `${p.nom} · ${fer ? "le cabinet est fermé ce jour-là" : "n'est pas présent ce jour-là"} : déplace ou retire la brique` : `case « ${slot} » inconnue : déplace ou retire la brique`;
+    const bk = el("div", "bricks"); bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot, index:i}})));
+    sl.appendChild(bk); prats.appendChild(sl);
+  }
+  if (pres.length || nonCouvert(iso) || orph.length) day.appendChild(prats);
   // Secrétariat toujours présent, juste sous les praticiens ; Sureffectif et Administratif seulement s'ils contiennent une brique (ou pendant un placement)
   for (const [slot, cls, label] of [MISC[1], MISC[0], MISC[2]]) {
     const bricks = bricksAt(iso, slot);
@@ -398,7 +419,10 @@ function importFrom(text) {   // export JSON, ou HTML enregistré (bloc planning
   const r = M.importer(src);
   if (!r) { toast("Fichier non reconnu : il faut un export JSON ou une copie HTML du planning.", true); return; }
   commit();
-  toast(`${r.jours} jour(s) repris${r.ignorees ? `, ${r.ignorees} brique(s) ignorée(s) (personne absente de la fiche)` : ""}.`);
+  const parts = [`${r.jours} jour(s) repris`];
+  if (r.ignorees) parts.push(`${r.ignorees} brique(s) ignorée(s) (personne absente de la fiche ou brique illisible)`);
+  if (r.orphelines) parts.push(`${r.orphelines} brique(s) sur un praticien absent ce jour-là (lignes « Hors présence »)`);
+  toast(parts.join(", ") + ".");
 }
 
 // ------------------------------------------------------------ API : enregistrer, erreurs
@@ -414,16 +438,44 @@ async function enregistrer() {
     bandeau("Session expirée : exporte ton travail (Exporter JSON), puis recharge la page pour te reconnecter.", true); return;
   }
   let corps = {}; try { corps = await r.json(); } catch (e) {}
-  if (r.status === 201) { META.numero = corps.numero; DERNIERE = M.empreinte(); afficherViolations([], ""); bandeau(""); render(); toast(`Version ${corps.numero} enregistrée.`); }
+  if (r.status === 201) {
+    META.numero = corps.numero; DERNIERE = M.empreinte();
+    // la route de publication suit le numéro : sans rechargement, le bouton Publier doit viser la version qu'on vient d'enregistrer
+    META.urls.publier = `${META.urls.versions}${corps.numero}/publier/`;
+    afficherViolations([], ""); bandeau(""); render(); toast(`Version ${corps.numero} enregistrée.`);
+  }
   else if (r.status === 409) bandeauConflit(corps.derniere);
   else if (r.status === 422) afficherViolations(corps.violations ?? [], "Enregistrement refusé par le serveur");
   else if (r.status === 403) bandeau("Accès refusé : ce compte ne peut pas enregistrer le planning.", true);
   else toast(`Enregistrement impossible (${r.status}).`, true);
 }
-function bandeauConflit(derniere) {
+async function publier() {   // brique 4b : publie la dernière version enregistrée, celle que la page affiche sans modification
+  if (META.autonome || !META.urls?.publier) return;
+  if (!confirm(`Publier la version ${META.numero} ? Chaque salariée verra ses jours dans « Mes jours ».`)) return;
+  const locales = M.verifier();
+  if (locales.length) { afficherViolations(locales, "Publication refusée par la page"); return; }
+  let r;
+  try {
+    r = await fetch(META.urls.publier, {method: "POST", credentials: "same-origin", headers: {"X-CSRFToken": csrf()}});
+  } catch (e) { toast("Réseau indisponible : rien n'a été publié.", true); return; }
+  if (r.redirected || !(r.headers.get("content-type") || "").includes("application/json")) {
+    bandeau("Session expirée : recharge la page pour te reconnecter, puis publie à nouveau.", true); return;
+  }
+  let corps = {}; try { corps = await r.json(); } catch (e) {}
+  if (r.status === 200) { META.publiee = corps.numero; afficherViolations([], ""); bandeau(""); majEntete(); toast(corps.deja_publiee ? `Version ${corps.numero} déjà publiée.` : `Version ${corps.numero} publiée.`); }
+  else if (r.status === 409) bandeauConflit(corps.derniere, "publication");
+  else if (r.status === 422) afficherViolations(corps.violations ?? [], "Publication refusée par le serveur");
+  else if (r.status === 403) bandeau("Accès refusé : ce compte ne peut pas publier le planning.", true);
+  else toast(`Publication impossible (${r.status}).`, true);
+}
+function bandeauConflit(derniere, contexte = "enregistrement") {
   const b = document.getElementById("banner"); b.className = "banner err";
-  b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : ton enregistrement est refusé. Exporte ton travail (Exporter JSON), puis recharge la page et réimporte-le.`;
-  const exp = el("button", "btn", "Exporter JSON"); exp.addEventListener("click", exportJson); b.appendChild(exp);
+  if (contexte === "publication") {
+    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : la publication est refusée. Recharge la page pour voir cette version.`;
+  } else {
+    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : ton enregistrement est refusé. Exporte ton travail (Exporter JSON), puis recharge la page et réimporte-le.`;
+    const exp = el("button", "btn", "Exporter JSON"); exp.addEventListener("click", exportJson); b.appendChild(exp);
+  }
   const rl = el("button", "btn", "Recharger"); rl.addEventListener("click", () => location.reload()); b.appendChild(rl);
 }
 function signalerErreur(nom, source, ligne) {
@@ -448,6 +500,7 @@ function boot() {
   if (META.numero === 0 && !META.autonome) M.initialState();
   render();
   document.getElementById("btnSave").addEventListener("click", enregistrer);
+  document.getElementById("btnPublier").addEventListener("click", publier);
   document.getElementById("btnCopie").addEventListener("click", () => { if (!META.autonome && META.urls.copie && M.empreinte() === DERNIERE && META.numero) location.href = META.urls.copie; });
   document.getElementById("btnExport").addEventListener("click", exportJson);
   document.getElementById("btnPrint").addEventListener("click", () => window.print());

@@ -1,0 +1,57 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Mes jours — {{ libelle }} — Planning Assistantes{% endblock %}
+{% block entete %}Mes jours — {{ libelle }}{% endblock %}
+
+{% block tete %}
+  <style>
+    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
+    th { background: rgba(0,0,0,.04); }
+    tr.voisin td { color: #777; font-style: italic; }
+    .version { color: #666; margin-top: 0; }
+  </style>
+{% endblock %}
+
+{% block contenu %}
+  {% if sans_personne %}
+    <p class="message">Votre compte n'est pas encore rattaché à une fiche du
+       personnel : vos jours ne peuvent pas être affichés. Signalez-le au
+       cabinet.</p>
+  {% elif not resultat %}
+    <p class="message">Le planning de {{ libelle }} n'est pas encore publié.</p>
+  {% else %}
+    <p class="version">Version {{ resultat.numero }}, publiée le
+       {{ resultat.publie_le|date:"d/m/Y" }} à {{ resultat.publie_le|date:"H:i" }}.
+       Les semaines complètes sont affichées : les jours d'un mois voisin sont
+       en italique.</p>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Journée</th><th>Avec</th></tr>
+      </thead>
+      <tbody>
+        {% for jour in resultat.jours %}
+          <tr{% if jour.hors_mois %} class="voisin"{% endif %}>
+            <td>{{ jour.date|date:"l d/m/Y" }}{% if jour.hors_mois %} <small>(mois voisin, planning {{ jour.date|date:"F" }})</small>{% endif %}</td>
+            <td>{% if jour.t == "C" %}journée courte (fin 16h30){% else %}journée{% endif %}{% if jour.x %} (heures sup){% endif %}</td>
+            <td>{{ jour.slot_libelle }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="3">Aucun jour planifié pour vous sur cette période.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'planning:mes_jours' precedent %}">← {{ precedent }}</a> —
+  <a href="{% url 'planning:mes_jours' suivant %}">{{ suivant }} →</a> —
+  <a href="{% url 'absences:mes_absences' %}">Mes absences</a> —
+  <a href="{% url 'comptes:profil' %}">Mon profil</a> —
+  <a href="/">Accueil</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

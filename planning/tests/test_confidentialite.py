@@ -16,6 +16,7 @@ l'écran et dans la copie HTML, et NULLE PART AILLEURS. Les sept surfaces :
 import datetime
 import json
 import logging
+from unittest.mock import Mock, patch
 
 import pytest
 
@@ -154,3 +155,78 @@ def test_copie_ne_porte_pas_le_state_d_un_autre_mois_ni_de_conge_dans_le_state(c
     fin = contenu.index("</script>", debut)
     state = contenu[debut:fin]
     assert "Maladie" not in state and "conges" not in state
+
+
+# --- Brique 4b : publication, « Mes jours », conflit ------------------------------
+
+
+def test_publication_sans_nom_ni_type(client, cabinet, connecter, caplog, settings):
+    """`verifications`, audit, logs et webhook de publication : ni nom, ni type."""
+    fabrique.jeu_complet(cabinet)
+    services.enregistrer(fabrique.MOIS, 0, state_avec_congé(), cabinet)
+    settings.N8N_PLANNING_WEBHOOK_URL = "http://n8n.example.org/webhook/planning"
+    settings.N8N_WEBHOOK_SECRET = "secret-de-test"
+    connecter(client, cabinet)
+    with caplog.at_level(logging.INFO), patch(
+        "socle.client_n8n.requests.post", return_value=Mock(status_code=200)
+    ) as poste:
+        assert client.post(f"/api/planning/{fabrique.MOIS}/versions/1/publier/").status_code == 200
+
+    version = PlanningVersion.objects.get()
+    texte = " ".join(
+        [
+            json.dumps(version.verifications, ensure_ascii=False),
+            json.dumps(poste.call_args[1]["json"], ensure_ascii=False),
+            str(EvenementAudit.objects.get(action="planning_publie").details),
+            caplog.text,
+        ]
+    )
+    for mot in TYPES + NOMS:
+        assert mot not in texte, mot
+
+
+def test_mes_jours_sans_type_ni_autre_personne(client, cabinet, salariee, connecter, caplog):
+    """La page « Mes jours » ne reçoit pas `DATA` : aucun type, aucune autre salariée."""
+    from absences.tests import fabrique as fabrique_absences
+
+    jeu = fabrique.jeu_complet(cabinet)
+    fabrique_absences.lier(salariee, jeu["personnes"]["Emma"])
+    services.enregistrer(fabrique.MOIS, 0, fabrique.etat_propre(), cabinet)
+    services.publier(fabrique.MOIS, 1, cabinet)
+    connecter(client, salariee)
+    with caplog.at_level(logging.INFO):
+        contenu = client.get(f"/mes-jours/{fabrique.MOIS}/").content.decode()
+    for mot in TYPES + ("PETIT", "Sara", "ROUX", "Lina", "planning-data", "conges"):
+        assert mot not in contenu + caplog.text, mot
+
+
+def test_conflit_sans_type_ni_nom(cabinet, settings, caplog):
+    """Audit `absence_conflit_publication`, webhook `absence.conflit`, logs : ni type, ni précision, ni nom."""
+    from absences import services as services_absences
+
+    jeu = fabrique.jeu_complet(cabinet)
+    services.enregistrer(fabrique.MOIS, 0, fabrique.etat_propre(), cabinet)
+    services.publier(fabrique.MOIS, 1, cabinet)
+    settings.N8N_ABSENCE_WEBHOOK_URL = "http://n8n.example.org/webhook/absence"
+    settings.N8N_WEBHOOK_SECRET = "secret-de-test"
+    with caplog.at_level(logging.INFO), patch(
+        "socle.client_n8n.requests.post", return_value=Mock(status_code=200)
+    ) as poste:
+        services_absences.creer(
+            jeu["personnes"]["Emma"],
+            fabrique.type_absence("Maladie"),
+            datetime.date(2026, 9, 29),
+            datetime.date(2026, 9, 29),
+            cabinet,
+            precision="rendez-vous médical",
+        )
+
+    evenement = EvenementAudit.objects.get(action="absence_conflit_publication")
+    corps = [
+        appel[1]["json"] for appel in poste.call_args_list
+        if appel[1]["json"]["evenement"] == "absence.conflit"
+    ]
+    assert len(corps) == 1
+    texte = str(evenement.details) + json.dumps(corps[0], ensure_ascii=False) + caplog.text
+    for mot in TYPES + NOMS + ("médical", "alice_dup"):
+        assert mot not in texte, mot
