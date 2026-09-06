@@ -58,7 +58,9 @@ CSRF_COOKIE_SECURE = not DEBUG
 # Laisser à False : la redirection HTTPS est assurée par Railway. La mettre à
 # True provoque une boucle de redirection derrière son proxy.
 SECURE_SSL_REDIRECT = False
-SECURE_HSTS_SECONDS = 0 if DEBUG else 3600  # volontairement court en 1a ; à porter à 31536000 après validation Phase 5
+# Un an. La 1a l'avait volontairement laissé à 3600 s le temps de stabiliser le
+# domaine ; porté à 31536000 s après la recette de la brique 3 (3-ter).
+SECURE_HSTS_SECONDS = 0 if DEBUG else 31536000
 SECURE_HSTS_INCLUDE_SUBDOMAINS = False
 SECURE_HSTS_PRELOAD = False
 

@@ -17,6 +17,19 @@ from . import calcul, services
 from .models import AbsenceSalariee, TypeAbsence
 
 
+def _journaliser_suppression(request, absence):
+    """Trace d'une suppression : identifiants, statut, dates. Ni type ni précision."""
+    journaliser(
+        Action.ABSENCE_SUPPRIMEE,
+        qui=request.user,
+        objet=absence,
+        personne_id=absence.personne_id,
+        statut=absence.statut,
+        debut=absence.date_debut.isoformat(),
+        fin=absence.date_fin.isoformat(),
+    )
+
+
 class FormulaireAbsenceAdmin(forms.ModelForm):
     """Formulaire d'admin, qui tient la décision P à la saisie.
 
@@ -130,3 +143,18 @@ class AbsenceSalarieeAdmin(admin.ModelAdmin):
             statut=obj.statut,
             saisie_admin=True,
         )
+
+    def delete_model(self, request, obj):
+        """Supprimer efface l'objet mais pas sa trace : l'événement porte le
+        type d'objet, l'identifiant, la personne, le statut et les dates. Hors
+        purge de rétention, c'est un geste d'administration (reprise, jeu de
+        test) ; le cycle de vie normal passe par « annulée ».
+        """
+        _journaliser_suppression(request, obj)
+        super().delete_model(request, obj)
+
+    def delete_queryset(self, request, queryset):
+        """Suppression groupée : une trace par objet, avant l'effacement."""
+        for objet in queryset:
+            _journaliser_suppression(request, objet)
+        super().delete_queryset(request, queryset)
