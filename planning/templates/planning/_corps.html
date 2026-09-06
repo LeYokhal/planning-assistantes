@@ -1,0 +1,27 @@
+<header class="topbar">
+  <div class="titles">
+    <h1 id="title">Planning assistantes</h1>
+    <div class="sub" id="subtitle"></div>
+  </div>
+  <div class="actions">
+    <span class="version" id="version"></span>
+    <button class="btn" id="btnPropose" title="Compléter les cases vides avec les règles (binômes, exclusifs, administratif), sans toucher aux briques déjà posées">Proposer</button>
+    <button class="btn" id="btnUndo" title="Annuler la dernière action (Ctrl+Z)">Annuler</button>
+    <button class="btn" id="btnImport" title="Reprendre les affectations d'un export JSON ou d'une copie HTML (semaine à cheval)">Importer…</button>
+    <button class="btn" id="btnExport" title="Exporter les affectations en JSON">Exporter JSON</button>
+    <button class="btn" id="btnPrint" title="Imprimer (avec un filtre actif : planning individuel)">Imprimer</button>
+    <button class="btn" id="btnReset" title="Refaire toute la proposition">Réinitialiser</button>
+    <button class="btn api" id="btnCopie" title="Télécharger une copie HTML autonome de la dernière version enregistrée">Enregistrer une copie</button>
+    <button class="btn primary api" id="btnSave" title="Enregistrer une nouvelle version (Ctrl+S)">Enregistrer</button>
+  </div>
+</header>
+<div class="banner" id="banner"></div>
+<div class="banner err" id="violations"></div>
+<div class="layout">
+  <section class="calendar" id="calendar"></section>
+  <aside class="palette" id="palette"></aside>
+</div>
+<div id="toast"></div>
+<div id="tip"></div>
+<div id="cpop" class="cpop"></div>
+<input type="file" id="importFile" accept=".html,.json,text/html,application/json" hidden>

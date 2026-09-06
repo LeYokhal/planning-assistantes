@@ -41,6 +41,9 @@ class Action(models.TextChoices):
     ABSENCE_SUPPRIMEE = "absence_supprimee", "Absence supprimée"
     PAIE_CONSULTEE = "paie_consultee", "Données de paie consultées"
     ADRESSE_CHANGEE = "adresse_changee", "Adresse de connexion changée"
+    # Brique 4a. `details` : mois, numéro de version, nombre de briques.
+    # Jamais de nom, jamais de type d'absence.
+    PLANNING_ENREGISTRE = "planning_enregistre", "Planning enregistré"
 
 
 class EvenementAudit(models.Model):

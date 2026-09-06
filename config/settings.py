@@ -81,6 +81,7 @@ INSTALLED_APPS = [
     "regles",
     "personnes",
     "absences",
+    "planning",
 ]
 
 MIDDLEWARE = [
@@ -254,3 +255,9 @@ N8N_ABSENCE_WEBHOOK_URL = os.environ.get("N8N_ABSENCE_WEBHOOK_URL", "").strip()
 DEBIT_CONNEXION_IP = (10, 900)
 DEBIT_CONNEXION_ADRESSE = (5, 3600)
 DEBIT_API_N8N_IP = (60, 60)
+
+# --- Planning (brique 4a) ---------------------------------------------------
+
+# Plafond par IP du rapport d'erreurs de la page planning (`/api/erreurs/`).
+# Constante de réglage, pas une variable d'environnement.
+DEBIT_ERREURS_IP = (30, 60)

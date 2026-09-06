@@ -1,10 +1,10 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr"{% block classe_html %}{% endblock %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titre %}Planning Assistantes{% endblock %}</title>
-  <style>
+  {% block style_base %}<style>
     :root { color-scheme: light dark; }
     body {
       font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -24,14 +24,14 @@
     .messages li.info { border-left-color: #1764D8; background: rgba(23,100,216,.08); }
     .messages li.error { border-left-color: #c33; background: rgba(204,51,51,.08); }
     nav { margin-top: 2.5rem; font-size: 0.9rem; }
-  </style>
+  </style>{% endblock %}
   {% block tete %}{% endblock %}
 </head>
 <body class="{% block classe_corps %}{% endblock %}">
-  <header>
+  {% block en_tete_page %}<header>
     <h1>{% block entete %}Planning Assistantes{% endblock %}</h1>
     <p class="sous-titre">Espace K Dentaire</p>
-  </header>
+  </header>{% endblock %}
   <main>
     {% if messages %}
       <ul class="messages">
@@ -40,6 +40,6 @@
     {% endif %}
     {% block contenu %}{% endblock %}
   </main>
-  <nav>{% block navigation %}{% endblock %}</nav>
-</body>
+  {% block navigation_page %}<nav>{% block navigation %}{% endblock %}</nav>{% endblock %}
+{% block scripts %}{% endblock %}</body>
 </html>

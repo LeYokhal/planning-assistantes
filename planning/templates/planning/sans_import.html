@@ -1,0 +1,28 @@
+{% extends "socle/base.html" %}
+
+{% block titre %}Planning {{ libelle }} — Planning Assistantes{% endblock %}
+{% block entete %}Planning — {{ libelle }}{% endblock %}
+
+{% block contenu %}
+  <p class="message">Aucun import de présences réussi ne couvre ce mois : il n'y a
+     rien à planifier tant que les présences Doctolib ne sont pas entrées.</p>
+  <p>
+    {% if peut_importer %}
+      <a href="{% url 'presences:importer' %}">Importer un fichier S7</a>, puis revenir ici.
+    {% else %}
+      Demandez au cabinet d'importer les présences du mois.
+    {% endif %}
+    Les présences déjà importées se consultent sur
+    <a href="{% url 'presences:mois' mois %}">l'écran des présences</a>.
+  </p>
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'planning:mois' precedent %}">← {{ precedent }}</a> —
+  <a href="{% url 'planning:mois' suivant %}">{{ suivant }} →</a> —
+  <a href="/">Accueil</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

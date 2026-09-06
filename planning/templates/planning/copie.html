@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="fr" class="planning">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Planning assistantes — {{ libelle }} (copie v{{ meta.numero }})</title>
+  <style>{{ styles_css }}</style>
+</head>
+<body class="planning autonome">
+{% include "planning/_corps.html" %}
+{{ data|json_script:"planning-data" }}
+{{ state|json_script:"planning-state" }}
+{{ meta|json_script:"planning-meta" }}
+<script>{{ moteur_js }}</script>
+<script>{{ page_js }}</script>
+</body>
+</html>
