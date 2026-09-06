@@ -16,10 +16,12 @@ intervention sur ce dépôt.
   Les tests utilisent exclusivement le domaine `example.org`, des noms fictifs
   (« DUPONT Alice », « MARTIN Bob »…) et des IP de documentation (RFC 5737,
   `192.0.2.x`). Seule exception assumée par le cadrage : `regles/regles.json`,
-  copie conforme de `reference/skill-v1/regles.json`, porte les noms de la
-  fiche — déjà versionnés dans ce dépôt.
+  repris de `reference/skill-v1/regles.json` et augmenté des sections
+  `periodes_ouverture` (brique 3) et `palette` (brique 4a), porte les noms de
+  la fiche — déjà versionnés dans ce dépôt.
 - ⚠️ **Aucune installation hors du `.venv` du projet.** Pas de `pip install`
-  global, pas de `winget`, pas de `npm`.
+  global, pas de `winget`, pas de `npm`. Les tests du moteur JS tournent avec
+  le module intégré `node:test` (`node --test`), sans `package.json`.
 - ⚠️ Les exports S7 vivent **hors du dépôt** (`_entrees/`, ignoré par git). Ils
   ne sont jamais copiés dans le dépôt, ni affichés, ni ouverts. **Le jeu S7 réel
   ne sert qu'à la recette manuelle depuis le navigateur** : les tests n'utilisent
@@ -36,7 +38,8 @@ python -m venv .venv                      # une seule fois
 
 | But | Commande |
 |---|---|
-| Tests | `.venv/Scripts/python.exe -m pytest` |
+| Tests | `.venv/Scripts/python.exe -m pytest` (lance aussi les tests Node par `planning/tests/test_node.py`) |
+| Tests du moteur JS seuls | `node --test "planning/tests_js/**/*.test.js"` |
 | Contrôles Django | `.venv/Scripts/python.exe manage.py check` puis `check --deploy` |
 | Migrations | `manage.py makemigrations <app>` puis `manage.py migrate` |
 | Serveur local | `.venv/Scripts/python.exe manage.py runserver` |
@@ -85,8 +88,27 @@ python -m venv .venv                      # une seule fois
   `code` et `actif` ne sont jamais écrasés.
 - **`regles/regles.json` est la source des règles** du planning, chargée et
   validée au démarrage (un fichier invalide empêche le démarrage). Elle se
-  modifie par PR uniquement. `reference/skill-v1/` en est la référence
-  historique et **reste non exécutée**.
+  modifie par PR uniquement. Le fichier reprend `reference/skill-v1/regles.json`
+  augmenté de `periodes_ouverture` (brique 3) et de `palette` (brique 4a).
+  `reference/skill-v1/` est la référence historique du skill : **non exécutée**,
+  et **hors de l'image Docker** (`.dockerignore`). Ses pièces utiles ont été
+  portées dans l'application (`comptes/noms.py`, `socle/feries.py`,
+  `presences/fenetres.py`, `presences/lecture.py`, `personnes/appariement.py`,
+  `planning/`) ; on ne l'importe jamais.
+- **Planning (brique 4a)** : `DATA` est calculé côté serveur
+  (`planning/donnees.py`), le `STATE` enregistré n'a que quatre clés
+  (`affectations`, `feries`, `feries_off`, `notes`), et la proposition ne
+  dépend que du numéro de version servi (`numero === 0`), jamais d'un drapeau
+  de l'état. Le moteur `planning/static/planning/moteur.js` ne touche pas au
+  DOM : fabrique `creer(DATA, state)`, état muté en place, **aucune fonction du
+  moteur n'appelle `commit`, `render`, `toast` ni `confirm`** ; `page.js`
+  enchaîne `M.x(); commit();`. Les règles strictes existent en double
+  (`planning/verification.py` et `verifier()` du moteur), avec les mêmes codes,
+  sur le même jeu de cas `planning/tests/cas_verification.json` : un code
+  nouveau s'ajoute des deux côtés et dans le jeu. Une violation ne porte que
+  `code`, `date`, `slot`, `s`. Le numéro de version est attribué par la
+  contrainte unique `(mois, numero)`, l'`IntegrityError` attrapée **hors** du
+  `with transaction.atomic()`. Voir `docs/PLANNING.md`.
 - **Limitation de débit** : compteur en base (`socle.CompteurDebit` +
   `socle/debit.py`), jamais le cache Django. `DatabaseCache.incr` hérite de
   `BaseCache.incr`, qui lit puis écrit sans verrou — les incréments se perdent
@@ -104,7 +126,12 @@ python -m venv .venv                      # une seule fois
   `details` d'audit, ni dans les logs, ni dans un webhook, ni dans l'endpoint de
   paie. Le garde-fou « @ » ne les reconnaît pas — c'est tenu à la main, et prouvé
   par `absences/tests/test_confidentialite.py`. Relancer ces tests après toute
-  évolution de la brique.
+  évolution de la brique. Exception décidée en brique 4a (amendement C4.1) :
+  `DATA.conges[].type` porte le libellé pour les rôles `cabinet` et
+  `principale`, à l'écran et dans la copie HTML, et nulle part ailleurs — ni
+  `state`, ni version, ni export JSON, ni audit, ni logs ; toute la mise en
+  forme passe par `planning.donnees.libelle_conge()`. Prouvé par
+  `planning/tests/test_confidentialite.py` (sept surfaces).
 - **Jours comptés** : `min(J, max(0, B − F))` par semaine, où `J` exclut les
   fériés et `F` ne compte que les fériés tombant un jour d'OUVERTURE. Un férié
   un jour fermé (lundi de Pentecôte sous le régime mardi→samedi) ne retire
@@ -170,6 +197,22 @@ sur le déploiement.
   d'exécution est bash, un here-string PowerShell y produit un sujet « @ »
   (incident 2, rattrapé par `--amend` avant push).
 
+### Leçons de la brique 4a
+
+- **`pytest -q` cache le résumé** : `pytest.ini` porte déjà `-q`, un second
+  `-q` donne `-qq` et la ligne « N passed » disparaît. Lancer `pytest` nu pour
+  lire le compte.
+- **`json_script` échappe les accents** (`Congé`) : un test qui cherche
+  un libellé dans une page doit décoder le bloc JSON, pas chercher la chaîne
+  en clair.
+- **Le gabarit d'origine ne tourne pas sous Node** : la proposition de
+  référence du moteur est figée depuis un navigateur, une fois, sans rien
+  déplacer (procédure dans `docs/PLANNING.md`). Un moteur comparé à lui-même
+  ne prouve rien.
+- **Deux implémentations d'une même règle divergent en silence** : elles ne
+  restent alignées que par un jeu de cas commun lu tel quel des deux côtés,
+  qui exige de plus que chaque code soit émis au moins une fois.
+
 ## Périmètre
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
@@ -206,9 +249,18 @@ paie (`absences/calcul.py`, fériés dans `socle/feries.py`), endpoint
 connexion par la salariée. Le client HTTP n8n sortant est factorisé dans
 `socle/client_n8n.py`. Voir `docs/ABSENCES.md`.
 
-La génération du planning et le mail comptable relèvent des briques **4 et 5**
-et ne sont pas ici.
+La brique **4a** (mergée le 06/09/2026, `5072226`) livre le planning servi par
+l'application : app `planning/`, `DATA` calculé côté serveur
+(`planning/donnees.py`), moteur JS isolé et testé sous Node
+(`planning/static/planning/moteur.js`, `planning/tests_js/`), vérification
+stricte en double (`planning/verification.py`), versions numérotées
+(`PlanningVersion`, `POST /api/planning/<AAAA-MM>/versions/`, 409 / 422), copie
+HTML autonome, export et import JSON, `POST /api/erreurs/`, section `palette`
+de `regles.json`, blocs de `socle/base.html`. Voir `docs/PLANNING.md`.
+
+La publication du planning et le conflit absence ↔ planning publié relèvent de
+la brique **4b** ; le mail comptable de la brique **5**. Ils ne sont pas ici.
 
 `reference/skill-v1/` contient la version 1 du skill de planning, décompressée
 telle quelle à titre de référence. Elle n'est **pas** exécutée par
-l'application.
+l'application et n'entre pas dans l'image Docker.

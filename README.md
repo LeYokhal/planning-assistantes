@@ -3,9 +3,12 @@
 Application Django pour le planning des assistantes du cabinet. Ce dépôt porte
 le **socle (brique 1a)** — comptes, connexion sans mot de passe, journal
 d'audit, page de santé, déploiement —, l'**import des présences (brique 1b)** :
-lecture des exports Doctolib, écran « présences du mois », API n8n, et les
+lecture des exports Doctolib, écran « présences du mois », API n8n, les
 **personnes et règles (brique 2)** : import de la fiche personnel, `regles.json`,
-appariement des agendas Doctolib, comptes des salariées.
+appariement des agendas Doctolib, comptes des salariées, les **absences
+(brique 3)** : espace de la salariée, décision, jours comptés pour la paie, et
+le **planning (brique 4a)** : page servie par l'application, moteur de
+proposition dans le navigateur, versions enregistrées, copie autonome.
 
 ## État
 
@@ -25,16 +28,33 @@ appariement des agendas Doctolib, comptes des salariées.
   démarrage, appariement Doctolib avec rapport, comptes des salariées créés en
   masse (invitations à la main du cabinet), limitation de débit sur
   `/connexion/` et l'API — IP cliente `X-Real-IP`, établie par mesure.
-- **Prochaine étape** : brique 3 — absences des salariées, ou brique 0
-  (endpoint présences, projet VoiceDoctolib).
+- **Brique 3 livrée le 03/09/2026** (`e2c751d`, puis 3-bis `d6860a9`, 3-ter
+  `b243f10`) : absences des salariées (`/mes-absences/`), écran de décision
+  (`/absences/`), jours comptés pour la paie, endpoint
+  `GET /api/n8n/paie/<AAAA-MM>/`, webhooks `absence.*`, rétention
+  configurable, changement de l'adresse de connexion. Le type d'absence ne
+  sort jamais de la base : ni audit, ni logs, ni webhook, ni paie.
+- **Brique 4a mergée le 06/09/2026** (`5072226`) : la page planning est servie
+  par l'application (`/planning/<AAAA-MM>/`, rôles `cabinet` et `principale`),
+  `DATA` calculé côté serveur à partir des présences, des personnes, des règles
+  et des absences, moteur JS isolé et testé sous Node, règles strictes
+  vérifiées à la fois dans la page et par le serveur, versions numérotées
+  (409 si quelqu'un a enregistré entre-temps, 422 si une règle est enfreinte),
+  copie HTML autonome, export et import JSON. Recettée le 06/09/2026 ;
+  l'import du planning réel de septembre reste à faire dès que le fichier
+  enregistré au cabinet est disponible (critère différé R4a-1).
+- **Prochaine étape** : brique 4b — publication d'une version, événement n8n
+  de publication, conflit absence ↔ planning publié, vue « mes jours publiés »
+  pour les salariées. Puis brique 5 (mail comptable) ou brique 0 (endpoint
+  présences, projet VoiceDoctolib).
 
 ## Périmètre
 
 | Livré | Pas encore |
 |---|---|
-| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Absences des salariées (brique 3) |
-| Modèles `Personne`, `Compte`, `EvenementAudit`, `CompteurDebit` | Génération du planning (brique 4) |
-| Connexion par lien magique (django-sesame), 15 min, usage unique | Publication et purge (briques 4 et 5) |
+| Projet Django 5.2 LTS + PostgreSQL (SQLite en local) | Publication du planning et conflit absence ↔ planning publié (brique 4b) |
+| Modèles `Personne`, `Compte`, `EvenementAudit`, `CompteurDebit` | Vue « mes jours publiés » pour les salariées (brique 4b) |
+| Connexion par lien magique (django-sesame), 15 min, usage unique | Mail comptable (brique 5) |
 | Journal d'audit consultable, non modifiable | Appel direct de Doctolib (brique 0) |
 | Page de santé `/sante/` pour la sonde Railway | |
 | Envoi de mails délégué à un webhook n8n → Gmail | |
@@ -43,6 +63,8 @@ appariement des agendas Doctolib, comptes des salariées.
 | API n8n `/api/n8n/` et webhooks `import.*` | |
 | Import de la fiche personnel, `regles.json`, appariement Doctolib | |
 | Comptes des salariées en masse, limitation de débit | |
+| Absences des salariées, décision, jours comptés, endpoint de paie, webhooks `absence.*` | |
+| Planning servi par l'application, moteur JS testé sous Node, versions (409 / 422), copie autonome | |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -102,7 +124,12 @@ Tests :
 | `DOCTOLIB_PRESENCES_URL` | non | ⚠️ Brique 0 non livrée : **laisser vide**. |
 | `DOCTOLIB_PRESENCES_SECRET` | non | ⚠️ Brique 0 non livrée : **laisser vide**. |
 | `IMPORT_EN_ARRIERE_PLAN` | non | Absente = tâche de fond. `0` = synchrone, réservé aux tests. |
+| `N8N_ABSENCE_WEBHOOK_URL` | non | Webhook des événements `absence.*`. Absent = aucune notification. |
+| `RETENTION_ABSENCES_JOURS` | non | Rétention des absences en jours depuis leur dernier jour. Absente = aucune purge, rien n'est perdu. |
 | `PORT` | — | Fournie par Railway, lue par gunicorn. |
+
+La brique 4a n'ajoute **aucune variable d'environnement** : le plafond de
+`/api/erreurs/` est une constante de `config/settings.py` (`DEBIT_ERREURS_IP`).
 
 ## Déploiement
 
@@ -112,6 +139,8 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
+- Absences, jours comptés, paie et rétention : [`docs/ABSENCES.md`](docs/ABSENCES.md)
+- Planning : contrat `DATA`, moteur, vérification, versions, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - JSON des deux workflows n8n d'import (à importer tels quels, puis credentials
@@ -131,9 +160,10 @@ presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
 personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
 regles/      regles.json et son chargeur validant (sans modèle)
 absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision
+planning/    PlanningVersion, DATA côté serveur, vérification stricte, page, copie ; moteur.js et page.js dans static/, tests Node dans tests_js/
 n8n/         API entrante appelée par n8n (sans modèle)
-docs/        déploiement, personnes, absences, webhooks n8n
-reference/   version 1 du skill de planning, à titre de référence (non exécutée)
+docs/        déploiement, personnes, absences, planning, webhooks n8n
+reference/   version 1 du skill de planning, à titre de référence (non exécutée, hors image Docker)
 ```
 
 ## Importer des présences
@@ -173,3 +203,24 @@ La liste `/personnes/` est ouverte aux rôles `cabinet` et `principale`.
 Le détail des gestes — production du fichier, lecture du rapport, appariement,
 création des comptes et invitations, seuils de débit — est dans
 [`docs/PERSONNES.md`](docs/PERSONNES.md).
+
+## Planning
+
+`/planning/<AAAA-MM>/`, rôles `cabinet` et `principale`. La page calcule ses
+données à chaque affichage à partir des présences importées, des personnes
+planifiées, de `regles.json` et des absences effectives ; sans aucun import
+réussi sur le mois, elle renvoie vers l'import des présences.
+
+À la première ouverture d'un mois, la page pose une proposition (binômes,
+exclusives, créneau administratif, reliquat en sureffectif) que l'on ajuste
+par glisser-déposer. **Enregistrer** écrit une version numérotée après
+vérification des règles strictes, dans la page puis par le serveur : une règle
+enfreinte donne un refus détaillé (422), un enregistrement fait entre-temps par
+quelqu'un d'autre un refus explicite (409) avec « Exporter JSON » et
+« Recharger ». **Enregistrer une copie** télécharge un HTML autonome de la
+dernière version ; **Exporter JSON** / **Importer** reprennent les affectations
+d'un mois à l'autre. Les absences se corrigent sur `/absences/`, jamais dans le
+planning.
+
+Architecture, contrat `DATA`, codes de violation, versions et tests Node :
+[`docs/PLANNING.md`](docs/PLANNING.md).
