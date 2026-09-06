@@ -1,0 +1,2367 @@
+{
+ "_doc": "Jeu de cas commun de la vérification stricte (brique 4a). Lu tel quel par planning/tests/test_verification.py et planning/tests_js/verification.test.js : chaque cas porte state et attendu (codes, ordre indifférent) ; data = data_commune sauf surcharge par une clé data. Tout est fictif.",
+ "data_commune": {
+  "meta": {
+   "mois": "2026-10",
+   "libelle": "octobre 2026",
+   "debut": "2026-09-28",
+   "fin": "2026-11-01",
+   "genere": "06/09/2026 12:00",
+   "source": "fictif",
+   "heures": {
+    "J": 9.75,
+    "C": 6.75
+   },
+   "seuils": {
+    "courte_h": 4.0,
+    "presence_h": 5.0
+   },
+   "enveloppes": [],
+   "non_couverts": [
+    "2026-10-31"
+   ]
+  },
+  "praticiens": [
+   {
+    "id": "alice_dup",
+    "label": "Alice",
+    "nom": "DUPONT Alice",
+    "agenda": "DUPONT Alice",
+    "couleur": [
+     "#F6ECAE",
+     "#7A5F00"
+    ],
+    "fixes": [],
+    "attendues": 1,
+    "exclusif": false,
+    "binomes": [
+     "emma_ber"
+    ],
+    "a_part": false,
+    "etiquette": null
+   },
+   {
+    "id": "bob_mar",
+    "label": "Bob",
+    "nom": "MARTIN Bob",
+    "agenda": "MARTIN Bob",
+    "couleur": [
+     "#D2EBD5",
+     "#256B31"
+    ],
+    "fixes": [],
+    "attendues": 1,
+    "exclusif": false,
+    "binomes": [
+     "lina_rou"
+    ],
+    "a_part": false,
+    "etiquette": null
+   },
+   {
+    "id": "chloe_ler",
+    "label": "Chloe",
+    "nom": "LEROY Chloe",
+    "agenda": "LEROY Chloe",
+    "couleur": [
+     "#E6E9EC",
+     "#4F5B63"
+    ],
+    "fixes": [],
+    "attendues": 2,
+    "exclusif": true,
+    "binomes": [
+     "zoe_gir",
+     "ines_lam"
+    ],
+    "a_part": true,
+    "etiquette": "ortho"
+   }
+  ],
+  "salaries": [
+   {
+    "id": "emma_ber",
+    "label": "Emma",
+    "nom": "BERNARD Emma",
+    "role": "assistante",
+    "heures": 39,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "J"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#EAD9CB",
+     "#6E4A2E"
+    ],
+    "binomes": [
+     "alice_dup"
+    ],
+    "exclusif": false,
+    "admin": null
+   },
+   {
+    "id": "lina_rou",
+    "label": "Lina",
+    "nom": "ROUX Lina",
+    "role": "assistante",
+    "heures": 39,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "J"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#FBE1C2",
+     "#9E5410"
+    ],
+    "binomes": [
+     "bob_mar"
+    ],
+    "exclusif": false,
+    "admin": null
+   },
+   {
+    "id": "nora_fon",
+    "label": "Nora",
+    "nom": "FONTAINE Nora",
+    "role": "assistante",
+    "heures": 35,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "C"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#D3E4F7",
+     "#1F529A"
+    ],
+    "binomes": [],
+    "exclusif": false,
+    "admin": "C"
+   },
+   {
+    "id": "zoe_gir",
+    "label": "Zoe",
+    "nom": "GIRARD Zoe",
+    "role": "assistante",
+    "heures": 39,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "J"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#E2D8F5",
+     "#5E3BA6"
+    ],
+    "binomes": [
+     "chloe_ler"
+    ],
+    "exclusif": true,
+    "admin": null
+   },
+   {
+    "id": "ines_lam",
+    "label": "Ines",
+    "nom": "LAMBERT Ines",
+    "role": "assistante",
+    "heures": 39,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "J"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#F8D6E4",
+     "#A32F60"
+    ],
+    "binomes": [
+     "chloe_ler"
+    ],
+    "exclusif": true,
+    "admin": null
+   },
+   {
+    "id": "lea_mor",
+    "label": "Lea",
+    "nom": "MOREL Lea",
+    "role": "assistante",
+    "heures": 27,
+    "heures_supposees": false,
+    "heures_fixes": false,
+    "gabarit": [
+     "J",
+     "J",
+     "J",
+     "C"
+    ],
+    "fixes": [],
+    "couleur": [
+     "#F6D0CD",
+     "#A8342E"
+    ],
+    "binomes": [],
+    "exclusif": false,
+    "admin": null,
+    "etudiante": true
+   },
+   {
+    "id": "sara_pet",
+    "label": "Sara",
+    "nom": "PETIT Sara",
+    "role": "secretaire",
+    "heures": 29.25,
+    "heures_supposees": false,
+    "heures_fixes": true,
+    "gabarit": [
+     "J",
+     "J",
+     "J"
+    ],
+    "fixes": [
+     1,
+     2,
+     3
+    ],
+    "couleur": [
+     "#E3E3E3",
+     "#3A3A3A"
+    ],
+    "binomes": [],
+    "exclusif": false,
+    "admin": null
+   }
+  ],
+  "jours": {
+   "2026-09-29": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-09-30": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-01": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "16:30"
+      ]
+     ],
+     "fin": "16:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-02": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-03": {
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-06": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-07": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-08": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "16:30"
+      ]
+     ],
+     "fin": "16:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-09": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-10": {
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-13": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-14": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-15": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "16:30"
+      ]
+     ],
+     "fin": "16:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-16": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-17": {
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-20": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-21": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-22": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "16:30"
+      ]
+     ],
+     "fin": "16:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-23": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-24": {
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-27": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-28": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-29": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "16:30"
+      ]
+     ],
+     "fin": "16:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   },
+   "2026-10-30": {
+    "alice_dup": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "bob_mar": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "19:00"
+      ]
+     ],
+     "fin": "19:00",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    },
+    "chloe_ler": {
+     "pr": true,
+     "v": "ouvert",
+     "c": [
+      [
+       "09:00",
+       "13:00"
+      ],
+      [
+       "14:00",
+       "18:30"
+      ]
+     ],
+     "fin": "18:30",
+     "n": 12,
+     "jc": false,
+     "min": 480
+    }
+   }
+  },
+  "conges": [
+   {
+    "s": "emma_ber",
+    "date": "2026-10-13",
+    "type": "Congé payé",
+    "bloque": true
+   },
+   {
+    "s": "emma_ber",
+    "date": "2026-10-14",
+    "type": "Congé payé",
+    "bloque": true
+   },
+   {
+    "s": "emma_ber",
+    "date": "2026-10-15",
+    "type": "Congé payé",
+    "bloque": true
+   },
+   {
+    "s": "lina_rou",
+    "date": "2026-10-22",
+    "type": "Retard",
+    "bloque": false
+   }
+  ],
+  "feries": {
+   "2026-10-17": "Férié test",
+   "2026-11-01": "Toussaint"
+  },
+  "cours": {
+   "lea_mor": [
+    "2026-10-06",
+    "2026-10-20",
+    "2026-10-27"
+   ]
+  },
+  "attentes": []
+ },
+ "cas": [
+  {
+   "nom": "propre",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ],
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "hors_plage_brique",
+   "state": {
+    "affectations": {
+     "2026-12-01": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "hors_plage"
+   ]
+  },
+  {
+   "nom": "hors_plage_ferie_et_note",
+   "state": {
+    "affectations": {},
+    "feries": {
+     "2026-12-25": "Noël"
+    },
+    "feries_off": [],
+    "notes": {
+     "2026-08-01": [
+      "x"
+     ]
+    }
+   },
+   "attendu": [
+    "hors_plage",
+    "hors_plage"
+   ]
+  },
+  {
+   "nom": "salariee_inconnue",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "inconnue_xyz",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "salariee_inconnue"
+   ]
+  },
+  {
+   "nom": "slot_inconnu",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "inconnu": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "slot_inconnu"
+   ]
+  },
+  {
+   "nom": "brique_invalide_type",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "X",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "brique_invalide"
+   ]
+  },
+  {
+   "nom": "brique_invalide_forme",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       "emma_ber",
+       42
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "brique_invalide",
+    "brique_invalide",
+    "capacite"
+   ]
+  },
+  {
+   "nom": "doublon_jour",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ],
+      "sureffectif": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "doublon_jour"
+   ]
+  },
+  {
+   "nom": "jour_bloque_conge",
+   "state": {
+    "affectations": {
+     "2026-10-13": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "jour_bloque"
+   ]
+  },
+  {
+   "nom": "jour_bloque_cours",
+   "state": {
+    "affectations": {
+     "2026-10-06": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "jour_bloque"
+   ]
+  },
+  {
+   "nom": "jour_bloque_ferie_samedi",
+   "state": {
+    "affectations": {
+     "2026-10-17": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "jour_bloque"
+   ]
+  },
+  {
+   "nom": "jour_bloque_ferie_pose_dans_la_page",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {
+     "2026-09-29": "Pont"
+    },
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "jour_bloque"
+   ]
+  },
+  {
+   "nom": "ferie_rouvert_dans_la_page",
+   "state": {
+    "affectations": {
+     "2026-10-17": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [
+     "2026-10-17"
+    ],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "jour_non_affiche",
+   "state": {
+    "affectations": {
+     "2026-09-28": {
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "jour_non_affiche"
+   ]
+  },
+  {
+   "nom": "sans_donnees",
+   "state": {
+    "affectations": {
+     "2026-10-31": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "sans_donnees"
+   ]
+  },
+  {
+   "nom": "praticien_absent",
+   "state": {
+    "affectations": {
+     "2026-09-30": {
+      "bob_mar": [
+       {
+        "s": "lina_rou",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "praticien_absent"
+   ]
+  },
+  {
+   "nom": "capacite",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       },
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "capacite"
+   ]
+  },
+  {
+   "nom": "exclusive_ailleurs",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "exclusive_ailleurs"
+   ]
+  },
+  {
+   "nom": "exclusive_en_sureffectif_admise",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "sureffectif": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "exclusif_intrus",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "chloe_ler": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "exclusif_intrus"
+   ]
+  },
+  {
+   "nom": "melange",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       },
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "capacite",
+    "exclusive_ailleurs"
+   ]
+  },
+  {
+   "nom": "quota_depasse",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-09-30": {
+      "sureffectif": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-01": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-02": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-03": {
+      "sureffectif": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "quota_depasse"
+   ]
+  },
+  {
+   "nom": "quota_hors_quota_admis",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-09-30": {
+      "sureffectif": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-01": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-02": {
+      "alice_dup": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-03": {
+      "sureffectif": [
+       {
+        "s": "emma_ber",
+        "t": "J",
+        "x": true,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "quota_cours_consomme_la_courte",
+   "state": {
+    "affectations": {
+     "2026-10-07": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-08": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-09": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-10": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "quota_depasse"
+   ]
+  },
+  {
+   "nom": "quota_cours_trois_journees_admises",
+   "state": {
+    "affectations": {
+     "2026-10-07": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-08": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-09": {
+      "sureffectif": [
+       {
+        "s": "lea_mor",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "quota_ferie_samedi_ne_consomme_pas",
+   "state": {
+    "affectations": {
+     "2026-10-13": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-14": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-15": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-16": {
+      "chloe_ler": [
+       {
+        "s": "zoe_gir",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "quota_ferie_en_semaine_consomme",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-01": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-02": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-03": {
+      "sureffectif": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {
+     "2026-09-30": "Pont"
+    },
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "quota_depasse"
+   ]
+  },
+  {
+   "nom": "quota_semaine_pleine_admise",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-01": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-02": {
+      "alice_dup": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-03": {
+      "sureffectif": [
+       {
+        "s": "nora_fon",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": []
+  },
+  {
+   "nom": "quota_secretaire_jours_fixes",
+   "state": {
+    "affectations": {
+     "2026-09-29": {
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-09-30": {
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-01": {
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     },
+     "2026-10-02": {
+      "secretariat": [
+       {
+        "s": "sara_pet",
+        "t": "J",
+        "x": false,
+        "a": false
+       }
+      ]
+     }
+    },
+    "feries": {},
+    "feries_off": [],
+    "notes": {}
+   },
+   "attendu": [
+    "quota_depasse"
+   ]
+  },
+  {
+   "nom": "notes_en_chaine",
+   "state": {
+    "affectations": {},
+    "feries": {},
+    "feries_off": [],
+    "notes": {
+     "2026-09-29": "un mot"
+    }
+   },
+   "attendu": []
+  },
+  {
+   "nom": "notes_en_liste",
+   "state": {
+    "affectations": {},
+    "feries": {},
+    "feries_off": [],
+    "notes": {
+     "2026-09-29": [
+      "un mot"
+     ]
+    }
+   },
+   "attendu": []
+  }
+ ]
+}

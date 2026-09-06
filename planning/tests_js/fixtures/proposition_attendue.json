@@ -1,0 +1,1021 @@
+{
+ "_provenance": "Gabarit d'origine (reference/skill-v1/assets/gabarit.html) rempli avec data_fictif.json, ouvert une seule fois dans Chrome, à la main, le 06/09/2026, sans aucun déplacement, puis « Exporter JSON » (exporte : 2026-09-06T19:11:32.932Z). Seules les affectations sont reprises.",
+ "affectations": {
+  "2026-09-29": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-09-30": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "administratif": [
+    {
+     "s": "nora_fon",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-01": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-06": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-07": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "administratif": [
+    {
+     "s": "nora_fon",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-08": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-13": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-14": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-15": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-20": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-21": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "administratif": [
+    {
+     "s": "nora_fon",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-22": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-27": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-28": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "administratif": [
+    {
+     "s": "nora_fon",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-29": {
+   "secretariat": [
+    {
+     "s": "sara_pet",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-02": {
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-03": {
+   "chloe_ler": [
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-09": {
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-10": {
+   "chloe_ler": [
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-16": {
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "administratif": [
+    {
+     "s": "nora_fon",
+     "t": "C",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-23": {
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-24": {
+   "chloe_ler": [
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  },
+  "2026-10-30": {
+   "chloe_ler": [
+    {
+     "s": "zoe_gir",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "ines_lam",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "alice_dup": [
+    {
+     "s": "emma_ber",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "bob_mar": [
+    {
+     "s": "lina_rou",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ],
+   "sureffectif": [
+    {
+     "s": "nora_fon",
+     "t": "J",
+     "x": false,
+     "a": true
+    },
+    {
+     "s": "lea_mor",
+     "t": "J",
+     "x": false,
+     "a": true
+    }
+   ]
+  }
+ }
+}

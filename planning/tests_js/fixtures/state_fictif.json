@@ -1,0 +1,17 @@
+{
+ "_doc": "État fictif de test : quelques briques valides de la première semaine, un férié posé dans la page, une note. Tout est fictif.",
+ "affectations": {
+  "2026-09-29": {
+   "alice_dup": [{"s": "emma_ber", "t": "J", "x": false, "a": false}],
+   "chloe_ler": [{"s": "zoe_gir", "t": "J", "x": false, "a": false}, {"s": "ines_lam", "t": "J", "x": false, "a": false}],
+   "secretariat": [{"s": "sara_pet", "t": "J", "x": false, "a": true}]
+  },
+  "2026-10-01": {
+   "bob_mar": [{"s": "lina_rou", "t": "J", "x": false, "a": false}],
+   "administratif": [{"s": "nora_fon", "t": "C", "x": false, "a": true}]
+  }
+ },
+ "feries": {"2026-10-02": "Pont"},
+ "feries_off": [],
+ "notes": {"2026-09-29": ["Livraison prévue"]}
+}

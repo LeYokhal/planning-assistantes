@@ -1,0 +1,35 @@
+{% extends "socle/base.html" %}
+{% load static %}
+
+{% block classe_html %} class="planning"{% endblock %}
+{% block classe_corps %}planning{% endblock %}
+{% block titre %}Planning assistantes — {{ libelle }}{% endblock %}
+{% block style_base %}{% endblock %}
+{% block tete %}<link rel="stylesheet" href="{% static 'planning/styles.css' %}">{% endblock %}
+{% block en_tete_page %}{% endblock %}
+
+{% block contenu %}
+  {# Explicite : c'est ce rendu qui pose le cookie csrftoken lu par page.js. #}
+  {% csrf_token %}
+  {% include "planning/_corps.html" %}
+  {{ data|json_script:"planning-data" }}
+  {{ state|json_script:"planning-state" }}
+  {{ meta|json_script:"planning-meta" }}
+{% endblock %}
+
+{% block navigation %}
+  <a href="/">Accueil</a> —
+  <a href="{% url 'presences:mois' mois %}">Présences</a> —
+  <a href="{% url 'absences:decider' %}?mois={{ mois }}">Absences</a> —
+  <a href="{% url 'planning:mois' precedent %}">← {{ precedent }}</a> —
+  <a href="{% url 'planning:mois' suivant %}">{{ suivant }} →</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'planning/moteur.js' %}"></script>
+<script src="{% static 'planning/page.js' %}"></script>
+{% endblock %}

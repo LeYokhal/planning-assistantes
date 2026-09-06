@@ -1,0 +1,470 @@
+/* Page du planning assistantes — brique 4a.
+
+   Port de la partie DOM du gabarit du skill v1
+   (reference/skill-v1/assets/gabarit.html, l.797-1107) : rendu, glisser-déposer,
+   toasts, boutons, appels d'API. Toute la logique métier est dans moteur.js ;
+   ici on enchaîne toujours `M.x(); commit();`.
+
+   La page propose si et seulement si `META.numero === 0` : aucun drapeau de
+   l'état ne porte cette décision. En mode « autonome » (copie HTML), les
+   boutons d'API sont masqués et rien ne part vers le serveur. */
+(() => {
+"use strict";
+const DATA = JSON.parse(document.getElementById("planning-data").textContent);
+const STATE = JSON.parse(document.getElementById("planning-state").textContent);
+const META = JSON.parse(document.getElementById("planning-meta").textContent);
+const M = PlanningMoteur.creer(DATA, STATE);
+const state = M.state;
+const {WEEKS, SHOWN, SAL, PRAT, HB, ABS, MISC, MISC_LABEL, shownDays, isFerie, ferieName, congeDe, coursDe, attentesDe, nonCouvert, bloque,
+       presents, bricksAt, allBricksOfDay, need, reserve, heures, jauge, absences, reasonRefus, weekOf, manquantes, notesDe, nbCoursMois, quota, placed} = M;
+const {DOW_ABR, MOIS, toDate, weekday, fmtJour, fmtH, heure} = PlanningMoteur;
+
+let ARMED = null;      // brique sélectionnée au clic : {s,t,x}
+let CURRENT_WEEK = 0;  // semaine dont la réserve est affichée
+let DRAG = null;       // brique en cours de glisser
+let FILTER = null;     // {s: sid} ou {p: pid} : vue filtrée sur une personne
+let CPOP = null;       // {iso, edit: index|null} : fenêtre de commentaires ouverte
+let DERNIERE = M.empreinte();   // empreinte de l'état tel que le serveur le connaît
+let VIOLATIONS = [];   // dernières violations affichées (page ou serveur)
+
+// ------------------------------------------------------------ messages
+const MSG = {
+  hors_plage: "date hors de la plage du mois",
+  salariee_inconnue: "salariée inconnue de la fiche",
+  slot_inconnu: "case inconnue",
+  brique_invalide: "brique illisible",
+  doublon_jour: "deux briques le même jour",
+  jour_bloque: "jour fermé, absence ou cours",
+  jour_non_affiche: "jour sans présence ni jour fixe",
+  sans_donnees: "aucune donnée Doctolib ce jour-là",
+  praticien_absent: "praticien absent ce jour-là",
+  capacite: "trop d'assistantes pour ce praticien",
+  exclusive_ailleurs: "exclusive placée hors de son binôme",
+  exclusif_intrus: "praticien exclusif : réservé à ses binômes",
+  quota_depasse: "briques de la semaine dépassées",
+};
+function messageViolation(v) {
+  const qui = v.s && SAL[v.s] ? SAL[v.s].label : null;
+  const ou = v.slot ? (PRAT[v.slot]?.label ?? MISC_LABEL[v.slot] ?? v.slot) : null;
+  const quand = v.date ? (v.code === "quota_depasse" ? `semaine du ${fmtJour(v.date)}` : fmtJour(v.date)) : null;
+  return [quand, qui, ou, MSG[v.code] ?? v.code].filter(Boolean).join(" · ");
+}
+function messageRefus(code, b, iso, slot) {   // toast d'un dépôt refusé par place()
+  const s = SAL[b.s], p = PRAT[slot];
+  const noms = ids => ids.map(x => SAL[x]?.label ?? PRAT[x]?.label).filter(Boolean).join(" et ");
+  switch (code) {
+    case "autre_semaine": return "Une brique appartient à sa semaine : reprends-la dans la réserve de l'autre semaine.";
+    case "jour_bloque": return `${s.label} ne peut pas être placée le ${fmtJour(iso)} : jour fermé, absence ou cours.`;
+    case "doublon_jour": return `${s.label} est déjà placée le ${fmtJour(iso)}`;
+    case "quota_depasse": return `Plus de brique « ${b.t === "C" ? "courte" : "journée"} » pour ${s.label} cette semaine. Utilise + pour une journée hors quota.`;
+    case "exclusive_ailleurs": return `${s.label} est exclusive : elle ne va que chez ${noms(s.binomes ?? [])}.`;
+    case "exclusif_intrus": return `${p?.label ?? slot} ne reçoit que ${noms(p?.binomes ?? [])}.`;
+    case "praticien_absent": return `${p?.label ?? slot} n'est pas présent le ${fmtJour(iso)}.`;
+    case "sans_donnees": return `Aucune donnée Doctolib le ${fmtJour(iso)}.`;
+    case "jour_non_affiche": return `Le ${fmtJour(iso)} n'est pas un jour du planning.`;
+    default: return "Dépôt refusé.";
+  }
+}
+
+// ------------------------------------------------------------ outils DOM
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const csrf = () => { const m = document.cookie.match(/(?:^|;\s*)csrftoken=([^;]+)/); return m ? decodeURIComponent(m[1]) : ""; };
+// info-bulle des postes : survol = affichage, clic = épinglée (re-clic ou Échap pour fermer)
+let TIP_PINNED = null;
+function showTip(target, html, pinned) {
+  const tip = document.getElementById("tip"); tip.innerHTML = html; tip.className = "show" + (pinned ? " pinned" : "");
+  const r = target.getBoundingClientRect(); tip.style.left = Math.min(r.left, window.innerWidth - 280) + "px"; tip.style.top = (r.bottom + 6) + "px";
+}
+function hideTip(force) { if (TIP_PINNED && !force) return; TIP_PINNED = null; document.getElementById("tip").className = ""; }
+function tipHandlers(target, html) {
+  target.addEventListener("mouseenter", () => { if (!TIP_PINNED && !DRAG) showTip(target, html, false); });
+  target.addEventListener("mouseleave", () => hideTip(false));
+  target.addEventListener("click", ev => { if (ev.target.closest(".brick") || ARMED) return; if (TIP_PINNED === target) { hideTip(true); } else { TIP_PINNED = target; showTip(target, html, true); } });
+}
+let toastTimer;
+function toast(msg, err) { const t = document.getElementById("toast"); t.textContent = msg; t.className = "show" + (err ? " err" : ""); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = "", err ? 3600 : 2200); }
+function bandeau(html, err) { const b = document.getElementById("banner"); b.className = "banner" + (err ? " err" : ""); b.innerHTML = html; }
+
+// ------------------------------------------------------------ gestes (moteur puis commit)
+function commit() { render(); }
+function deposer(iso, slot, b, from) {   // rend le résultat de place() après l'avoir affiché
+  const r = M.place(iso, slot, b, from);
+  if (!r.ok) { toast(messageRefus(r.code, b, iso, slot), true); return r; }
+  commit();
+  if (r.bascule) toast(`${r.bascule.label} a déjà ${r.bascule.attendues > 1 ? "ses " + r.bascule.attendues + " assistantes" : "son assistante"} le ${fmtJour(iso)} : ${SAL[b.s].label} passe en sureffectif.`);
+  return r;
+}
+function retirer(from) { M.unplace(from.date, from.slot, from.index); commit(); }
+function annuler() { if (!M.undo()) { toast("Rien à annuler"); return; } commit(); toast("Annulé"); }
+function toggleFerie(iso) {
+  const nb = allBricksOfDay(iso).length;
+  if (isFerie(iso)) {
+    if (!confirm(`${fmtJour(iso)} : rouvrir ce jour (le cabinet travaille) ?`)) return;
+    M.rouvrirJour(iso); commit(); toast(`${fmtJour(iso)} rouvert — les briques reviennent dans les réserves.`);
+    return;
+  }
+  if (!confirm(`Fermer le cabinet le ${fmtJour(iso)} (férié ou pont) ?` + (nb ? ` ${nb} brique(s) posée(s) ce jour-là seront retirées.` : "") + (weekday(iso) <= 4 ? " Le jour comptera comme une journée placée pour chaque salariée." : " Samedi ou dimanche : aucune journée comptée."))) return;
+  M.fermerJour(iso); commit(); toast(`${fmtJour(iso)} fermé.`);
+}
+function saveNotes(iso, liste, msg) { M.poserNotes(iso, liste); commit(); toast(msg); }
+function addNote(iso, t) { if (!t.trim()) return; saveNotes(iso, [...notesDe(iso), t], `Commentaire ajouté au ${fmtJour(iso)}`); }
+function editNote(iso, i, t) { const l = notesDe(iso).slice(); l[i] = t; saveNotes(iso, l, `Commentaire modifié`); }
+function delNote(iso, i) { const l = notesDe(iso).slice(); l.splice(i, 1); saveNotes(iso, l, `Commentaire supprimé`); }
+function closeCpop() { CPOP = null; document.getElementById("cpop").className = "cpop"; }
+function openCpop(iso, edit) {   // fenêtre ancrée sous la bulle (ou le bouton) du jour
+  CPOP = {iso, edit: edit ?? null}; hideTip(true);
+  const pop = document.getElementById("cpop"); pop.innerHTML = "";
+  const liste = notesDe(iso);
+  const head = el("div", "ch", `Commentaires · ${esc(fmtJour(iso))}`); const close = el("button", "close", "×"); close.title = "Fermer"; close.addEventListener("click", closeCpop); head.appendChild(close); pop.appendChild(head);
+  if (liste.length) {
+    const ul = el("ul");
+    liste.forEach((t, i) => { const li = el("li", CPOP.edit === i ? "editing" : null); li.appendChild(el("span", null, esc(t)));
+      const e = el("button", null, "✎"); e.title = "Modifier"; e.addEventListener("click", () => { CPOP.edit = i; openCpop(iso, i); });
+      const x = el("button", null, "×"); x.title = "Supprimer"; x.addEventListener("click", () => delNote(iso, i));
+      li.appendChild(e); li.appendChild(x); ul.appendChild(li); });
+    pop.appendChild(ul);
+  }
+  const ta = el("textarea"); ta.placeholder = liste.length ? "Nouveau commentaire…" : "Commentaire sur la journée…"; ta.rows = 3;
+  if (CPOP.edit != null) ta.value = liste[CPOP.edit] ?? "";
+  const valide = () => { const t = ta.value; if (CPOP?.edit != null) editNote(iso, CPOP.edit, t); else addNote(iso, t); };
+  ta.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Escape") { if (CPOP?.edit != null) { openCpop(iso, null); } else closeCpop(); } if (ev.key === "Enter" && (ev.ctrlKey || ev.metaKey)) valide(); });
+  pop.appendChild(ta);
+  const ca = el("div", "ca"); const ok = el("button", "btn primary", CPOP.edit != null ? "Enregistrer" : "Ajouter"); ok.addEventListener("click", valide); ca.appendChild(ok);
+  if (CPOP.edit != null) { const ann = el("button", "btn", "Annuler"); ann.addEventListener("click", () => openCpop(iso, null)); ca.appendChild(ann); }
+  ca.appendChild(el("span", "help", "Ctrl+Entrée")); pop.appendChild(ca);
+  pop.className = "cpop show";
+  const anchor = document.querySelector(`.day[data-date="${iso}"] .cbub`) ?? document.querySelector(`.day[data-date="${iso}"] .cbtn`) ?? document.querySelector(`.day[data-date="${iso}"]`);
+  const r = anchor.getBoundingClientRect(); pop.style.left = Math.max(8, Math.min(r.left, window.innerWidth - 296)) + "px"; pop.style.top = Math.min(r.bottom + 6, window.innerHeight - 320) + "px";
+  setTimeout(() => ta.focus(), 0);
+}
+
+// ------------------------------------------------------------ rendu
+function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:true}
+  const s = SAL[b.s];
+  const e = el("div", "brick" + (b.t === "C" ? " c" : "") + (b.x ? " x" : "") + (b.a && !ctx.palette ? " auto" : "") + (!ctx.palette && FILTER?.s && FILTER.s !== b.s ? " dim" : ""));
+  e.style.setProperty("--bg", s.couleur[0]); e.style.setProperty("--fg", s.couleur[1]);
+  e.draggable = true; e.tabIndex = 0;
+  e.innerHTML = `${esc(s.label)}${b.t === "C" ? '<span class="tag">16h30</span>' : ""}${b.x ? '<span class="tag">+</span>' : ""}`;
+  e.title = `${s.nom} · ${s.role === "secretaire" ? "secrétaire" : "assistante"} ${s.heures} h` + (b.t === "C" ? " · journée courte, fin 16h30" : "") + (b.x ? " · hors quota" : "") + (b.a && !ctx.palette ? " · proposée par le moteur, déplace-la pour la confirmer" : "");
+  e.addEventListener("dragstart", ev => {
+    DRAG = {b:{s:b.s, t:b.t, x:b.x}, from: ctx.from ?? null};
+    ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", b.s);
+    e.classList.add("ghost"); markDroppables(b.s, ctx.from?.date); document.body.classList.add("placing");
+  });
+  e.addEventListener("dragend", () => { DRAG = null; e.classList.remove("ghost"); document.body.classList.remove("placing"); document.querySelectorAll(".slot.nodrop,.slot.over").forEach(x => x.classList.remove("nodrop","over")); document.getElementById("palette").classList.remove("over"); });
+  if (ctx.palette) {
+    e.addEventListener("click", () => { const same = ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x; ARMED = same ? null : {s:b.s, t:b.t, x:b.x}; render(); if (ARMED) toast(`${s.label} sélectionnée : clique une case pour la placer (Échap pour annuler).`); });
+    if (ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x) e.classList.add("armed");
+  } else {
+    const rm = el("button", "rm", "×"); rm.title = "Retirer"; rm.addEventListener("click", ev => { ev.stopPropagation(); retirer(ctx.from); });
+    e.appendChild(rm);
+    if (ctx.warn) { e.classList.add("warn"); e.title += ` · ${ctx.warn}`; }
+  }
+  return e;
+}
+function markDroppables(sid, fromDate) {
+  document.querySelectorAll(".slot").forEach(sl => { const iso = sl.closest(".day").dataset.date; if (reasonRefus(sid, iso, fromDate)) sl.classList.add("nodrop"); });
+}
+function dropHandlers(target, iso, slot) {
+  target.addEventListener("dragover", ev => { if (!DRAG) return; ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; if (!target.classList.contains("nodrop")) target.classList.add("over"); });
+  target.addEventListener("dragleave", () => target.classList.remove("over"));
+  target.addEventListener("drop", ev => { ev.preventDefault(); target.classList.remove("over"); if (!DRAG) return; deposer(iso, slot, DRAG.b, DRAG.from); DRAG = null; });
+  target.addEventListener("click", ev => {
+    if (ev.target.closest(".brick") || !ARMED) return;
+    const armed = ARMED;
+    const r = deposer(iso, slot, armed);
+    if (r.ok) {
+      const rest = reserve(SAL[armed.s], WEEKS[weekOf(iso)]).rest.filter(t => t === armed.t).length;
+      const cible = MISC_LABEL[r.cible] ?? `chez ${PRAT[r.cible].label}`;
+      if (armed.x || !rest) ARMED = null;
+      render();
+      toast(`${SAL[armed.s].label} placée ${cible} le ${fmtJour(iso)}` + (armed.x ? " (hors quota)" : rest ? ` — encore ${rest} à placer cette semaine` : " — semaine complète"));
+    }
+  });
+}
+
+function render() {
+  hideTip(true);
+  const cp = CPOP;
+  const cal = document.getElementById("calendar"); cal.innerHTML = "";
+  WEEKS.forEach((w, wi) => {
+    const week = el("section", "week" + (wi === CURRENT_WEEK ? " current" : "")); week.dataset.week = wi;
+    week.addEventListener("mouseenter", () => { if (CURRENT_WEEK !== wi) { CURRENT_WEEK = wi; renderPalette(); document.querySelectorAll(".week").forEach((x,i) => x.classList.toggle("current", i === wi)); } });
+    week.appendChild(bandEl(w, wi));
+    const days = el("div", "days"); days.style.setProperty("--cols", SHOWN.length);
+    for (const iso of shownDays(w)) days.appendChild(dayEl(iso));
+    week.appendChild(days); cal.appendChild(week);
+  });
+  cal.appendChild(bilanEl());
+  if (cp) openCpop(cp.iso, null);
+  renderPalette();
+  marquerViolations();
+  majEntete();
+}
+function majEntete() {   // numéro de version, état « modifié », boutons d'API
+  const modifie = M.empreinte() !== DERNIERE;
+  const v = document.getElementById("version");
+  if (META.autonome) v.textContent = `Copie de la version ${META.numero}`;
+  else v.textContent = (META.numero ? `Version ${META.numero}` : "Aucune version enregistrée") + (modifie ? " · modifié, non enregistré" : "");
+  v.classList.toggle("modifie", modifie && !META.autonome);
+  document.getElementById("btnUndo").disabled = !M.peutAnnuler();
+  document.getElementById("btnSave").disabled = META.autonome || !modifie;
+  document.getElementById("btnCopie").disabled = META.autonome || modifie || !META.numero;
+  document.getElementById("btnCopie").title = modifie ? "Enregistre d'abord : la copie reprend la dernière version enregistrée" : "Télécharger une copie HTML autonome de la dernière version enregistrée";
+}
+function marquerViolations() {
+  document.querySelectorAll(".slot.viol").forEach(x => x.classList.remove("viol"));
+  for (const v of VIOLATIONS) { if (!v.date || !v.slot) continue; document.querySelector(`.day[data-date="${v.date}"] .slot[data-slot="${v.slot}"]`)?.classList.add("viol"); }
+}
+function afficherViolations(liste, titre) {
+  VIOLATIONS = liste;
+  const b = document.getElementById("violations");
+  if (!liste.length) { b.innerHTML = ""; marquerViolations(); return; }
+  b.innerHTML = `<b>${esc(titre)}</b> : ${liste.length} règle${liste.length > 1 ? "s" : ""} stricte${liste.length > 1 ? "s" : ""} enfreinte${liste.length > 1 ? "s" : ""}. Corrige puis enregistre à nouveau.<ul>${liste.slice(0, 30).map(v => `<li>${esc(messageViolation(v))}</li>`).join("")}${liste.length > 30 ? `<li>… et ${liste.length - 30} autre(s)</li>` : ""}</ul>`;
+  marquerViolations();
+  toast(`${liste.length} règle(s) stricte(s) enfreinte(s) : rien n'a été enregistré.`, true);
+}
+function bilanEl() {
+  let manq = 0, supTot = 0, absTot = 0; for (const wk of WEEKS) manq += manquantes(wk);
+  const sec = el("section", "bilan"); let rows = "";
+  for (const s of DATA.salaries) {
+    let q = 0, p = 0, x = 0, hp = 0, hd = 0, hs = 0;
+    for (const wk of WEEKS) { const j = jauge(s, wk), h = heures(s, wk); q += j.q.length; p += j.nbPose + j.v.length; x += j.extras; hp += h.posees; hd += h.dues; hs += h.sup; }
+    supTot += hs;
+    const ab = absences(s.id, DATA.meta.debut, DATA.meta.fin); absTot += ab.total;
+    const nbCours = nbCoursMois(s.id);
+    const abTxt = [...Object.entries(ab.parType).map(([t, n]) => `<span class="${ABS[t]?.cls ?? ""}">${n} ${ABS[t]?.code ?? esc(t)}</span>`), ...(nbCours ? [`<span class="abs-cours">${nbCours} cours</span>`] : [])].join(" · ") || "—";
+    const dim = FILTER?.s && FILTER.s !== s.id ? " dimrow" : "";
+    rows += `<tr><td class="${dim}" style="--fg:${s.couleur[1]}"><i></i>${esc(s.label)}</td><td class="${p < q ? "short" : "full"}${dim}">${p + x} / ${q}</td><td class="${dim}">${fmtH(hd)}</td><td class="${dim}">${fmtH(hp)}</td><td class="${hs ? "sup" : ""}${dim}">${hs ? "+" + fmtH(hs) : "—"}</td><td class="${dim}">${abTxt}</td></tr>`;
+  }
+  const premiers = shownDays(WEEKS[0]), derniers = shownDays(WEEKS[WEEKS.length - 1]);
+  const bornes = premiers.length && derniers.length ? ` · semaines complètes du ${fmtJour(premiers[0])} au ${fmtJour(derniers[derniers.length - 1])}` : "";
+  const head = el("div", "bhead", `<h3>Bilan du mois</h3><span class="bsub">${esc(DATA.meta.libelle)}${bornes}</span>`);
+  const kp = el("div", "kpis");
+  kp.appendChild(el("div", "kpi " + (manq ? "ko" : "ok"), `<b>${manq}</b><span>assistante${manq > 1 ? "s" : ""} manquante${manq > 1 ? "s" : ""}</span>`));
+  kp.appendChild(el("div", "kpi " + (supTot ? "warn" : ""), `<b>${supTot ? "+" + fmtH(supTot) : "0 h"}</b><span>heures supplémentaires</span>`));
+  kp.appendChild(el("div", "kpi", `<b>${absTot}</b><span>jour${absTot > 1 ? "s" : ""} d'absence</span>`));
+  head.appendChild(kp); sec.appendChild(head);
+  sec.appendChild(el("table", null, `<tr><th>Personne</th><th>Jours placés</th><th>Heures dues</th><th>Heures posées</th><th>Heures sup.</th><th>Absences</th></tr>${rows}`));
+  return sec;
+}
+function bandEl(w, wi) {
+  const b = el("div", "band");
+  const d = shownDays(w);
+  b.appendChild(el("div", "wk", `Semaine ${w.num}<small>du ${fmtJour(d[0] ?? w.days[0])} au ${fmtJour(d[d.length-1] ?? w.days[6])}</small>`));
+  const meters = el("div", "meters");
+  for (const s of DATA.salaries) {
+    const j = jauge(s, w), h = heures(s, w);
+    const m = el("div", "meter"); m.style.setProperty("--fg", s.couleur[1]);
+    m.className = "meter" + (!j.r.rest.length && !j.extras ? " done" : "") + (FILTER?.s && FILTER.s !== s.id ? " hide" : "");
+    m.innerHTML = `<b>${esc(s.label)}</b><span class="squares">${j.sq || '<span style="color:var(--ink-3)">—</span>'}</span><span class="cnt">${j.texte}</span>${h.sup ? `<span class="hs">+${fmtH(h.sup)}</span>` : ""}`;
+    m.title = `${s.nom} · ${j.q.length} j de contrat cette semaine` + (j.v.length ? `, dont ${j.v.length} en absence/férié` : "") + ` · ${fmtH(h.posees)} posées pour ${fmtH(h.dues)} dues` + (h.sup ? ` (+${fmtH(h.sup)} sup)` : "");
+    meters.appendChild(m);
+  }
+  b.appendChild(meters);
+  for (const s of DATA.salaries.filter(x => x.admin)) {
+    const pose = placed(s, w).some(x => x.slot === "administratif"), rest = reserve(s, w).rest;
+    if (!quota(s, w).length) continue;
+    b.appendChild(el("span", "adm" + (pose ? " ok" : ""), pose ? `${esc(s.label)} : administratif ✓` : rest.length ? `${esc(s.label)} : administratif à poser` : `${esc(s.label)} : pas d'administratif (couverture)`));
+  }
+  const n = manquantes(w);
+  b.appendChild(el("span", "postes " + (n ? "ko" : "ok"), n ? `${n} assistante${n > 1 ? "s" : ""} manquante${n > 1 ? "s" : ""}` : "tous les postes pourvus"));
+  for (const s of DATA.salaries.filter(x => x.etudiante)) { const nc = w.days.filter(iso => coursDe(s.id, iso)).length; if (nc) b.appendChild(el("span", "cours", `${esc(s.label)} : ${nc > 1 ? nc + " cours" : "cours"}`)); }
+  b.addEventListener("click", () => { CURRENT_WEEK = wi; render(); });
+  return b;
+}
+function dayEl(iso) {
+  const wd = weekday(iso), fer = isFerie(iso) ? ferieName(iso) : null;
+  const coms = notesDe(iso);
+  const day = el("div", "day" + (iso.slice(0,7) === DATA.meta.mois ? "" : " outside") + (fer ? " ferie" : "") + (coms.length ? " noted" : "") + (nonCouvert(iso) ? " noncouvert" : "")); day.dataset.date = iso;
+  const d = toDate(iso);
+  const head = el("div", "day-head", `<span class="num">${d.getDate()}</span><span>${DOW_ABR[wd]}</span>${d.getDate() === 1 || iso.slice(0,7) !== DATA.meta.mois ? `<span class="m">${MOIS[d.getMonth()]}</span>` : ""}${fer ? `<span class="fer">${esc(fer)}</span>` : ""}`);
+  if (coms.length) {
+    const bub = el("span", "cbub", String(coms.length)); bub.title = "";
+    const html = `<b>${coms.length > 1 ? coms.length + " commentaires" : "Commentaire"}</b>` + coms.map(t => `<br>• ${esc(t)}`).join("");
+    bub.addEventListener("mouseenter", () => { if (!CPOP) showTip(bub, html, false); });
+    bub.addEventListener("mouseleave", () => hideTip(false));
+    bub.addEventListener("click", ev => { ev.stopPropagation(); CPOP?.iso === iso ? closeCpop() : openCpop(iso, null); });
+    head.querySelector(".num").after(bub);
+  }
+  const cb = el("button", "cbtn", "commenter"); cb.title = coms.length ? "Ajouter un autre commentaire" : "Ajouter un commentaire sur cette journée";
+  cb.addEventListener("click", ev => { ev.stopPropagation(); openCpop(iso, null); });
+  head.appendChild(cb);
+  const fb = el("button", "fbtn", fer ? "rouvrir" : "fermer"); fb.title = fer ? "Le cabinet travaille finalement ce jour-là" : "Fermer le cabinet ce jour-là (férié, pont)";
+  fb.addEventListener("click", ev => { ev.stopPropagation(); toggleFerie(iso); });
+  head.appendChild(fb); day.appendChild(head);
+  if (coms.length) day.appendChild(el("div", "dnote-print", coms.map(t => "• " + esc(t)).join("\n")));
+  const pres = presents(iso), notes = [];
+  const prats = el("div", "prats");
+  if (nonCouvert(iso) && !fer) prats.appendChild(el("div", "nc", "sans données Doctolib"));
+  for (const {p, l} of pres) {
+    const bricks = bricksAt(iso, p.id), etat = bricks.length === 0 ? " empty" : bricks.length < p.attendues ? " partial" : "";
+    const sl = el("div", "slot prat" + etat + (p.a_part ? " wide" : "") + (FILTER?.p && FILTER.p !== p.id ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.style.setProperty("--pc", p.couleur[1]); sl.dataset.slot = p.id;
+    const h = l.c.length ? l.c.map(([a,b]) => `${heure(a)}–${heure(b)}`).join(" · ") : (l.v === "planning fixe" ? "jours fixes" : "");
+    sl.appendChild(el("div", "sl", `<b>${esc(p.label)}</b>${p.etiquette ? `<span class="et">${esc(p.etiquette)}</span>` : ""}${p.attendues > 1 ? `<span class="att">${bricks.length}/${p.attendues}</span>` : ""}${l.v === "ouvert (atypique)" || l.jc ? '<span class="dot"></span>' : ""}`));
+    const details = `<b>${esc(p.nom)}</b><br><span class="h">${esc(h || "—")}</span>` +
+      (l.n != null ? `<br>${l.n} rendez-vous · agenda ${esc(l.v)}${l.jc ? " · journée courte" : ""}` : "<br>planning fixe") +
+      (p.exclusif ? `<br>reçoit uniquement ${p.binomes.map(x => SAL[x]?.label).filter(Boolean).join(" et ")}` : "");
+    tipHandlers(sl, details);
+    const bk = el("div", "bricks");
+    bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot:p.id, index:i}, warn: (b.t === "C" && l.fin && l.fin > "16:30") ? `journée courte : ${p.label} travaille jusqu'à ${heure(l.fin)}` : null})));
+    sl.appendChild(bk); dropHandlers(sl, iso, p.id); prats.appendChild(sl);
+  }
+  if (pres.length || nonCouvert(iso)) day.appendChild(prats);
+  // Secrétariat toujours présent, juste sous les praticiens ; Sureffectif et Administratif seulement s'ils contiennent une brique (ou pendant un placement)
+  for (const [slot, cls, label] of [MISC[1], MISC[0], MISC[2]]) {
+    const bricks = bricksAt(iso, slot);
+    const sl = el("div", `slot misc ${cls}` + (slot !== "secretariat" && !bricks.length ? " collapsed" : "") + (FILTER?.p ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.dataset.slot = slot; sl.appendChild(el("div", "ml", label));
+    const bk = el("div", "bricks"); bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot, index:i}})));
+    sl.appendChild(bk); dropHandlers(sl, iso, slot); day.appendChild(sl);
+  }
+  // absences du jour (lecture seule : elles se corrigent sur /absences/), comptées comme des journées placées
+  const absJour = DATA.salaries.filter(s => (congeDe(s.id, iso)?.bloque || coursDe(s.id, iso)) && !(FILTER?.s && FILTER.s !== s.id));
+  if (absJour.length) {
+    const sl = el("div", "slot misc absr" + (FILTER?.p ? " dim" : "")); sl.appendChild(el("div", "ml", "Absent"));
+    const bk = el("div", "bricks");
+    for (const s of absJour.filter(x => coursDe(x.id, iso))) { const vb = el("span", "vbrick abs-cours lecture", `${esc(s.label)} · COURS`); vb.title = `${s.nom} · cours`; bk.appendChild(vb); }
+    for (const s of absJour.filter(x => congeDe(x.id, iso)?.bloque)) { const c = congeDe(s.id, iso), a = ABS[c.type]; const vb = el("span", `vbrick lecture ${a?.cls ?? ""}`, `${esc(s.label)} · ${a?.code ?? esc(c.type)}`); vb.style.color = a ? "" : "var(--ink-2)"; vb.title = `${s.nom} · ${c.type} — se corrige depuis l'écran des absences`; bk.appendChild(vb); }
+    sl.appendChild(bk); day.appendChild(sl);
+  }
+  for (const sid of attentesDe(iso)) if (SAL[sid] && !(FILTER?.s && FILTER.s !== sid)) { const at = el("span", "attente", `${esc(SAL[sid].label)} : demande d'absence en attente`); at.title = "Demande à décider sur l'écran des absences ; ne bloque pas le planning"; day.appendChild(at); }
+  for (const p of DATA.praticiens) { const l = DATA.jours[iso]?.[p.id]; if (l && !l.pr && l.n > 0) notes.push(`<div>${esc(p.label)} · agenda ${l.v === "non planifié" ? "non ouvert" : esc(l.v)}, ${l.n} RDV</div>`); }
+  for (const s of DATA.salaries) { const c = congeDe(s.id, iso); if (c && !c.bloque && !(FILTER?.s && FILTER.s !== s.id)) notes.push(`<div>ℹ ${esc(s.label)} : ${esc(c.type.toLowerCase())}</div>`); }
+  if (notes.length) day.appendChild(el("div", "notes", notes.join("")));
+  return day;
+}
+function setTitle() { const qui = FILTER?.s ? SAL[FILTER.s].label : FILTER?.p ? PRAT[FILTER.p].label : null; document.getElementById("title").innerHTML = `Planning assistantes <span class="month">${esc(DATA.meta.libelle)}</span>` + (qui ? ` <span class="who">· ${esc(qui)}</span>` : ""); }
+function setFilter(f) { FILTER = f; render(); setTitle(); document.title = `Planning assistantes — ${DATA.meta.libelle}` + (FILTER?.s ? ` — ${SAL[FILTER.s].label}` : FILTER?.p ? ` — ${PRAT[FILTER.p].label}` : ""); }
+function renderPalette() {
+  const palette = document.getElementById("palette"); palette.innerHTML = "";
+  const collapsed = document.body.classList.contains("pal-collapsed");
+  const tg = el("button", "ptoggle", collapsed ? "Réserve ›" : "‹ Replier"); tg.title = collapsed ? "Afficher la réserve" : "Replier la réserve pour agrandir le calendrier";
+  tg.addEventListener("click", () => { document.body.classList.toggle("pal-collapsed"); renderPalette(); });
+  palette.appendChild(tg);
+  const pal = el("div", "pbody"); palette.appendChild(pal);
+  const w = WEEKS[CURRENT_WEEK], d = shownDays(w);
+  // --- praticiens en tête : un clic filtre la vue
+  pal.appendChild(el("div", "grp", "Praticiens"));
+  const chips = el("div", "pchips");
+  for (const p of DATA.praticiens) { const c = el("button", "pchip" + (FILTER?.p === p.id ? " on" : ""), esc(p.label)); c.style.setProperty("--pc", p.couleur[1]); c.title = p.nom; c.addEventListener("click", () => setFilter(FILTER?.p === p.id ? null : {p: p.id})); chips.appendChild(c); }
+  pal.appendChild(chips);
+  // --- filtre actif
+  const fb = el("div", "filtre-bar" + (FILTER ? " on" : "")); fb.style.marginTop = "6px";
+  if (FILTER) { fb.innerHTML = `Vue filtrée : <b>${esc(FILTER.s ? SAL[FILTER.s].label : PRAT[FILTER.p].label)}</b>`; const off = el("button", "btn", "Tout afficher"); off.addEventListener("click", () => setFilter(null)); fb.appendChild(off); }
+  pal.appendChild(fb);
+
+  // --- tuiles salariées
+  for (const [role, titre] of [["assistante","Assistantes"],["secretaire","Secrétaires"]]) {
+    pal.appendChild(el("div", "grp", `${titre}<span class="wk-hint">${d.length ? `${fmtJour(d[0])} → ${fmtJour(d[d.length-1])}` : ""}</span>`));
+    const grid = el("div", "tiles");
+    for (const s of DATA.salaries.filter(x => x.role === role)) {
+      const j = jauge(s, w), r = j.r, q = j.q, h = heures(s, w);
+      const tile = el("div", "tile" + (FILTER?.s === s.id ? " on" : "")); tile.style.setProperty("--fg", s.couleur[1]); tile.style.setProperty("--bg", s.couleur[0]);
+      const badges = {}; for (const v of j.v) badges[v.code] = badges[v.code] ? badges[v.code] + 1 : 1;
+      const badgeHtml = Object.entries(badges).map(([code, n]) => `<span class="badge-abs ${j.v.find(v => v.code === code).cls}">${esc(code)}${n > 1 ? " ×" + n : ""}</span>`).join("");
+      const nm = el("div", "nm", `<i></i>${esc(s.label)}${badgeHtml}<small>${s.heures_fixes ? `${s.fixes.length} j fixes` : s.etudiante ? "étudiante" : `${s.heures} h`}</small>`);
+      const acts = el("div", "acts");
+      const plus = el("button", null, "+"); plus.title = `Journée supplémentaire (hors quota, +${fmtH(HB.J)}) pour ${s.label}`;
+      plus.addEventListener("click", ev => { ev.stopPropagation(); ARMED = {s:s.id, t:"J", x:true}; render(); toast(`Journée supplémentaire pour ${s.label} (+${fmtH(HB.J)}) : clique la case où la placer.`); });
+      acts.appendChild(plus);
+      nm.appendChild(acts); tile.appendChild(nm);
+      if (s.etudiante) { const n = nbCoursMois(s.id); tile.appendChild(el("div", "crs", `<span>cours ce mois</span><b>${n}</b>`)); }
+      tile.appendChild(el("div", "mt", `<span class="squares">${j.sq || "—"}</span><span class="cnt">${j.texte}</span>${!r.rest.length && q.length ? '<span class="done" title="semaine placée">✓</span>' : ""}${h.sup ? `<span class="sup" title="heures supplémentaires cette semaine">+${fmtH(h.sup)}</span>` : ""}`));
+      if (r.rest.length) { const stack = el("div", "stack"); r.rest.forEach(t => stack.appendChild(brickEl({s:s.id, t, x:false}, {palette:true}))); tile.appendChild(stack); }
+      tile.addEventListener("click", ev => { if (ev.target.closest(".brick,button")) return; setFilter(FILTER?.s === s.id ? null : {s: s.id}); });
+      grid.appendChild(tile);
+    }
+    pal.appendChild(grid);
+  }
+  if (ARMED?.x) { const note = el("div", "sub", `Journée supplémentaire de ${SAL[ARMED.s].label} en main — clique une case.`); note.style.color = "var(--warn)"; note.style.marginTop = "8px"; pal.appendChild(note); }
+  document.body.classList.toggle("placing", !!ARMED);
+  pal.appendChild(el("div", "hint", "Clique un nom pour filtrer. Glisse une brique (ou clique-la puis la case). + journée sup. Les absences et les cours se corrigent depuis l'écran des absences. Glisse une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
+  palette.addEventListener("dragover", ev => { if (DRAG?.from) { ev.preventDefault(); palette.classList.add("over"); } });
+  palette.addEventListener("dragleave", () => palette.classList.remove("over"));
+  palette.addEventListener("drop", ev => { ev.preventDefault(); palette.classList.remove("over"); if (DRAG?.from) { retirer(DRAG.from); DRAG = null; } });
+}
+
+// ------------------------------------------------------------ fichiers : export, import, copie
+function download(name, text, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], {type})); a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function exportJson() { download(`planning-assistantes_${DATA.meta.mois}.json`, JSON.stringify(M.exporter(META.numero), null, 1), "application/json"); }
+function importFrom(text) {   // export JSON, ou HTML enregistré (bloc planning-state)
+  let src = null;
+  try { if (text.trim().startsWith("{")) src = JSON.parse(text);
+        else { const m = text.match(/<script id="planning-state"[^>]*>([\s\S]*?)<\/script>/); if (m) src = JSON.parse(m[1]); } } catch(e) {}
+  const r = M.importer(src);
+  if (!r) { toast("Fichier non reconnu : il faut un export JSON ou une copie HTML du planning.", true); return; }
+  commit();
+  toast(`${r.jours} jour(s) repris${r.ignorees ? `, ${r.ignorees} brique(s) ignorée(s) (personne absente de la fiche)` : ""}.`);
+}
+
+// ------------------------------------------------------------ API : enregistrer, erreurs
+async function enregistrer() {
+  if (META.autonome) return;
+  const locales = M.verifier();
+  if (locales.length) { afficherViolations(locales, "Enregistrement refusé par la page"); return; }
+  let r;
+  try {
+    r = await fetch(META.urls.versions, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": csrf()}, body: JSON.stringify(M.charge(META.numero))});
+  } catch (e) { toast("Réseau indisponible : rien n'a été enregistré.", true); return; }
+  if (r.redirected || !(r.headers.get("content-type") || "").includes("application/json")) {
+    bandeau("Session expirée : exporte ton travail (Exporter JSON), puis recharge la page pour te reconnecter.", true); return;
+  }
+  let corps = {}; try { corps = await r.json(); } catch (e) {}
+  if (r.status === 201) { META.numero = corps.numero; DERNIERE = M.empreinte(); afficherViolations([], ""); bandeau(""); render(); toast(`Version ${corps.numero} enregistrée.`); }
+  else if (r.status === 409) bandeauConflit(corps.derniere);
+  else if (r.status === 422) afficherViolations(corps.violations ?? [], "Enregistrement refusé par le serveur");
+  else if (r.status === 403) bandeau("Accès refusé : ce compte ne peut pas enregistrer le planning.", true);
+  else toast(`Enregistrement impossible (${r.status}).`, true);
+}
+function bandeauConflit(derniere) {
+  const b = document.getElementById("banner"); b.className = "banner err";
+  b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : ton enregistrement est refusé. Exporte ton travail (Exporter JSON), puis recharge la page et réimporte-le.`;
+  const exp = el("button", "btn", "Exporter JSON"); exp.addEventListener("click", exportJson); b.appendChild(exp);
+  const rl = el("button", "btn", "Recharger"); rl.addEventListener("click", () => location.reload()); b.appendChild(rl);
+}
+function signalerErreur(nom, source, ligne) {
+  if (META.autonome || !META.urls?.erreurs) return;
+  try {
+    fetch(META.urls.erreurs, {method: "POST", credentials: "same-origin", keepalive: true, headers: {"Content-Type": "application/json", "X-CSRFToken": csrf()},
+      body: JSON.stringify({nom: String(nom ?? "Erreur").slice(0, 80), source: String(source ?? "").slice(0, 80), ligne: String(ligne ?? "").slice(0, 80), mois: META.mois})}).catch(() => {});
+  } catch (e) {}
+}
+
+// ------------------------------------------------------------ démarrage
+function boot() {
+  setTitle();
+  document.title = `Planning assistantes — ${DATA.meta.libelle}` + (META.autonome ? ` (copie v${META.numero})` : "");
+  const genere = new Date(DATA.meta.genere); const quand = isNaN(genere.getTime()) ? DATA.meta.genere : genere.toLocaleString("fr-FR", {dateStyle: "short", timeStyle: "short"});
+  document.getElementById("subtitle").textContent = `Généré le ${quand} · Doctolib · présence = agenda ouvert ou ≥ ${DATA.meta.seuils.presence_h} h de rendez-vous`;
+  const mesure = () => document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").getBoundingClientRect().height + "px");
+  mesure(); window.addEventListener("resize", mesure); if (window.ResizeObserver) new ResizeObserver(mesure).observe(document.querySelector(".topbar"));
+  const alertes = (DATA.meta.alertes ?? []).slice();
+  if (alertes.length) bandeau(esc(alertes.join(" · ")));
+  // La proposition ne dépend que du numéro de version servi : 0 = aucune version, on propose.
+  if (META.numero === 0 && !META.autonome) M.initialState();
+  render();
+  document.getElementById("btnSave").addEventListener("click", enregistrer);
+  document.getElementById("btnCopie").addEventListener("click", () => { if (!META.autonome && META.urls.copie && M.empreinte() === DERNIERE && META.numero) location.href = META.urls.copie; });
+  document.getElementById("btnExport").addEventListener("click", exportJson);
+  document.getElementById("btnPrint").addEventListener("click", () => window.print());
+  document.getElementById("btnUndo").addEventListener("click", annuler);
+  document.getElementById("btnPropose").addEventListener("click", () => { M.snapshot(); let n = 0; for (const w of WEEKS) n += M.proposer(w); commit(); toast(n ? `${n} brique${n > 1 ? "s" : ""} proposée${n > 1 ? "s" : ""} dans les cases vides.` : "Rien à compléter : toutes les briques disponibles sont posées."); });
+  document.getElementById("btnImport").addEventListener("click", () => document.getElementById("importFile").click());
+  document.getElementById("importFile").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; f.text().then(importFrom); ev.target.value = ""; });
+  document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Refaire toute la proposition ? Les placements manuels seront perdus.")) { M.snapshot(); M.initialState(); commit(); toast("Nouvelle proposition calculée"); } });
+  document.addEventListener("click", ev => { if (!CPOP) return; const chemin = ev.composedPath ? ev.composedPath() : []; if (!chemin.some(n => n.id === "cpop" || n.classList?.contains("cbub") || n.classList?.contains("cbtn"))) closeCpop(); });
+  document.addEventListener("keydown", ev => {
+    if (ev.key === "Escape") { hideTip(true); if (CPOP) closeCpop(); else if (ARMED) { ARMED = null; render(); } else if (FILTER) setFilter(null); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); annuler(); }
+    if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") { ev.preventDefault(); if (!META.autonome) enregistrer(); }
+  });
+  window.addEventListener("beforeunload", ev => { if (META.autonome) return; if (M.empreinte() !== DERNIERE) { ev.preventDefault(); ev.returnValue = ""; } });
+  window.onerror = (message, source, ligne, colonne, erreur) => { signalerErreur(erreur?.name ?? "Erreur", source, ligne); };
+  window.addEventListener("unhandledrejection", ev => { signalerErreur(String(ev.reason?.name ?? "Rejet"), "", ""); });
+}
+boot();
+})();

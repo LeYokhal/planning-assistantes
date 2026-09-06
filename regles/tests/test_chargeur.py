@@ -40,6 +40,13 @@ BASE = {
             }
         ]
     },
+    # Section ajoutée en brique 4a : `default` est obligatoire.
+    "palette": {
+        "_doc": "ignoré",
+        "yellow": ["#F6ECAE", "#7A5F00"],
+        "blue": ["#D3E4F7", "#1F529A"],
+        "default": ["#E3E3E3", "#3A3A3A"],
+    },
 }
 
 

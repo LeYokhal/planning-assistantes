@@ -28,6 +28,8 @@ REGLES_BRUTES = {
     "praticiens_a_part": {"liste": []},
     "heures_par_brique": {"J": 9.75, "C": 6.75},
     "etudiantes": {"liste": []},
+    # Brique 4a : la palette est obligatoire, `default` compris.
+    "palette": {"default": ["#E3E3E3", "#3A3A3A"]},
     "periodes_ouverture": {
         "liste": [
             {

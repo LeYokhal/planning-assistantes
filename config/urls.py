@@ -23,6 +23,9 @@ urlpatterns = [
     path("", include("personnes.urls")),
     # /mes-absences/, /mes-absences/nouvelle/, /absences/
     path("", include("absences.urls")),
+    # /planning/, /planning/<AAAA-MM>/, /planning/<AAAA-MM>/copie/,
+    # /api/planning/<AAAA-MM>/versions/, /api/erreurs/
+    path("", include("planning.urls")),
     # API entrante n8n : /api/n8n/sante/, /api/n8n/imports/
     path("api/n8n/", include("n8n.urls")),
     # L'administration n'a pas de connexion propre : tout passe par le lien magique.

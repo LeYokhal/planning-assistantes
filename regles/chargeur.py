@@ -14,6 +14,7 @@ sont ignorées à tous les niveaux.
 
 import datetime
 import json
+import re
 from dataclasses import dataclass, field
 
 from django.conf import settings
@@ -73,6 +74,9 @@ class Regles:
     praticiens_a_part: tuple = ()
     heures_par_brique: dict = field(default_factory=dict)
     etudiantes: tuple = ()
+    # Brique 4a : nom de couleur Notion -> (fond, encre) hexadécimaux. Port de
+    # la table `COULEURS` du skill v1 ; `default` est obligatoire.
+    palette: dict = field(default_factory=dict)
     # Tous les noms cités par le fichier, bruts, dédoublonnés, dans l'ordre
     # d'apparition. C'est sur eux que porte `verifier`.
     noms: tuple = ()
@@ -333,6 +337,33 @@ def _etudiantes(brut):
     return tuple(etudiantes)
 
 
+_HEXA = re.compile(r"^#[0-9A-Fa-f]{6}$")
+
+
+def _palette(brut):
+    """Section `palette` : nom de couleur -> couple `[fond, encre]` hexadécimal.
+
+    Les noms sont ceux du select « couleur » de Notion (repris tels quels par
+    `couleurs`) ; `default` est obligatoire, c'est le repli de `couleur_hex`.
+    """
+    palette = {}
+    for nom, couple in _dict(brut, "palette").items():
+        nom = _chaine(nom, "palette").lower()
+        if (
+            not isinstance(couple, list)
+            or len(couple) != 2
+            or not all(isinstance(c, str) and _HEXA.match(c) for c in couple)
+        ):
+            raise _refus(
+                f"palette : « {nom} » doit être un couple [fond, encre] de "
+                "couleurs hexadécimales « #RRGGBB »"
+            )
+        palette[nom] = tuple(couple)
+    if "default" not in palette:
+        raise _refus("palette : la couleur « default » est obligatoire")
+    return palette
+
+
 def _construire(brut):
     """Valide le contenu déjà décodé et fabrique les `Regles`."""
     if not isinstance(brut, dict):
@@ -347,6 +378,7 @@ def _construire(brut):
     heures = _heures(brut)
     etudiantes = _etudiantes(brut)
     periodes = _periodes_ouverture(brut)
+    palette = _palette(brut)
 
     noms = []
     for nom in (
@@ -371,6 +403,7 @@ def _construire(brut):
         praticiens_a_part=a_part,
         heures_par_brique=heures,
         etudiantes=etudiantes,
+        palette=palette,
         noms=tuple(noms),
     )
 
@@ -430,3 +463,34 @@ def verifier(personnes):
     return RapportRegles(
         total=total, resolus=total - len(non_resolus), non_resolus=non_resolus
     )
+
+
+# --- Brique 4a : couleurs et résolution des noms ----------------------------
+
+
+def couleur_hex(nom, regles=None):
+    """Couple `(fond, encre)` d'un nom de couleur Notion. Repli sur `default`.
+
+    `Personne.couleur` porte le NOM de la couleur (posé par `couleur_de` à
+    l'import) ; la page attend deux hexadécimaux. Une chaîne vide ou un nom
+    absent de la palette rendent `default`, comme le skill (l.107).
+    """
+    palette = (regles or charger()).palette
+    return palette.get(str(nom or "").strip().lower(), palette["default"])
+
+
+def resoudre(regles, personnes):
+    """Dict « nom normalisé du fichier -> personne », pour les noms résolus.
+
+    Même normalisation que `verifier` : une règle écrite « DUPONT Alice »
+    trouve la personne (nom « DUPONT », prénom « Alice ») quels que soient la
+    casse et les accents. Un nom sans personne n'apparaît pas : l'appelant
+    décide quoi en faire (le planning l'ignore et le signale).
+    """
+    connus = {normaliser(f"{p.nom} {p.prenom}"): p for p in personnes}
+    resolus = {}
+    for nom in regles.noms:
+        cle = normaliser(nom)
+        if cle in connus:
+            resolus[cle] = connus[cle]
+    return resolus

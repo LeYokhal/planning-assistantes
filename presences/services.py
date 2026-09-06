@@ -394,12 +394,14 @@ def agendas_recents():
     return tuple(sorted(agendas, key=str.casefold))
 
 
-def couverture(debut, fin):
-    """Assemble la couverture de la plage `debut`→`fin` pour l'écran du mois.
+def imports_par_date(debut, fin):
+    """Import qui fait foi pour chaque jour de la plage : `{date ISO: import}`.
 
     Pour chaque jour, c'est le DERNIER import réussi (par date d'import) dont la
-    fenêtre couvre ce jour qui fait foi : un import plus récent corrige un
-    import plus ancien sans que rien ne soit ni modifié ni supprimé.
+    fenêtre couvre ce jour ET dont le payload contient ce jour qui est retenu :
+    un import plus récent corrige un import plus ancien sans que rien ne soit
+    ni modifié ni supprimé. Un jour qu'aucun import ne couvre est absent du
+    résultat. Partagé par l'écran des présences et par le planning (brique 4a).
     """
     imports = list(
         ImportPresences.objects.filter(
@@ -411,16 +413,33 @@ def couverture(debut, fin):
     index = {import_.pk: _jours_par_date(import_) for import_ in imports}
 
     retenus = {}
-    jours_bruts = {}
     date_courante = debut
     while date_courante <= fin:
         cle = date_courante.isoformat()
         for import_ in imports:
             if import_.debut <= date_courante <= import_.fin and cle in index[import_.pk]:
                 retenus[cle] = import_
-                jours_bruts[cle] = index[import_.pk][cle]
                 break
         date_courante += datetime.timedelta(days=1)
+    return retenus
+
+
+def jour_brut(import_, cle):
+    """Le jour `cle` (date ISO) tel qu'il figure dans le payload de l'import."""
+    return _jours_par_date(import_).get(cle)
+
+
+def couverture(debut, fin):
+    """Assemble la couverture de la plage `debut`→`fin` pour l'écran du mois.
+
+    La sélection de l'import qui fait foi jour par jour est celle de
+    `imports_par_date` ; ici on ne fait qu'en tirer les cases du tableau.
+    """
+    retenus = imports_par_date(debut, fin)
+    index = {
+        import_.pk: _jours_par_date(import_) for import_ in set(retenus.values())
+    }
+    jours_bruts = {cle: index[import_.pk][cle] for cle, import_ in retenus.items()}
 
     agendas = sorted(
         {
