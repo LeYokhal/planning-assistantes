@@ -1,8 +1,9 @@
 """Chargement et validation de `regles.json`.
 
-Le fichier est la copie conforme de `reference/skill-v1/regles.json` : c'est
-lui qui porte les binômes, les praticiens exclusifs, les gabarits horaires et
-les couleurs. Il se modifie par PR, jamais depuis l'application.
+Le fichier reprend `reference/skill-v1/regles.json`, augmenté des sections
+`periodes_ouverture` (brique 3) et `palette` (brique 4a) : c'est lui qui porte
+les binômes, les praticiens exclusifs, les gabarits horaires, les couleurs et
+la palette. Il se modifie par PR, jamais depuis l'application.
 
 Toute anomalie lève `ImproperlyConfigured` et, comme le chargement a lieu dans
 `ReglesConfig.ready()`, empêche le démarrage : mieux vaut une application qui

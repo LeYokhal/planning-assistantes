@@ -150,4 +150,7 @@ en base et liste les **non résolus** : un nom qui y figure signale un fichier d
 règles en retard sur la fiche (départ, mariage, faute de frappe).
 
 `reference/skill-v1/` reste la référence historique et **n'est pas exécutée**
-par l'application ; `regles/regles.json` en est la copie conforme.
+par l'application ; `regles/regles.json` reprend son `regles.json`, augmenté
+des sections `periodes_ouverture` (brique 3, paie) et `palette` (brique 4a,
+couleurs du planning : nom de couleur Notion vers couple hexadécimal, `default`
+obligatoire).
