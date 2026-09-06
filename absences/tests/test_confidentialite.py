@@ -17,7 +17,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from absences import services
-from absences.models import TypeAbsence
+from absences.models import AbsenceSalariee, TypeAbsence
 from absences.tests import fabrique
 from audit.models import EvenementAudit
 
@@ -44,9 +44,9 @@ def _journal():
     )
 
 
-def _absence_sensible(**extra):
+def _absence_sensible(personne=None, **extra):
     return fabrique.absence(
-        fabrique.personne(),
+        personne or fabrique.personne(),
         fabrique.type_absence(
             libelle=TYPE_SENSIBLE, categorie=TypeAbsence.Categorie.DECLARE
         ),
@@ -99,6 +99,49 @@ def test_correction_ne_journalise_ni_type_ni_precision(principale):
 
     services.corriger(absence, Decimal("1"), principale)
 
+    journal = _journal()
+    assert TYPE_SENSIBLE not in journal
+    assert "médical" not in journal
+
+
+def test_suppression_depuis_l_admin_ne_journalise_ni_type_ni_precision(cabinet):
+    """Brique 3-ter : la suppression d'administration laisse une trace, muette."""
+    from django.contrib.admin.sites import AdminSite
+
+    from absences.admin import AbsenceSalarieeAdmin
+
+    class Requete:
+        user = cabinet
+
+    absence = _absence_sensible(statut="declaree")
+    administration = AbsenceSalarieeAdmin(AbsenceSalariee, AdminSite())
+
+    administration.delete_model(Requete(), absence)
+
+    assert EvenementAudit.objects.filter(action="absence_supprimee").count() == 1
+    journal = _journal()
+    assert TYPE_SENSIBLE not in journal
+    assert "médical" not in journal
+    assert "CHU" not in journal
+
+
+def test_suppression_groupee_depuis_l_admin_reste_muette(cabinet):
+    from django.contrib.admin.sites import AdminSite
+
+    from absences.admin import AbsenceSalarieeAdmin
+
+    class Requete:
+        user = cabinet
+
+    personne = fabrique.personne()
+    _absence_sensible(personne, statut="declaree")
+    _absence_sensible(personne, statut="validee")
+    administration = AbsenceSalarieeAdmin(AbsenceSalariee, AdminSite())
+
+    administration.delete_queryset(Requete(), AbsenceSalariee.objects.all())
+
+    assert AbsenceSalariee.objects.count() == 0
+    assert EvenementAudit.objects.filter(action="absence_supprimee").count() == 2
     journal = _journal()
     assert TYPE_SENSIBLE not in journal
     assert "médical" not in journal

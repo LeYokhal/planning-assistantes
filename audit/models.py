@@ -37,6 +37,8 @@ class Action(models.TextChoices):
     ABSENCE_ANNULEE = "absence_annulee", "Absence annulée"
     ABSENCE_CORRIGEE = "absence_corrigee", "Jours comptés corrigés"
     ABSENCE_PURGEE = "absence_purgee", "Absence purgée (rétention)"
+    # Brique 3-ter : suppression depuis l'administration, hors rétention.
+    ABSENCE_SUPPRIMEE = "absence_supprimee", "Absence supprimée"
     PAIE_CONSULTEE = "paie_consultee", "Données de paie consultées"
     ADRESSE_CHANGEE = "adresse_changee", "Adresse de connexion changée"
 
