@@ -44,6 +44,15 @@ class Action(models.TextChoices):
     # Brique 4a. `details` : mois, numéro de version, nombre de briques.
     # Jamais de nom, jamais de type d'absence.
     PLANNING_ENREGISTRE = "planning_enregistre", "Planning enregistré"
+    # Brique 4b. `planning_publie` : mois, numéro de version, nombre de
+    # briques. `absence_conflit_publication` : identifiant de personne, mois,
+    # numéro de la version publiée, dates. Jamais de nom, jamais de type
+    # d'absence.
+    PLANNING_PUBLIE = "planning_publie", "Planning publié"
+    ABSENCE_CONFLIT_PUBLICATION = (
+        "absence_conflit_publication",
+        "Absence en conflit avec un planning publié",
+    )
 
 
 class EvenementAudit(models.Model):

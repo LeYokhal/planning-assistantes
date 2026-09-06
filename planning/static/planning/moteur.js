@@ -133,6 +133,10 @@ function creer(DATA, state) {
   }
   const bricksAt = (iso, slot) => (state.affectations[iso]?.[slot]) ?? [];
   const allBricksOfDay = iso => Object.entries(state.affectations[iso] ?? {}).flatMap(([slot, arr]) => (Array.isArray(arr) ? arr : []).map(b => ({...b, slot})));
+  function orphelins(iso) {   // slots à briques dont la journée ne dessine pas la case : praticien absent ou jour fermé, slot inconnu (R4a-1-E1). Jamais les cases MISC.
+    const dessines = new Set(presents(iso).map(x => x.p.id));
+    return Object.entries(state.affectations[iso] ?? {}).filter(([slot, arr]) => Array.isArray(arr) && arr.length > 0 && !MISC_SLOTS.includes(slot) && !dessines.has(slot)).map(([slot]) => slot);
+  }
   const need = (iso, p) => p.attendues - bricksAt(iso, p.id).length;
   const free = (sid, iso) => !bloque(sid, iso) && !allBricksOfDay(iso).some(b => b.s === sid);
   const finOf = (iso, p) => DATA.jours[iso]?.[p.id]?.fin ?? null;
@@ -349,14 +353,14 @@ function creer(DATA, state) {
   }
 
   // ------------------------------------------------------------ import, export, charge
-  function importer(src) {   // fusion d'un export JSON ou du state d'une copie ; rend {jours, ignorees} ou null si illisible
+  function importer(src) {   // fusion d'un export JSON ou du state d'une copie ; rend {jours, ignorees, orphelines} ou null si illisible
     if (!estObjet(src) || !estObjet(src.affectations)) return null;
     snapshot();
     const dansPlage = iso => dateValide(iso) && iso >= DATA.meta.debut && iso <= DATA.meta.fin;
     if (estObjet(src.feries)) for (const [iso, nom] of Object.entries(src.feries)) if (dansPlage(iso)) state.feries[iso] = String(nom);
     if (Array.isArray(src.feries_off)) for (const iso of src.feries_off) if (dansPlage(iso) && !state.feries_off.includes(iso)) state.feries_off.push(iso);
     if (estObjet(src.notes)) for (const [iso, txt] of Object.entries(src.notes)) { if (!dansPlage(iso)) continue; const l = listeDeNotes(txt); if (l.length) state.notes[iso] = l; }
-    let jours = 0, ignorees = 0;
+    let jours = 0, ignorees = 0, orphelines = 0;
     for (const [iso, slots] of Object.entries(src.affectations)) {
       if (!dansPlage(iso) || !estObjet(slots)) continue;
       const clean = {};
@@ -367,8 +371,10 @@ function creer(DATA, state) {
       }
       if (Object.keys(clean).length) state.affectations[iso] = clean; else delete state.affectations[iso];
       jours++;
+      // briques reprises sur une case que la journée affichée ne dessine pas (praticien absent ce jour-là) : chargées quand même, comptées pour le toast
+      if (SHOWN.includes(weekday(iso))) for (const slot of orphelins(iso)) orphelines += state.affectations[iso][slot].length;
     }
-    return {jours, ignorees};
+    return {jours, ignorees, orphelines};
   }
   function exporter(numero) {   // l'objet du fichier « Exporter JSON » : sans congé, sans cours, sans type d'absence
     const propre = nettoyer(state);
@@ -418,7 +424,7 @@ function creer(DATA, state) {
   return {
     DATA, state, WEEKS, SHOWN, SAL, PRAT, HB, ABS, MISC, MISC_SLOTS, MISC_LABEL,
     shownDays, isFerie, ferieName, congeDe, coursDe, attentesDe, nonCouvert, bloque, virtuels, consommer,
-    presents, praticienPresent, bricksAt, allBricksOfDay, need, free, finOf, chargePoste, quota, placed, reserve,
+    presents, praticienPresent, bricksAt, allBricksOfDay, orphelins, need, free, finOf, chargePoste, quota, placed, reserve,
     heures, jauge, absences, reasonRefus, weekOf, manquantes, notesDe, nbCoursMois,
     snapshot, peutAnnuler, undo, addBrick, removeBrick, retirerBriquesDe, place, unplace, retirerCourte,
     fermerJour, rouvrirJour, poserNotes, proposer, initialState, importer, exporter, charge, empreinte, verifier,

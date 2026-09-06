@@ -145,7 +145,7 @@ test("importer reprend les affectations de la plage, ignore les salariées incon
     conges: [{s: "emma_ber", date: "2026-09-29", type: "x", bloque: true}],
     cours: {"lea_mor": ["2026-09-29"]},
   });
-  assert.deepEqual(r, {jours: 1, ignorees: 2});
+  assert.deepEqual(r, {jours: 1, ignorees: 2, orphelines: 0});
   assert.deepEqual(m.state.affectations, {"2026-09-29": {"alice_dup": [{s: "emma_ber", t: "J", x: false, a: false}]}});
   assert.deepEqual(m.state.feries, {"2026-10-02": "Pont"});
   assert.deepEqual(m.state.feries_off, ["2026-11-01"]);
@@ -170,4 +170,24 @@ test("SHOWN : du mardi au samedi, jamais le lundi ni le dimanche", () => {
 test("les fonctions de rendu ne sont pas dans le moteur", () => {
   const source = fs.readFileSync(path.join(__dirname, "..", "static", "planning", "moteur.js"), "utf8");
   for (const interdit of ["document.", "toast(", "confirm(", "render(", "commit(", "alert(", "localStorage"]) assert.equal(source.includes(interdit), false, interdit);
+});
+
+test("orphelins : vide quand tout est présent, un praticien absent listé, jamais une case MISC, tout praticien un jour fermé", () => {
+  const m = moteur(structuredClone(STATE_FICTIF));
+  assert.deepEqual(m.orphelins("2026-09-29"), []);
+  m.state.affectations["2026-09-30"] = {bob_mar: [b("lina_rou")], sureffectif: [b("nora_fon")]};   // Bob est absent le mercredi
+  assert.deepEqual(m.orphelins("2026-09-30"), ["bob_mar"]);
+  m.state.affectations["2026-09-30"].inconnu_xyz = [b("emma_ber")];
+  assert.deepEqual(m.orphelins("2026-09-30"), ["bob_mar", "inconnu_xyz"]);
+  m.fermerJour("2026-09-29");   // jour fermé : aucune case praticien dessinée
+  m.state.affectations["2026-09-29"] = {alice_dup: [b("emma_ber")]};
+  assert.deepEqual(m.orphelins("2026-09-29"), ["alice_dup"]);
+});
+
+test("importer compte les briques orphelines sans les écarter", () => {
+  const m = moteur();
+  const r = m.importer({affectations: {"2026-09-30": {bob_mar: [b("lina_rou")], alice_dup: [b("emma_ber")]}}});
+  assert.deepEqual(r, {jours: 1, ignorees: 0, orphelines: 1});
+  assert.equal(m.state.affectations["2026-09-30"].bob_mar[0].s, "lina_rou");
+  assert.equal(m.verifier().filter(v => v.code === "praticien_absent").length, 1);
 });

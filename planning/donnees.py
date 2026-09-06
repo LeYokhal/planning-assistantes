@@ -4,7 +4,8 @@ Port section par section de `reference/skill-v1/scripts/build_planning.py`
 (l.97-320, `main`), à partir des tables de l'application au lieu des fichiers
 de travail du skill (`fiche.json`, `conges.json`, `s7_*.json`). Le contrat
 `DATA` est celui que le gabarit lit ; les seules clés nouvelles sont
-`meta.non_couverts`, `meta.alertes` et `attentes`, que l'ancien code ignore.
+`meta.non_couverts`, `meta.alertes`, `meta.imports` (brique 4b) et `attentes`,
+que l'ancien code ignore.
 
 Différences assumées avec le skill, toutes signalées dans `meta.alertes` :
 
@@ -340,10 +341,12 @@ def construire(mois, regles=None):
             seuils = {"courte_h": courte, "presence_h": presence}
     else:
         alerter("aucun import réussi ne couvre la plage")
-    enveloppes = [
-        import_.message
-        for import_ in sorted(set(retenus.values()), key=lambda i: i.pk)
-    ]
+    imports_retenus = sorted(set(retenus.values()), key=lambda i: i.pk)
+    enveloppes = [import_.message for import_ in imports_retenus]
+    # Brique 4b : identité des imports qui ont produit `jours`, recopiée dans
+    # `verifications` à la publication. Des identifiants et des empreintes,
+    # rien d'autre.
+    imports = [{"id": import_.pk, "empreinte": import_.empreinte} for import_ in imports_retenus]
 
     # --- 5. congés, cours, demandes en attente (skill l.251-289)
     conges, attentes, cours = [], [], {}
@@ -402,6 +405,7 @@ def construire(mois, regles=None):
             },
             "seuils": seuils,
             "enveloppes": enveloppes,
+            "imports": imports,
             "non_couverts": non_couverts,
             "alertes": alertes,
         },

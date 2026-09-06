@@ -133,12 +133,29 @@ def absences_a_decider(request):
         services.absences_du_mois(plage.debut, plage.fin, pour_la_paie=False)
     )
 
+    # Brique 4b : conflit avec un planning publié, calculé au rendu (décision
+    # J), sur les absences effectives de type bloquant. Import local : c'est
+    # `planning` qui importe `absences`, jamais l'inverse en tête de module.
+    from planning.conflits import conflits
+
+    versions = {}
+    nb_conflits = 0
+    for absence in du_mois:
+        absence.conflits = (
+            conflits(absence.personne, absence.date_debut, absence.date_fin, versions)
+            if absence.type.bloquant
+            else []
+        )
+        if absence.conflits:
+            nb_conflits += 1
+
     return render(
         request,
         "absences/decider.html",
         {
             "en_attente": en_attente,
             "du_mois": du_mois,
+            "nb_conflits": nb_conflits,
             "mois": mois,
             "libelle": libelle_mois(mois),
             "precedent": mois_precedent(mois),

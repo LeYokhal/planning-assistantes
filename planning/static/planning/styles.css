@@ -316,6 +316,11 @@
   .banner .btn{margin-left:8px}
   .banner ul{margin:4px 0 0;padding-left:18px}
   .slot.viol{outline:2px solid var(--alert);outline-offset:-2px;background:var(--alert-bg)}
+  /* brique 4b, R4a-1-E1 : case « hors présence » d'une journée (praticien absent ou jour fermé, slot inconnu) ; on n'y dépose rien, on en retire ou déplace */
+  .slot.prat.orphelin{border-style:dashed;border-left-style:dashed;background:repeating-linear-gradient(135deg,var(--card-2),var(--card-2) 6px,rgba(0,0,0,.04) 6px,rgba(0,0,0,.04) 12px)}
+  .slot.prat.orphelin .sl{font-style:italic;color:var(--ink-2)}
+  .slot.prat.orphelin .sl .et{border-style:dashed}
+  .slot.prat.orphelin.viol{outline:2px solid var(--alert);outline-offset:-2px;background:var(--alert-bg)}
   .day.noncouvert .prats{background:repeating-linear-gradient(45deg,var(--outside),var(--outside) 6px,var(--card) 6px,var(--card) 12px)}
   .day .nc{font-size:10px;color:var(--ink-3);padding:2px 6px;font-style:italic}
   .attente{display:inline-block;font-size:10px;color:var(--warn);background:var(--warn-bg);border-radius:var(--r-pill);padding:1px 7px;margin:2px 4px 0}

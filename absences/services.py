@@ -9,6 +9,11 @@ précision. Ce qui entre dans `details` : des identifiants, des dates, des
 statuts, des comptages. Rien d'autre. Le garde-fou « @ » d'`audit/services.py`
 ne reconnaîtrait pas « Maladie » comme une donnée sensible : c'est à la main que
 cela se tient.
+
+Brique 4b : quand une absence devient effective (déclaration, validation,
+reprise depuis l'administration), `signaler_conflits` regarde si un planning
+publié pose déjà une brique de la salariée sur un de ces jours. Le conflit est
+signalé (audit, webhook), jamais bloquant, toujours après l'écriture.
 """
 
 import datetime
@@ -134,6 +139,8 @@ def creer(personne, type_absence, date_debut, date_fin, auteur, precision=""):
         webhooks.EVENEMENT_DECLAREE if declaration else webhooks.EVENEMENT_DEMANDEE,
         absence,
     )
+    if declaration:
+        signaler_conflits(absence, auteur)
     return absence, signal
 
 
@@ -200,7 +207,42 @@ def decider(absence, valider, qui):
     logger.info("absence #%s decidee : %s", absence.pk, absence.statut)
 
     webhooks.notifier(webhooks.EVENEMENT_DECIDEE, absence)
+    if valider:
+        signaler_conflits(absence, qui)
     return signal
+
+
+def signaler_conflits(absence, qui):
+    """Signale un conflit avec un planning publié quand l'absence devient effective.
+
+    Décision C : ne bloque jamais, vient après l'écriture, l'audit et le webhook
+    de l'absence. Décision I : types bloquants seulement. Le journal et le
+    webhook ne portent que des identifiants, des numéros de version et des
+    dates : ni type, ni précision, ni nom.
+    """
+    if not absence.type.bloquant:
+        return []
+    # Import local : `planning.donnees` importe ce module, le cycle serait
+    # direct (patron de `presences/verrou.py`).
+    from planning.conflits import conflits
+
+    liste = conflits(absence.personne, absence.date_debut, absence.date_fin)
+    for conflit in liste:
+        journaliser(
+            Action.ABSENCE_CONFLIT_PUBLICATION,
+            qui=qui,
+            objet=absence,
+            personne_id=absence.personne_id,
+            mois=conflit["mois"],
+            numero=conflit["numero"],
+            dates=conflit["dates"],
+        )
+    if liste:
+        logger.info(
+            "absence #%s en conflit avec %s planning(s) publie(s)", absence.pk, len(liste)
+        )
+        webhooks.notifier_conflit(absence, liste)
+    return liste
 
 
 def annuler(absence, qui):

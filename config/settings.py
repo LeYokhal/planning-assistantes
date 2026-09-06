@@ -252,6 +252,11 @@ RETENTION_ABSENCES_JOURS = os.environ.get("RETENTION_ABSENCES_JOURS", "").strip(
 # N8N_WEBHOOK_SECRET, en-tete X-Webhook-Secret.
 N8N_ABSENCE_WEBHOOK_URL = os.environ.get("N8N_ABSENCE_WEBHOOK_URL", "").strip()
 
+# Webhook n8n de l'evenement planning.publie (brique 4b). Absent = aucune
+# notification (fail-closed). Le secret est N8N_WEBHOOK_SECRET, en-tete
+# X-Webhook-Secret.
+N8N_PLANNING_WEBHOOK_URL = os.environ.get("N8N_PLANNING_WEBHOOK_URL", "").strip()
+
 DEBIT_CONNEXION_IP = (10, 900)
 DEBIT_CONNEXION_ADRESSE = (5, 3600)
 DEBIT_API_N8N_IP = (60, 60)

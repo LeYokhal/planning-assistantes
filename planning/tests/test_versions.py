@@ -190,3 +190,13 @@ def test_service_enregistrer_direct(cabinet, jeu):
 def test_nb_briques():
     assert services.nb_briques(fabrique.etat_propre()) == 2
     assert services.nb_briques({"affectations": {"x": "pas un dict"}}) == 0
+
+
+def test_version_de_base_jamais_nulle(cabinet, jeu):
+    """Brique 4b : la colonne est NOT NULL (défaut 0) ; une écriture nulle est refusée."""
+    from django.db import IntegrityError, transaction
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        PlanningVersion.objects.create(mois=fabrique.MOIS, numero=9, state={}, version_de_base=None)
+    version = services.enregistrer(fabrique.MOIS, 0, fabrique.etat_propre(), cabinet)
+    assert version.version_de_base == 0

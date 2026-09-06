@@ -64,7 +64,7 @@ def test_contrat_data_complet(cabinet):
     assert set(data) == {"meta", "praticiens", "salaries", "jours", "conges", "feries", "cours", "attentes"}
     assert set(data["meta"]) == {
         "mois", "libelle", "debut", "fin", "genere", "source", "heures", "seuils",
-        "enveloppes", "non_couverts", "alertes",
+        "enveloppes", "imports", "non_couverts", "alertes",
     }
     for p in data["praticiens"]:
         assert set(p) == {"id", "label", "nom", "agenda", "couleur", "fixes", "attendues", "exclusif", "binomes", "a_part", "etiquette"}
@@ -353,3 +353,11 @@ def test_absence_d_une_personne_hors_perimetre_ecartee_sans_alerte(cabinet):
 def test_libelle_conge_est_l_unique_source_du_type(cabinet):
     jeu = fabrique.jeu_complet(cabinet)
     assert donnees.libelle_conge(jeu["absences"]["cp"]) == "Congé payé"
+
+
+def test_meta_imports_identite_des_imports_retenus(cabinet):
+    """Brique 4b : `meta.imports` = identifiants et empreintes des imports qui font foi."""
+    jeu = fabrique.jeu_complet(cabinet)
+    data = construire()
+    assert [x["id"] for x in data["meta"]["imports"]] == sorted(i.pk for i in jeu["imports"])
+    assert all(len(x["empreinte"]) == 64 for x in data["meta"]["imports"])
