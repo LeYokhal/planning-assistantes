@@ -33,6 +33,11 @@ rattachement se fait dans l'administration, sur le compte.
 - **Demandes en attente** : valider ou refuser.
 - **Absences du mois** : les jours comptés calculés, les jours retenus, et la
   correction manuelle.
+- **Conflit avec un planning publié** (brique 4b) : un bandeau « N absence(s)
+  tombe(nt) sur un jour du planning publié » et, sur la ligne de l'absence, le
+  marqueur « conflit : AAAA-MM vN (dates) » avec lien vers la page du mois.
+  Calculé au rendu sur les absences effectives de type bloquant, jamais
+  stocké, jamais bloquant (§ 7 ; `docs/PLANNING.md` § 12).
 
 **Règle d'auto-décision.** Une validatrice ne décide pas de sa propre absence :
 seule le rôle `cabinet` la tranche. La règle est assise sur la **personne**
@@ -195,7 +200,7 @@ python manage.py recalculer_jours_comptes
 
 ## 7. Webhooks
 
-Trois événements vers `N8N_ABSENCE_WEBHOOK_URL`, en-tête `X-Webhook-Secret`
+Quatre événements vers `N8N_ABSENCE_WEBHOOK_URL`, en-tête `X-Webhook-Secret`
 (secret partagé `N8N_WEBHOOK_SECRET`), délai 10 s, **fail-closed** :
 
 | Événement | Quand |
@@ -203,11 +208,40 @@ Trois événements vers `N8N_ABSENCE_WEBHOOK_URL`, en-tête `X-Webhook-Secret`
 | `absence.demandee` | création d'une demande soumise à décision |
 | `absence.declaree` | création d'une déclaration, immédiatement effective |
 | `absence.decidee` | passage en validée ou refusée |
+| `absence.conflit` | brique 4b : une absence bloquante devient effective alors que le planning publié pose déjà une brique de la salariée sur un de ses jours |
 
 L'annulation est **auditée sans webhook** : elle ne demande d'action à personne.
 
 Corps : identifiants, dates, statut, lien vers l'écran de décision. **Ni type, ni
-précision, ni nom.**
+précision, ni nom.** `absence.conflit` porte le même corps, plus
+`conflits: [{mois, numero, dates}]` — le mois, le numéro de la version publiée
+et les dates touchées ; ni slot, ni nom. Les quatre événements passent par le
+même `_envoyer` d'`absences/webhooks.py`, donc par `socle.client_n8n`, avec la
+même journalisation.
+
+**Quand le conflit est signalé.** Le crochet `services.signaler_conflits` vient
+après l'écriture, l'audit et le webhook de l'absence, sur la **transition** vers
+l'état effectif, et seulement pour un type bloquant :
+
+- `creer` : une déclaration (effective immédiatement) ;
+- `decider` : une validation ;
+- `admin.save_model` : une création en statut effectif, ou un changement de
+  `statut` vers un statut effectif (la ressaisie de l'existant Notion, § 9).
+
+Ne signalent **pas** : un refus, une annulation, une correction des jours
+comptés, et la modification des dates, du type ou de la précision d'une absence
+**déjà** effective (limite assumée, C4.7). Le conflit n'est jamais stocké et ne
+bloque rien : l'absence est écrite dans tous les cas. Il est journalisé
+(`absence_conflit_publication` : `personne_id`, `mois`, `numero`, `dates`) et
+affiché sur `/absences/` (§ 2). Le calcul est dans `planning/conflits.py`
+(`docs/PLANNING.md` § 12).
+
+L'export du workflow n8n de réception, « Planning assistantes – Absences
+(réception) » (Webhook `/webhook/absence-planning` en Header Auth → Gmail, lit
+`evenement` dynamiquement : un seul chemin pour les quatre événements), est
+dans [`docs/n8n/n8n_planning_absences_reception.json`](n8n/n8n_planning_absences_reception.json) :
+à importer tel quel, puis credential Header Auth et champ **To** à renseigner
+dans n8n, jamais dans ce dépôt.
 
 ## 8. Changement d'adresse de connexion
 
@@ -233,14 +267,16 @@ Il n'y a **aucune migration automatique** : Notion devient une archive en lectur
 seule. Les absences en cours se ressaisissent à la main dans l'administration
 (`/admin/absences/absencesalariee/`), qui accepte la création et la modification
 et journalise chaque écriture. Une absence saisie directement en « validée » ou
-« déclarée » repart avec ses jours comptés calculés.
+« déclarée » repart avec ses jours comptés calculés. Depuis la brique 4b, une
+absence bloquante qui devient effective par ce canal est confrontée au planning
+publié (§ 7) : le conflit est signalé, jamais bloquant.
 
 ## 10. Variables d'environnement
 
 | Nom | Absente |
 |---|---|
 | `RETENTION_ABSENCES_JOURS` | aucune purge, aucune échéance posée, rattrapable |
-| `N8N_ABSENCE_WEBHOOK_URL` | aucune notification (fail-closed) |
+| `N8N_ABSENCE_WEBHOOK_URL` | aucune notification (fail-closed), `absence.conflit` compris |
 
 Les deux se posent à la main sur Railway ; rien ne casse tant qu'elles sont
 absentes.

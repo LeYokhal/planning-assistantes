@@ -43,8 +43,9 @@ Service applicatif → onglet **Variables**.
 | `DOCTOLIB_PRESENCES_URL` | *(rien à saisir)* | ⚠️ **NE PAS POSER avant la brique 0.** Endpoint « présences » du serveur MCP Doctolib. Absente = chemin endpoint inactif, ce qui est le comportement attendu en 1b. |
 | `DOCTOLIB_PRESENCES_SECRET` | *(rien à saisir)* | ⚠️ **NE PAS POSER avant la brique 0.** Envoyé en `X-Presences-Secret`. |
 | `IMPORT_EN_ARRIERE_PLAN` | *(rien à saisir)* | Absente = tâche de fond (comportement normal). `0` fait tourner les lots en synchrone : réservé aux tests. |
-| `N8N_ABSENCE_WEBHOOK_URL` | URL de **production** du webhook n8n des absences | Événements `absence.demandee` / `absence.declaree` / `absence.decidee`. Voir `docs/ABSENCES.md`. Absente = aucune notification (fail-closed). Le secret est `N8N_WEBHOOK_SECRET`, envoyé en `X-Webhook-Secret`. |
+| `N8N_ABSENCE_WEBHOOK_URL` | URL de **production** du webhook n8n des absences | Événements `absence.demandee` / `absence.declaree` / `absence.decidee` / `absence.conflit` (4b). Voir `docs/ABSENCES.md`. Absente = aucune notification (fail-closed). Le secret est `N8N_WEBHOOK_SECRET`, envoyé en `X-Webhook-Secret`. |
 | `RETENTION_ABSENCES_JOURS` | *(à fixer par le conseil du cabinet)* | Durée de rétention des absences, en jours **depuis leur dernier jour**. Absente = aucune purge et aucune échéance posée ; rien n'est perdu, et la première exécution de `purger_absences` rattrape le stock le jour où la valeur est posée. |
+| `N8N_PLANNING_WEBHOOK_URL` | *(rien à saisir avant la brique 5)* | Événement `planning.publie` (brique 4b). Voir `docs/PLANNING.md` § 11.5. Absente = aucune notification (fail-closed) et une ligne « webhook planning non configure » à chaque publication. Le secret est `N8N_WEBHOOK_SECRET`, envoyé en `X-Webhook-Secret`. |
 | `PORT` | *(rien à saisir)* | Fournie par Railway ; lue par gunicorn dans le `Dockerfile`. |
 
 > ⚠️ Après avoir ajouté une variable, vérifier qu'elle figure bien dans la

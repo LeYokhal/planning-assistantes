@@ -1,0 +1,77 @@
+{
+  "name": "Planning assistantes – Absences (réception)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "absence-planning",
+        "authentication": "headerAuth",
+        "options": {}
+      },
+      "id": "5d6eaabf-c0b0-4052-bfb4-889567f01de0",
+      "name": "Webhook absence",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "3f6d2b1e-5a4c-4e8f-9b7a-1c2d3e4f5a6b",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "RX2HuUwCLvGiaL5G",
+          "name": "Planning – Webhook import"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "<adresse cabinet>",
+        "subject": "=Planning assistantes — {{ $json.body.evenement || 'absence' }}",
+        "emailType": "text",
+        "message": "=Reçu le {{ $now.setZone('Europe/Paris').toFormat('dd/MM/yyyy HH:mm:ss') }} (Europe/Paris)\n\nÉvénement : {{ $json.body.evenement || '(non renseigné)' }}\n\nCorps brut du webhook :\n{{ JSON.stringify($json.body, null, 2) }}\n\nWorkflow n8n « Planning assistantes – Absences (réception) » — brique 3. Ce mail ne contient ni type d'absence ni précision : l'application ne les transmet jamais.",
+        "options": {}
+      },
+      "id": "5db52ff6-1c81-4277-9575-9bf1c04c2457",
+      "name": "Mail vers Yohan",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        304,
+        0
+      ],
+      "webhookId": "8c1e4a2f-6d3b-4f9e-a5c7-2b3c4d5e6f7a",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "CpuAkptSDN5w4q4M",
+          "name": "Perso"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook absence": {
+      "main": [
+        [
+          {
+            "node": "Mail vers Yohan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "8a40ab5d-05b2-4bfd-ba3e-1c98b451e0c2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fcd3d7ff3ff60d2ed60f82e682b9278ea332d29ba65db31dc2837106b513b8fd"
+  },
+  "id": "eQABsWqayUIR8KuY",
+  "tags": []
+}
