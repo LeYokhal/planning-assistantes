@@ -1,4 +1,4 @@
-# Planning — architecture de la brique 4a
+# Planning — architecture des briques 4a et 4b
 
 La page `/planning/<AAAA-MM>/` remplace le fichier HTML autonome du skill v1 :
 les données (`DATA`) sont calculées par le serveur à chaque affichage, l'état
@@ -7,10 +7,14 @@ et la logique de proposition et de règles reste dans le navigateur (décision
 C2.2). Le gabarit du skill a été **porté**, pas copié : `reference/skill-v1/`
 reste la référence historique, non exécutée et exclue de l'image Docker.
 
-État au 06/09/2026 : brique 4a mergée (`5072226`), déployée et recettée
-(imports, trois versions successives, un 409 obtenu en production, refus par la
-page d'une brique sur un praticien absent). Critère différé R4a-1 : import du
-planning réel de septembre, en attente du fichier enregistré au cabinet.
+État au 07/09/2026 : brique 4a mergée le 06/09 (`5072226`, PR #15) et brique
+4b mergée le 07/09 (`0a53bdf`, PR #17), toutes deux déployées et recettées en
+production. R4a-1 est acté (planning réel de septembre importé, une violation
+`praticien_absent` expliquée et corrigée, version 4) ; il a révélé l'écart E1
+(brique orpheline invisible), réglé en 4b par la ligne « hors présence »
+(§ 11.4). Réserve R4b-1 : le 422 serveur à la publication est couvert par
+`test_publication` mais n'a pas été vu en production, la page l'ayant refusé
+avant l'appel.
 
 ## 1. Routes et rôles
 
@@ -20,7 +24,10 @@ planning réel de septembre, en attente du fichier enregistré au cabinet.
 | `GET /planning/<AAAA-MM>/` | `cabinet`, `principale` | la page ; sans aucun import réussi sur la plage, un écran « aucun import » renvoie vers `/presences/importer/` |
 | `GET /planning/<AAAA-MM>/copie/` | `cabinet`, `principale` | copie HTML autonome de la dernière version (404 s'il n'y en a aucune) |
 | `POST /api/planning/<AAAA-MM>/versions/` | `cabinet`, `principale`, session + CSRF | enregistre une version : 201, 409 ou 422 |
+| `POST /api/planning/<AAAA-MM>/versions/<n>/publier/` | `cabinet`, `principale`, session + CSRF | publie la version `<n>`, qui doit être la dernière : 200, 409 ou 422 (§ 11) |
 | `POST /api/erreurs/` | plafond par IP, puis `cabinet`, `principale` | journalise une erreur JS de la page, sans rien stocker |
+| `GET /mes-jours/` | `salariee`, `principale` | redirige vers le mois courant |
+| `GET /mes-jours/<AAAA-MM>/` | `salariee`, `principale` | « Mes jours » : les jours de la personne connectée dans le planning publié (§ 11.3) ; `cabinet` reçoit 403 |
 
 Le contrôle de rôle est `comptes.acces.role_requis` : un anonyme est redirigé
 vers `/connexion/`, un autre rôle reçoit 403. `page.js` teste `redirected` et
@@ -32,11 +39,12 @@ donne un bandeau, pas un JSON cassé.
 `planning/donnees.py::construire(mois)` rend le dictionnaire que la page lit,
 au contrat du gabarit du skill (`build_planning.py`, § 3 à 6), à partir des
 tables de l'application. Les seules clés nouvelles sont `meta.non_couverts`,
-`meta.alertes` et `attentes` ; l'ancien code les ignore.
+`meta.alertes`, `meta.imports` (brique 4b) et `attentes` ; l'ancien code les
+ignore.
 
 | Clé | Source | Notes |
 |---|---|---|
-| `meta` | `presences.fenetres.plage_mois` (semaines complètes), règles, imports | `genere` en ISO, `source = "app"`, `heures` et `seuils` (du premier import couvert, sinon 4 h / 5 h et une alerte), `enveloppes` (messages des imports retenus), `non_couverts` (dates de la plage sans import réussi), `alertes` (textes destinés à l'écran) |
+| `meta` | `presences.fenetres.plage_mois` (semaines complètes), règles, imports | `genere` en ISO, `source = "app"`, `heures` et `seuils` (du premier import couvert, sinon 4 h / 5 h et une alerte), `enveloppes` (messages des imports retenus), `imports` (`[{id, empreinte}]` de ces mêmes imports, triés par identifiant — brique 4b, recopié dans `verifications` à la publication), `non_couverts` (dates de la plage sans import réussi), `alertes` (textes destinés à l'écran) |
 | `praticiens[]` | `Personne` praticien, planifié, actif | `id`, `label`, `nom`, `agenda` (agenda Doctolib apparié, ou `null` pour un planning fixe), `couleur` `[fond, encre]`, `fixes` (entiers, lundi = 0), `attendues`, `exclusif`, `binomes`, `a_part`, `etiquette` ; les praticiens à part passent en fin de liste |
 | `salaries[]` | `Personne` assistante ou secrétaire, planifiée, active | mêmes identifiants et couleurs ; `role`, `heures`, `heures_fixes`, `gabarit`, `binomes`, `exclusif`, `admin`, `etudiante` (clé posée seulement sur les étudiantes) ; `heures_supposees` reste dans le contrat et vaut toujours `false` |
 | `jours{iso}{pid}` | `presences.services.imports_par_date` + payload brut | `pr`, `v`, `c` (depuis `creneaux`, pas les effectifs), `fin`, `n`, `jc`, `min` ; lignes triviales omises |
@@ -108,8 +116,8 @@ Il contient le calendrier (`WEEKS`, `SHOWN`), la réserve hebdomadaire
 (`virtuels`, `consommer`, `quota`, `placed`, `reserve`, `heures`, `jauge`), la
 proposition (`proposer`, `initialState`), les mutations (`place`, `unplace`,
 `fermerJour`, `rouvrirJour`, `poserNotes`, `importer`, `snapshot`, `undo`,
-`peutAnnuler`), les sérialisations (`exporter`, `charge`, `empreinte`) et la
-vérification stricte (`verifier`).
+`peutAnnuler`), les sérialisations (`exporter`, `charge`, `empreinte`), la
+vérification stricte (`verifier`) et, depuis la 4b, `orphelins` (§ 11.4).
 
 **Règle unique de mutation** : aucune fonction du moteur n'appelle `commit`,
 `render`, `toast` ni `confirm`. Le moteur mute et rend des résultats
@@ -118,7 +126,8 @@ vérification stricte (`verifier`).
 `toast(`, `confirm(`, `render(`, `commit(`, `alert(`, `localStorage`.
 
 **`planning/static/planning/page.js`** — rendu, glisser-déposer, toasts,
-boutons, raccourcis, appels d'API, `beforeunload` (si l'empreinte de l'état
+boutons, raccourcis, appels d'API (enregistrer, publier — § 11.2),
+`beforeunload` (si l'empreinte de l'état
 diffère de la dernière version), rapport d'erreurs. `initialState()` n'y est
 appelée que si `META.numero === 0`. Les messages des violations et des refus
 sont composés à partir des codes.
@@ -135,7 +144,8 @@ avec cases surlignées, jours « sans données Doctolib », « Enregistrer une
 copie » désactivé tant que l'état diffère de la dernière version.
 
 Trois blocs `json_script` alimentent la page : `planning-data`,
-`planning-state`, `planning-meta` (`{mois, numero, autonome, urls}`). Django y
+`planning-state`, `planning-meta` (`{mois, numero, autonome, publiee, urls}`,
+`publiee` et `urls.publier` depuis la 4b — § 11.2). Django y
 échappe `<`, `>`, `&` et les accents : un test qui lit le bloc le décode.
 `page.html` porte un `{% csrf_token %}` explicite, car c'est ce rendu qui pose
 le cookie `csrftoken` lu par `page.js` pour l'en-tête `X-CSRFToken`.
@@ -187,13 +197,31 @@ brique un jour de cours et une exclusive hors de son binôme.
 `planning.PlanningVersion` : `mois`, `numero`, `state`, `version_de_base`,
 `auteur`, `cree_le`, `verifications`, `publiee`, `publie_le`, `publie_par`.
 Contrainte unique `(mois, numero)`, jamais modifiée ni supprimée
-(administration en lecture seule). Les champs de publication sont créés en 4a
-et restent inertes jusqu'en 4b ; `verifications` est toujours vide en 4a et
-servira à la revérification à la publication.
+(administration en lecture seule). Les champs de publication, créés en 4a,
+sont vivants depuis la 4b : `services.publier` (§ 11.1) pose `publiee`,
+`publie_le`, `publie_par` et `verifications` sur la ligne existante, jamais
+sur une nouvelle. Plusieurs versions d'un même mois peuvent porter
+`publiee=True` ; la version publiée du mois est la dernière par `numero`.
+Aucune dépublication.
 
-Hygiène à faire : `version_de_base` est nullable dans le modèle mais toujours
-posé par le service (0 = aucune version) ; le rendre non nul est une migration
-de forme, sans changement de comportement.
+`verifications` vaut `[]` tant que la version n'est pas publiée (toute
+violation refuse l'enregistrement, il n'y a rien à consigner). À la
+publication, c'est le compte-rendu du contrôle réussi sur `DATA` recalculé :
+
+```
+{"verifie_le": "<ISO>", "imports": [{"id": <pk>, "empreinte": "<empreinte de l'import>"}, …], "nb_briques": <n>}
+```
+
+`imports` est recopié de `DATA.meta.imports` (§ 2) : l'identité des imports de
+présences qui faisaient foi au moment de la publication. Ni nom, ni type
+d'absence.
+
+`version_de_base` est non nul depuis la migration `planning.0002` (brique 4b,
+C4.10) : `PositiveIntegerField(default=0)`, 0 = aucune version affichée. La
+migration remplit d'abord les `NULL` à 0 par `RunPython` (nécessaire avant
+l'`AlterField` sur PostgreSQL, qui refuse un `NULL` restant), puis pose le
+`NOT NULL` ; le service l'avait toujours posé, 0 ligne touchée en production.
+Une écriture nulle est refusée (`test_version_de_base_jamais_nulle`).
 
 `planning/services.py::enregistrer(mois, version_de_base, state, qui)` :
 
@@ -234,6 +262,10 @@ masque les boutons d'API et désactive `beforeunload`.
 `planning-state`), ne reprend que les quatre clés, jour par jour dans la plage,
 et ignore en les comptant les briques d'une salariée inconnue ou d'un type
 illisible. C'est le chemin de reprise du planning de référence en recette.
+Depuis la 4b, il rend `{jours, ignorees, orphelines}` : `orphelines` compte,
+sur les jours affichés, les briques reprises sur une case que la journée ne
+dessine pas (praticien absent ce jour-là) — chargées quand même, et rendues
+visibles par la ligne « hors présence » (§ 11.4).
 
 ## 8. `/api/erreurs/`
 
@@ -259,13 +291,23 @@ journal d'audit, les logs des vues et du service, le corps de `/api/erreurs/`,
 et les absences hors périmètre absentes de `DATA` ; plus les rôles (403 pour
 une salariée, 302 pour un anonyme).
 
+La brique 4b y ajoute trois tests : la publication (`verifications`, audit,
+logs et webhook `planning.publie` sans nom ni type), « Mes jours » (la page ne
+reçoit pas `DATA` : aucun type, aucune autre salariée) et le conflit (audit
+`absence_conflit_publication`, webhook `absence.conflit`, logs : ni type, ni
+précision, ni nom). Côté `absences/tests/test_confidentialite.py`,
+`test_le_conflit_ne_journalise_ni_type_ni_precision` tient le même engagement
+depuis le crochet.
+
 ## 10. Tests
 
 - **Python** : `.venv/Scripts/python.exe -m pytest` — `planning/tests/` porte
   la fabrique du jeu fictif (`fabrique.py`, le même jeu que la fixture Node),
   et les recettes des données, de la vérification, des versions, des pages, de
-  la copie, des erreurs, de la confidentialité. `conftest.py` substitue les
-  règles fictives aux règles du dépôt pour les tests de vue.
+  la copie, des erreurs, de la confidentialité et, depuis la 4b, de la
+  publication (`test_publication.py`), du conflit (`test_conflits.py`) et de
+  « Mes jours » (`test_mes_jours.py`). `conftest.py` substitue les règles
+  fictives aux règles du dépôt pour les tests de vue.
 - **Node** : `node --test "planning/tests_js/**/*.test.js"` — module intégré
   `node:test`, aucun `package.json`, aucun `npm`. Le motif glob entre
   guillemets est développé par Node lui-même (v21 et plus).
@@ -273,6 +315,10 @@ une salariée, 302 pour un anonyme).
   `subprocess` si `node` est sur le poste ; sinon le test est sauté avec le
   message « tests JS non exécutés : node absent ». Dans l'image Docker
   (`python:3.14-slim`, sans Node), les tests JS ne tournent donc pas.
+
+Totaux au 07/09/2026 (post-squash `0a53bdf`) : **825 tests Python** (+47 en
+4b) et **57 tests Node** (+2 en 4b : `orphelins`, et l'import qui compte les
+briques orphelines sans les écarter, dans `moteur.test.js`).
 
 ### Fixture de référence
 
@@ -294,10 +340,193 @@ Procédure, si le jeu fictif change :
 4. reprendre `affectations` de l'export dans la fixture, avec la provenance
    (date, navigateur) dans `_provenance`.
 
-## 11. Ce que la brique 4b ajoute
+## 11. Publication (brique 4b)
 
-Publication d'une version (`publiee`, `publie_le`, `publie_par`, revérification
-et remplissage de `verifications`), événement n8n de publication, crochet de
-conflit absence ↔ planning publié dans `absences/services`, vue « mes jours
-publiés » pour le rôle `salariee`, re-test sur le planning réel. La « version
-publiée du mois » sera la dernière `publiee=True` par `numero`.
+Publier, c'est poser `publiee`, `publie_le`, `publie_par` et `verifications`
+sur la **dernière version** du mois (C4.5). Pas de copie figée, pas de
+nouvelle ligne, pas de dépublication : une correction est une nouvelle
+version, publiée à son tour, qui supersède la précédente.
+`services.version_publiee(mois)` rend la dernière `publiee=True` par
+`numero`, ou `None`.
+
+### 11.1 Route et service
+
+`POST /api/planning/<AAAA-MM>/versions/<n>/publier/` — rôles `cabinet` et
+`principale`, même session et même CSRF que l'enregistrement, corps ignoré,
+numéro explicite dans l'URL. Réponses :
+
+| Code | Corps | Quand |
+|---|---|---|
+| 200 | `{numero, publie_le}` | publiée |
+| 200 | `{numero, deja_publiee: true}` | déjà publiée : rien n'est écrit, aucun audit |
+| 409 | `{derniere}` | `<n>` n'est pas (ou plus) le dernier numéro du mois, ou le mois n'a aucune version |
+| 422 | `{violations: [{code, date, slot, s}]}` | la revérification trouve une règle enfreinte ; rien n'est écrit |
+| 400 | `{erreur: "mois_invalide"}` / `{erreur: "numero_invalide"}` | mois illisible ; `<n>` = 0 |
+| 405 | `{erreur: "methode_non_autorisee"}` | hors POST |
+
+`planning/services.py::publier(mois, numero, qui)`, dans cet ordre :
+
+1. garde : `courant = numero_courant(mois)` ; si `courant == 0` ou
+   `numero != courant`, `Conflit(courant)` (409) ;
+2. `PlanningVersion.objects.get(mois=mois, numero=numero)` ; si `publiee`,
+   `DejaPubliee` (200 `deja_publiee`) ;
+3. revérification : `verifier(donnees.construire(mois), version.state)` sur
+   `DATA` **recalculé** — une absence devenue effective ou un mouvement Doctolib
+   depuis l'enregistrement est attrapé ici (C4.6) ; une violation, `Invalide`
+   (422), rien n'est écrit. Le `state` en base est déjà nettoyé ;
+4. écriture en **une seule instruction** `UPDATE … WHERE pk = … AND NOT publiee
+   AND NOT EXISTS (version de numéro supérieur)` — en Django
+   `filter(pk=…, publiee=False).exclude(Exists(plus_recente)).update(…)` :
+   ni `select_for_update`, ni transaction, la condition SQL est le seul point
+   de sérialisation, comme la contrainte unique de 4a. Zéro ligne touchée →
+   relecture, puis `DejaPubliee` ou `Conflit(numero_courant)` ;
+5. audit `planning_publie` avec `mois`, `numero`, `nb_briques` ; log
+   « planning AAAA-MM : version N publiee (N briques) » ;
+6. webhook `planning.publie` (§ 11.5), qui ne lève jamais.
+
+### 11.2 Dans la page
+
+Le bloc `planning-meta` porte `publiee` (numéro de la version publiée
+courante, 0 sinon) et `urls.publier` (posée seulement s'il existe une version).
+L'en-tête dit « Version N · publiée » quand la version affichée est la publiée,
+« Version N · publiée : vP » sinon.
+
+Le bouton **Publier** n'est actif que si la page affiche la dernière version
+sans modification et qu'elle n'est pas déjà publiée (`META.publiee ===
+META.numero`) ; en mode autonome il est désactivé comme les autres boutons
+d'API. `publier()` demande confirmation, applique d'abord `M.verifier()` — une
+violation locale donne « Publication refusée par la page » sans appel —, puis
+`POST` sur `META.urls.publier`. Un 200 pose `META.publiee` et un toast
+(« publiée » ou « déjà publiée ») ; un 409 donne le bandeau de conflit en
+variante publication (« Recharger » seul, sans « Exporter JSON » : il n'y a
+rien à sauver) ; un 422, « Publication refusée par le serveur » avec les cases
+surlignées ; une réponse redirigée ou non JSON, le bandeau de session expirée.
+
+Après un enregistrement réussi (201), `page.js` recalcule
+`META.urls.publier = <urls.versions><numero>/publier/` : la route suit le
+numéro, et sans rechargement le bouton doit viser la version que l'on vient
+d'enregistrer (trou du plan, comblé au checkpoint diff).
+
+### 11.3 « Mes jours »
+
+`GET /mes-jours/` (mois courant) et `GET /mes-jours/<AAAA-MM>/`, rôles
+`salariee` et `principale` (pour elle-même) ; `cabinet` reçoit 403 ; un compte
+sans personne rattachée voit un message, jamais un 500. Gabarit
+`planning/templates/planning/mes_jours.html`, minimal et non stylé (la version
+adaptée au téléphone est en backlog).
+
+`services.jours_publies(personne, mois)` lit le `state` des versions publiées
+et les personnes, **jamais `DATA`** (qui porte les congés de toutes les
+salariées). Sans version publiée du mois : `None`, et la page dit que le
+planning n'est pas encore publié. Sinon (C4.8) :
+
+- **la plage entière** de la version publiée du mois (semaines complètes), les
+  jours d'un mois voisin en italique avec la mention du planning qui les porte ;
+- **le mois calendaire est prioritaire** : pour une date que la version publiée
+  du mois voisin porte aussi, celle du mois calendaire de la date fait foi
+  (`source_numero` le dit) ;
+- chaque ligne : `{date, t, x, slot, slot_libelle, hors_mois, source_numero}` ;
+  `t` s'affiche « journée » ou « journée courte (fin 16h30) », `x` ajoute
+  « (heures sup) » ;
+- **libellés** : `Secrétariat`, `Sureffectif`, `Administratif` (`LIBELLES_MISC`,
+  recopie du troisième élément de `MISC` du moteur), sinon le praticien du slot
+  (`str(Personne)`, sans filtre `actif` : un praticien parti après la
+  publication garde son libellé), sinon le slot brut.
+
+Ni congé, ni note, ni férié, ni type d'absence. Le log ne porte que le mois et
+un comptage (« mes jours AAAA-MM : N jour(s) »). L'accueil des rôles
+`salariee` et `principale` a reçu le lien « Mes jours ».
+
+### 11.4 Ligne « hors présence » (C4.9)
+
+Écart E1 de R4a-1 : une brique posée sur un praticien absent ce jour-là (le
+planning vécu, importé après un mouvement Doctolib) donnait une violation
+`praticien_absent` que l'utilisatrice ne pouvait pas corriger, la case
+n'étant pas dessinée.
+
+`moteur.orphelins(iso)` rend les slots à briques que la journée ne dessine
+pas : praticien absent ou jour fermé, slot inconnu — jamais une case `MISC`.
+`page.js` dessine pour chacun une case `slot prat orphelin` (« hors présence ·
+absent ce jour-là », « jour fermé » ou « inconnu ») : brique visible, retirable,
+déplaçable, **jamais une cible de dépôt** (pas de `dropHandlers`). Aucun
+nettoyage automatique. `importer` compte ces briques dans `orphelines`, sur
+les jours affichés seulement, et le toast d'import les annonce ; un jour hors
+colonnes portant une brique orpheline reste au chemin export JSON (backlog).
+
+### 11.5 Webhook `planning.publie`
+
+`planning/webhooks.py::notifier_publication(version, nb_briques)` poste sur
+`N8N_PLANNING_WEBHOOK_URL`, en-tête `X-Webhook-Secret` (secret partagé
+`N8N_WEBHOOK_SECRET`), par `socle.client_n8n`, fail-closed. Corps :
+
+```
+{evenement: "planning.publie", mois, numero, nb_briques, publie_par_id, lien, horodatage}
+```
+
+Ni nom, ni type d'absence, ni `state`. Le module n'importe pas `services`
+(c'est `services` qui l'importe) : le comptage lui est passé. La variable
+**n'est pas posée** sur Railway : le workflow n8n est la brique 5 ; d'ici là,
+chaque publication journalise « webhook planning non configure », et un
+webhook muet ou en échec n'empêche jamais une publication.
+
+## 12. Conflit avec une absence (brique 4b)
+
+Une absence n'entre dans le planning qu'une fois effective. Si la version
+publiée d'un mois pose déjà une brique de la salariée sur un de ces jours, le
+planning publié est faux ce jour-là. Deux ordres, deux gardes : une absence
+devenue effective **avant** la publication est refusée à la publication (422,
+§ 11.1, C4.6) ; **après**, elle est signalée (C4.7). Le conflit est calculé à
+la demande, jamais stocké, et **ne bloque rien** : l'absence est écrite dans
+tous les cas.
+
+**`planning/conflits.py`** — deux fonctions pures et une lecture :
+
+- `conflits_dans_state(state, sid, dates)` : les dates de `dates` où `state`
+  pose une brique de `sid`, **tout slot** (praticien, secrétariat,
+  sureffectif, administratif), hors quota compris — une brique est une
+  journée due par la salariée ;
+- `mois_candidats(date_debut, date_fin)` : les mois « AAAA-MM » dont la plage
+  (semaines complètes) touche l'intervalle — les mois calendaires couverts et
+  leurs voisins immédiats, filtrés par `plage_mois` ;
+- `conflits(personne, date_debut, date_fin, versions=None)` : pour chaque mois
+  candidat, lit `version_publiee(mois)` (cache facultatif `versions`, partagé
+  par l'écran de décision pour ne lire chaque version publiée qu'une fois) et
+  rend `[{mois, numero, dates}]`, un élément par mois publié en conflit.
+
+**Le crochet `absences.services.signaler_conflits(absence, qui)`** — sur la
+**transition** vers l'état effectif seulement, quel que soit le chemin :
+
+| Chemin | Signale |
+|---|---|
+| `creer` — déclaration (type `declare`, effective immédiatement) | oui |
+| `decider` — validation d'une demande | oui |
+| `admin.save_model` — création en statut effectif, ou changement de `statut` vers un statut effectif | oui |
+| refus, annulation, correction des jours comptés | non |
+| modification des dates, du type ou de la précision d'une absence **déjà** effective | non (limite assumée, C4.7) |
+
+Types **bloquants** seulement (`type.bloquant`). Le crochet vient **après**
+`save()`, l'audit et le webhook de l'absence, et ne lève jamais. Pour chaque
+conflit : audit `absence_conflit_publication` (`personne_id`, `mois`,
+`numero`, `dates`) ; puis, s'il y en a au moins un, log « absence #N en
+conflit avec N planning(s) publie(s) » et webhook `absence.conflit` sur l'URL
+des absences (corps de l'absence + `conflits: [{mois, numero, dates}]`, voir
+`docs/ABSENCES.md` § 7). Ni slot, ni nom, ni type.
+
+**`/absences/`** recalcule les conflits au rendu (semaines complètes, comme le
+planning — la paie seule est calendaire) sur les absences effectives de type
+bloquant : bandeau « N absence(s) tombe(nt) sur un jour du planning publié » et
+marqueur « conflit : AAAA-MM vN (dates) » sur la ligne, avec lien vers la page
+du mois.
+
+**Cycle d'import (C4.13)** : `planning.conflits` importe `services` et
+`donnees`, donc `absences.services`. C'est `absences/` (`services`, `views`)
+qui importe `planning.conflits` **dans la fonction**, jamais en tête de module
+(patron `presences/verrou.py`). De même `planning/webhooks.py` n'importe
+jamais `services`.
+
+**Un onglet ouvert est un instantané** : le `DATA` d'une page rendue avant la
+saisie d'une absence ne la voit pas ; la brique posée dessus est refusée par
+le serveur (422) à l'enregistrement — troisième cas vu en recette, qui montre
+que la double vérification n'est pas redondante. Règle d'usage : recharger le
+planning après toute saisie d'absence, jusqu'à ce que la page se rafraîchisse
+seule (backlog).

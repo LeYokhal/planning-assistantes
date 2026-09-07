@@ -108,7 +108,22 @@ python -m venv .venv                      # une seule fois
   nouveau s'ajoute des deux côtés et dans le jeu. Une violation ne porte que
   `code`, `date`, `slot`, `s`. Le numéro de version est attribué par la
   contrainte unique `(mois, numero)`, l'`IntegrityError` attrapée **hors** du
-  `with transaction.atomic()`. Voir `docs/PLANNING.md`.
+  `with transaction.atomic()`. **4b** : la publication pose les champs de
+  publication sur la dernière version par un seul `UPDATE … WHERE NOT publiee
+  AND NOT EXISTS (numéro supérieur)`, après revérification sur `DATA`
+  recalculé — ni `select_for_update`, ni transaction ; la version publiée du
+  mois est la dernière `publiee=True` par `numero`, sans dépublication ;
+  « Mes jours » lit le `state` publié et les personnes, **jamais `DATA`** ; le
+  conflit absence ↔ planning publié est calculé à la demande, signalé, jamais
+  stocké ni bloquant, sur la transition vers l'état effectif seulement. Voir
+  `docs/PLANNING.md` (§ 11 et § 12).
+- **Cycle d'import `absences` ↔ `planning` (brique 4b)** : `planning.donnees`
+  importe `absences.services`, donc `absences/` (`services.signaler_conflits`,
+  `views.absences_a_decider`) importe `planning.conflits` **dans la fonction**,
+  jamais en tête de module (patron `presences/verrou.py`) ; et
+  `planning/webhooks.py` n'importe jamais `planning.services` (c'est `services`
+  qui l'importe, le comptage lui est passé). Un cycle réintroduit se voit au
+  premier `import` : ne pas le « corriger » en remontant l'import en tête.
 - **Limitation de débit** : compteur en base (`socle.CompteurDebit` +
   `socle/debit.py`), jamais le cache Django. `DatabaseCache.incr` hérite de
   `BaseCache.incr`, qui lit puis écrit sans verrou — les incréments se perdent
@@ -131,7 +146,11 @@ python -m venv .venv                      # une seule fois
   `principale`, à l'écran et dans la copie HTML, et nulle part ailleurs — ni
   `state`, ni version, ni export JSON, ni audit, ni logs ; toute la mise en
   forme passe par `planning.donnees.libelle_conge()`. Prouvé par
-  `planning/tests/test_confidentialite.py` (sept surfaces).
+  `planning/tests/test_confidentialite.py` (sept surfaces). **4b** : l'audit
+  `absence_conflit_publication` et le webhook `absence.conflit` ne portent que
+  `personne_id`, `mois`, `numero`, `dates` ; « Mes jours » ne reçoit pas
+  `DATA`. Prouvé par `test_conflits`, `test_mes_jours` et les trois tests 4b
+  de `planning/tests/test_confidentialite.py`.
 - **Jours comptés** : `min(J, max(0, B − F))` par semaine, où `J` exclut les
   fériés et `F` ne compte que les fériés tombant un jour d'OUVERTURE. Un férié
   un jour fermé (lundi de Pentecôte sous le régime mardi→samedi) ne retire
@@ -213,7 +232,30 @@ sur le déploiement.
   restent alignées que par un jeu de cas commun lu tel quel des deux côtés,
   qui exige de plus que chaque code soit émis au moins une fois.
 
+### Leçons de la brique 4b
+
+- **Une revue technique par version de plan, contre le code réel, jusqu'à ce
+  qu'elle ne trouve plus rien.** La v2 du diff plan corrigeait le cycle
+  `donnees` / `services` et en réintroduisait un autre (`services ↔
+  webhooks`) ; seule la seconde revue l'a vu. La revue n'est pas une étape
+  unique entre v1 et v2 : elle se rejoue à chaque version.
+- **Un essai ORM tranche mieux qu'une phrase de plan** : la forme de l'`Exists`
+  acceptée par Django 5.2 a coûté trois lignes sur SQLite en mémoire et a
+  sorti le point de la Phase 3.
+- **Deux ordres, deux gardes.** Une absence saisie avant la publication est
+  refusée à la publication (422) ; après, elle est signalée. Et une page rendue
+  avant la saisie laisse poser une brique que le serveur refuse : la double
+  vérification n'est pas redondante. Recharger le planning après toute saisie
+  d'absence.
+- **Le planning vécu se sauve à la première occasion** : R4a-1 exercé avant la
+  4b a donné une violation réelle, un écart de page réel (E1, la brique
+  orpheline) et la version 4 — ce qu'aucun jeu fictif ne donnait.
+
 ## Périmètre
+
+Le cadrage complet (périmètre v1, décisions C2 → C4, journal de livraison des
+briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.6) : il fait foi sur
+le périmètre, ce fichier sur les règles de travail.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
 `EvenementAudit`, connexion par lien magique, journal d'audit, page de santé,
@@ -245,7 +287,7 @@ La brique **3** livre les absences : modèles `TypeAbsence` et `AbsenceSalariee`
 (`/absences/`, rôles `principale` et `cabinet`), calcul des jours comptés pour la
 paie (`absences/calcul.py`, fériés dans `socle/feries.py`), endpoint
 `GET /api/n8n/paie/<AAAA-MM>/`, webhooks `absence.demandee` / `absence.declaree`
-/ `absence.decidee`, rétention configurable, et changement de l'adresse de
+/ `absence.decidee` (et `absence.conflit` depuis la 4b), rétention configurable, et changement de l'adresse de
 connexion par la salariée. Le client HTTP n8n sortant est factorisé dans
 `socle/client_n8n.py`. Voir `docs/ABSENCES.md`.
 
@@ -258,8 +300,21 @@ stricte en double (`planning/verification.py`), versions numérotées
 HTML autonome, export et import JSON, `POST /api/erreurs/`, section `palette`
 de `regles.json`, blocs de `socle/base.html`. Voir `docs/PLANNING.md`.
 
-La publication du planning et le conflit absence ↔ planning publié relèvent de
-la brique **4b** ; le mail comptable de la brique **5**. Ils ne sont pas ici.
+La brique **4b** (mergée le 07/09/2026, `0a53bdf`, PR #17) livre la
+publication : `POST /api/planning/<AAAA-MM>/versions/<n>/publier/`
+(`services.publier`, revérification, audit `planning_publie`, webhook
+`planning.publie` par `planning/webhooks.py` sur `N8N_PLANNING_WEBHOOK_URL`),
+le conflit absence ↔ planning publié (`planning/conflits.py`, crochet
+`absences.services.signaler_conflits`, audit `absence_conflit_publication`,
+webhook `absence.conflit`, bandeau sur `/absences/`), « Mes jours »
+(`/mes-jours/`, `services.jours_publies`, gabarit `mes_jours.html`), la ligne
+« hors présence » (`moteur.orphelins`), `meta.imports` dans `DATA` et la
+migration `planning.0002` (`version_de_base` non nul). Le périmètre v1 de
+l'application est complet. Voir `docs/PLANNING.md` § 11 et § 12.
+
+Le mail comptable et le workflow n8n de `planning.publie` (variable
+`N8N_PLANNING_WEBHOOK_URL`, absente jusque-là) relèvent de la brique **5** ;
+l'endpoint présences, de la brique **0** (VoiceDoctolib). Ils ne sont pas ici.
 
 `reference/skill-v1/` contient la version 1 du skill de planning, décompressée
 telle quelle à titre de référence. Elle n'est **pas** exécutée par
