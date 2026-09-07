@@ -1,8 +1,8 @@
 """Administration des absences.
 
-`AbsenceSalariee` est modifiable ici — c'est le canal de reprise de l'existant
-Notion, qui n'est pas migré (décision du 01/09). Toute écriture est journalisée,
-sur le patron de `comptes/admin.py`.
+`AbsenceSalariee` est modifiable ici — c'est le canal des corrections à la main ;
+l'existant Notion a été repris une fois par `vue_import` (C3.9, brique 3-quater).
+Toute écriture est journalisée, sur le patron de `comptes/admin.py`.
 
 ⚠️ Les événements d'audit émis d'ici ne portent **ni le type ni la précision**.
 """

@@ -10,7 +10,9 @@ appariement des agendas Doctolib, comptes des salariées, les **absences
 le **planning (brique 4a)** : page servie par l'application, moteur de
 proposition dans le navigateur, versions enregistrées, copie autonome, et sa
 **publication (brique 4b)** : version publiée, conflit absence ↔ planning
-publié, « Mes jours » pour chaque salariée.
+publié, « Mes jours » pour chaque salariée, et la **reprise de l'existant 2026
+(brique 3-quater)** : import exceptionnel des absences Notion par un écran
+d'administration.
 
 ## État
 
@@ -54,10 +56,18 @@ publié, « Mes jours » pour chaque salariée.
   `version_de_base` non nul (migration `planning.0002`). Recettée le 07/09/2026
   en production ; réserve R4b-1 : le 422 serveur à la publication n'a été vu
   qu'en test, la page l'ayant refusé avant l'appel.
-- **Prochaine étape** : brique 5 (mail comptable, et workflow n8n de
+- **Brique 3-quater mergée le 07/09/2026** (`6de17f1`, PR #19) : reprise
+  exceptionnelle de l'existant Notion 2026 (décision C3.9) par un écran
+  d'administration en deux temps — rapport d'analyse, puis confirmation avec
+  analyse rejouée et écriture tout ou rien —, sans migration ni webhook, audit
+  `absence_importee` / `import_absences`. Recettée en production : 201 absences
+  importées, ré-import idempotent (toutes « déjà présente »), tir de paie
+  d'août contrôlé sur les bulletins. 874 tests Python, 57 tests Node.
+- **Prochaine étape** : brique 5 (mail comptable — dates et catégorie de paie
+  de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
   (endpoint présences, projet VoiceDoctolib). Le périmètre v1 de l'application
-  est complet.
+  est complet, et l'existant 2026 est repris.
 
 ## Périmètre
 
@@ -77,6 +87,7 @@ publié, « Mes jours » pour chaque salariée.
 | Absences des salariées, décision, jours comptés, endpoint de paie, webhooks `absence.*` | |
 | Planning servi par l'application, moteur JS testé sous Node, versions (409 / 422), copie autonome | |
 | Publication d'une version, conflit absence ↔ planning publié, « Mes jours » pour les salariées | |
+| Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -152,10 +163,10 @@ Hébergement Railway, image Docker, sonde de santé sur `/sante/`, migrations et
 création du compte cabinet au pré-déploiement par `python manage.py pre_deploiement`.
 Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
-- Cadrage de l'application (v1.6 : périmètre, décisions C2 → C4, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
+- Cadrage de l'application (v1.7 : périmètre, décisions C2 → C5, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
-- Absences, jours comptés, paie et rétention : [`docs/ABSENCES.md`](docs/ABSENCES.md)
+- Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
 - Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
@@ -177,7 +188,7 @@ socle/       page de santé, accueil, gabarits communs, limitation de débit, f�
 presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
 personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
 regles/      regles.json et son chargeur validant (sans modèle)
-absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision
+absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision, import exceptionnel (admin)
 planning/    PlanningVersion, DATA côté serveur, vérification stricte, page, copie, publication, conflits, « Mes jours » ; moteur.js et page.js dans static/, tests Node dans tests_js/
 n8n/         API entrante appelée par n8n (sans modèle)
 docs/        cadrage, déploiement, personnes, absences, planning, webhooks n8n
@@ -221,6 +232,23 @@ La liste `/personnes/` est ouverte aux rôles `cabinet` et `principale`.
 Le détail des gestes — production du fichier, lecture du rapport, appariement,
 création des comptes et invitations, seuils de débit — est dans
 [`docs/PERSONNES.md`](docs/PERSONNES.md).
+
+## Absences
+
+`/mes-absences/` pour la salariée, `/absences/` pour la décision (rôles
+`cabinet` et `principale`), jours comptés pour la paie servis par
+`GET /api/n8n/paie/<AAAA-MM>/`. **Décision C5.1** (cadrage v1.7) : le mail de
+la brique 5 enverra à la comptable les dates et la catégorie de paie de chaque
+absence ; `jours_comptes` reste un indicateur interne.
+
+**Reprise de l'existant (3-quater).** Avec le compte **cabinet**, sur
+`/admin/absences/absencesalariee/importer/` (bouton « Importer un fichier »
+dans la liste des absences), déposer le fichier JSON de reprise : un rapport
+d'analyse d'abord (à créer / déjà présente / erreur, jours comptés, conflit
+avec un planning publié), l'écriture sur confirmation seulement, tout ou rien,
+et rien n'est écrit tant qu'il reste une erreur. Rejouer le fichier ne crée
+rien. Notion reste une archive en lecture seule. Détail dans
+[`docs/ABSENCES.md`](docs/ABSENCES.md) § 11.
 
 ## Planning
 

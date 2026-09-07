@@ -150,7 +150,10 @@ python -m venv .venv                      # une seule fois
   `absence_conflit_publication` et le webhook `absence.conflit` ne portent que
   `personne_id`, `mois`, `numero`, `dates` ; « Mes jours » ne reçoit pas
   `DATA`. Prouvé par `test_conflits`, `test_mes_jours` et les trois tests 4b
-  de `planning/tests/test_confidentialite.py`.
+  de `planning/tests/test_confidentialite.py`. **3-quater** : `absence_importee`
+  et `import_absences` ne portent que `personne_id`, `statut`, `jours_comptes`
+  (chaîne), `ref` (identifiants Notion opaques), compteurs et empreinte ; prouvé
+  par les deux tests 3-quater de `absences/tests/test_confidentialite.py`.
 - **Jours comptés** : `min(J, max(0, B − F))` par semaine, où `J` exclut les
   fériés et `F` ne compte que les fériés tombant un jour d'OUVERTURE. Un férié
   un jour fermé (lundi de Pentecôte sous le régime mardi→samedi) ne retire
@@ -251,10 +254,25 @@ sur le déploiement.
   4b a donné une violation réelle, un écart de page réel (E1, la brique
   orpheline) et la version 4 — ce qu'aucun jeu fictif ne donnait.
 
+### Leçons de la brique 3-quater
+
+- **Une fusion de jours se prouve contre les jours réels** : le fichier de
+  reprise fusionne les pages Notion consécutives d'une même personne et d'un
+  même type, et c'est le total de jours par personne, pas le nombre de lignes,
+  qui dit si la fusion est juste.
+- **La fiche de paie est l'étalon** : le tir de paie d'août confronté aux
+  bulletins a fixé C5.1 — la comptable compte les congés payés et les maladies
+  en jours ouvrables, le sans-solde en jours réels ; le mail de la brique 5
+  enverra dates et catégorie de paie, `jours_comptes` reste un indicateur
+  interne.
+- **« Déjà présente » partout est la preuve d'un import** : rejouer le fichier
+  doit rendre toutes les lignes `deja_presente` et zéro création. Fait en
+  production après les 201 absences.
+
 ## Périmètre
 
-Le cadrage complet (périmètre v1, décisions C2 → C4, journal de livraison des
-briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.6) : il fait foi sur
+Le cadrage complet (périmètre v1, décisions C2 → C5, journal de livraison des
+briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.7) : il fait foi sur
 le périmètre, ce fichier sur les règles de travail.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
@@ -289,7 +307,9 @@ paie (`absences/calcul.py`, fériés dans `socle/feries.py`), endpoint
 `GET /api/n8n/paie/<AAAA-MM>/`, webhooks `absence.demandee` / `absence.declaree`
 / `absence.decidee` (et `absence.conflit` depuis la 4b), rétention configurable, et changement de l'adresse de
 connexion par la salariée. Le client HTTP n8n sortant est factorisé dans
-`socle/client_n8n.py`. Voir `docs/ABSENCES.md`.
+`socle/client_n8n.py`. L'existant Notion 2026 a été repris une fois par
+l'écran d'import de la 3-quater (C3.9) ; Notion est une archive en lecture
+seule. Voir `docs/ABSENCES.md`.
 
 La brique **4a** (mergée le 06/09/2026, `5072226`) livre le planning servi par
 l'application : app `planning/`, `DATA` calculé côté serveur
@@ -311,6 +331,16 @@ webhook `absence.conflit`, bandeau sur `/absences/`), « Mes jours »
 « hors présence » (`moteur.orphelins`), `meta.imports` dans `DATA` et la
 migration `planning.0002` (`version_de_base` non nul). Le périmètre v1 de
 l'application est complet. Voir `docs/PLANNING.md` § 11 et § 12.
+
+La brique **3-quater** (mergée le 07/09/2026, `6de17f1`, PR #19) reprend
+l'existant Notion 2026 **une fois** (C3.9) : écran d'administration
+`/admin/absences/absencesalariee/importer/` (`AbsenceSalarieeAdmin.get_urls`,
+`vue_import`, gabarits `admin/absences/absencesalariee/`), formulaire
+`FormulaireImport`, services `importer` / `analyser_import` /
+`executer_import`, actions d'audit `absence_importee` et `import_absences`.
+Deux temps (rapport, puis confirmation avec analyse rejouée), session
+`import_absences` à empreinte et horodatage, écriture tout ou rien, ni webhook
+ni crochet de conflit, sans migration de schéma. Voir `docs/ABSENCES.md` § 11.
 
 Le mail comptable et le workflow n8n de `planning.publie` (variable
 `N8N_PLANNING_WEBHOOK_URL`, absente jusque-là) relèvent de la brique **5** ;

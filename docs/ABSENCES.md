@@ -1,6 +1,6 @@
 # Absences — mode d'emploi
 
-Brique 3. Deux publics : la salariée, qui déclare ou demande ses absences, et la
+Briques 3 et 3-quater (§ 11). Deux publics : la salariée, qui déclare ou demande ses absences, et la
 validatrice (`principale` ou `cabinet`), qui décide et corrige les jours comptés
 pour la paie.
 
@@ -172,6 +172,14 @@ c'est exact. C'est `repartition_calculee` qui porte l'alerte dans ce cas.
 L'audit note le mois consulté et le nombre de salariées — **jamais le contenu**,
 qui porte des noms.
 
+**Décision C5.1 (cadrage v1.7).** Le mail de la brique 5 enverra à la comptable
+les **dates** de chaque absence et sa **catégorie de paie**, pas un nombre de
+jours : sur les bulletins de janvier à août 2026, les congés payés et les
+maladies sont comptés en jours ouvrables, le sans-solde en jours réels.
+`jours_comptes` (formule du § 4, C3.1) devient un **indicateur interne** de
+l'écran de décision et du planning. L'endpoint décrit ici ne change pas tant
+que la brique 5 n'est pas livrée : son contrat sera réaligné à ce moment-là.
+
 ## 6. Rétention
 
 `RETENTION_ABSENCES_JOURS` (variable d'environnement, en jours depuis le dernier
@@ -263,10 +271,15 @@ sont invalidés (`SESAME_INVALIDATE_ON_EMAIL_CHANGE`).
 
 ## 9. Reprise de l'existant Notion
 
-Il n'y a **aucune migration automatique** : Notion devient une archive en lecture
-seule. Les absences en cours se ressaisissent à la main dans l'administration
-(`/admin/absences/absencesalariee/`), qui accepte la création et la modification
-et journalise chaque écriture. Une absence saisie directement en « validée » ou
+Notion est une **archive en lecture seule**. L'existant 2026 a été repris
+**une fois**, par l'écran d'import de la brique 3-quater (§ 11, décision C3.9
+du cadrage v1.7, qui amende C3.8 sans la contredire sur le fond : la saisie
+courante passe par l'application, § 1 et § 2). Il n'y a pas de connecteur
+Notion dans l'application.
+
+L'administration (`/admin/absences/absencesalariee/`) reste le canal des
+corrections à la main : elle accepte la création et la modification et
+journalise chaque écriture. Une absence saisie directement en « validée » ou
 « déclarée » repart avec ses jours comptés calculés. Depuis la brique 4b, une
 absence bloquante qui devient effective par ce canal est confrontée au planning
 publié (§ 7) : le conflit est signalé, jamais bloquant.
@@ -280,3 +293,93 @@ publié (§ 7) : le conflit est signalé, jamais bloquant.
 
 Les deux se posent à la main sur Railway ; rien ne casse tant qu'elles sont
 absentes.
+
+## 11. Import exceptionnel de l'existant (3-quater)
+
+Décision **C3.9** (cadrage v1.7) : reprise **unique** de l'existant Notion 2026
+depuis un fichier, par un écran d'administration — sans migration, sans
+connecteur Notion, sans webhook. Recette en production : 201 absences
+importées, ré-import idempotent (toutes « déjà présente », zéro création), tir
+de paie d'août contrôlé sur les bulletins.
+
+### 11.1 Le fichier
+
+JSON UTF-8, 1 Mo au plus, produit hors de l'application. Un objet portant une
+liste `absences` ; chaque élément a `nom`, `prenom`, `type`, `debut`, `fin`
+(chaînes), un `ref` facultatif (identifiants Notion, opaques) et une
+`precision` **ignorée** — les titres Notion ne sont pas repris. Exemple, tiré
+de la fixture fictive `absences/tests/import_fictif.json` :
+
+```json
+{
+  "source": "jeu-fictif-de-test",
+  "absences": [
+    {"ref": "notion:aaa1", "nom": "DUPONT", "prenom": "Alice", "type": "Congé payé",
+     "debut": "2026-05-26", "fin": "2026-05-30", "precision": ""},
+    {"ref": "notion:bbb2,bbb3", "nom": "MARTIN", "prenom": "Bob", "type": "Maladie",
+     "debut": "2026-06-02", "fin": "2026-06-03", "precision": ""}
+  ]
+}
+```
+
+Le formulaire (`absences/forms.py:FormulaireImport`) ne juge que la **forme** :
+taille, extension `.json`, UTF-8, JSON, clés présentes et chaînes ; ses messages
+ne citent que des noms de champs et des numéros de ligne. Les valeurs sont
+l'affaire du rapport. Le statut n'est pas dans le fichier : il découle de la
+catégorie du type — `validee` si soumis à décision, `declaree` sinon.
+
+### 11.2 L'écran, en deux temps
+
+`/admin/absences/absencesalariee/importer/`, bouton « Importer un fichier »
+dans la liste des absences. Rôle `cabinet` par `role_requis`, posé **à
+l'extérieur** d'`admin_view` : un autre rôle reçoit le 403 journalisé du
+projet, pas la redirection de connexion de l'admin. La route est déclarée
+**avant** `super().get_urls()`, sinon `<path:object_id>/` la capturerait.
+
+1. **Analyse.** Le fichier est lu, chaque ligne reçoit un verdict, rien n'est
+   écrit. Le fichier normalisé va en session (clé `import_absences` : empreinte
+   SHA-256 des octets reçus, horodatage, lignes), jamais sur disque.
+2. **Confirmation.** Le bouton n'apparaît que sans erreur et avec au moins une
+   ligne à créer ; il porte l'empreinte et les compteurs en champs cachés. La
+   vue vérifie l'empreinte et la fraîcheur (15 minutes), **rejoue l'analyse** —
+   la base a pu changer entre les deux POST —, refuse avec un nouveau rapport si
+   une erreur est apparue ou si les compteurs diffèrent, puis écrit **tout ou
+   rien** dans une transaction. GET repart du formulaire vide et efface
+   l'analyse en cours.
+
+### 11.3 Les verdicts
+
+| Verdict | Quand |
+|---|---|
+| `creer` | personne salariée connue, type actif, dates lisibles, aucun chevauchement |
+| `deja_presente` | une absence **effective** de même personne, même type, mêmes dates existe déjà : ignorée, comptée. Rejouer le fichier est sûr |
+| `erreur` | personne inconnue (`(nom, prenom)` strippés, casse exacte) ou non salariée ; type vide, inconnu ou inactif (libellé exact, fautes Notion comprises) ; date illisible ou inversée ; chevauchement d'une absence effective non identique ; chevauchement d'une **demande en attente** (un doublon naîtrait à la validation) ; deux lignes du fichier qui se chevauchent pour une même personne (les deux) |
+
+Les absences refusées et annulées ne comptent pas. Une ligne peut cumuler
+plusieurs motifs. Le rapport donne aussi les jours comptés calculés
+(`calcul.jours_comptes`, sans instance), le signal de contrat incomplet et,
+pour les lignes à créer de type bloquant, le conflit avec un planning publié
+(`planning.conflits`, un seul cache de versions pour tout le rapport) —
+information seulement, le crochet `signaler_conflits` n'est pas appelé.
+
+### 11.4 L'écriture et le journal
+
+`services.importer` construit l'absence effective, applique le même calcul et
+la même échéance de rétention que `creer`, puis **un seul `save()`** ; `auteur`
+et, pour une `validee`, `decide_par` / `decide_le` sont le compte qui confirme.
+Ni webhook ni crochet de conflit. `services.executer_import` refuse s'il reste
+une erreur, écrit les lignes `creer` dans une transaction et journalise une
+fois.
+
+Journal d'audit, muet comme le reste de la brique :
+
+| Action | `details` |
+|---|---|
+| `absence_importee` (une par absence) | `personne_id`, `statut`, `jours_comptes` (chaîne, comme `absence_decidee`), `ref` |
+| `import_absences` (une par confirmation) | `nb_creees`, `nb_ignorees`, `empreinte` |
+
+Logs : « import absences : analyse, N ligne(s), N erreur(s) », « absence #N
+importee (statut …, N jour(s) de plage) », « import absences : N creee(s),
+N ignoree(s) ». Jamais de nom, de type ni de titre. Prouvé par
+`absences/tests/test_import.py` (47 tests) et les deux tests 3-quater de
+`absences/tests/test_confidentialite.py`.
