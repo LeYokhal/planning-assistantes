@@ -6,7 +6,8 @@ une donnée de santé, et une précision libre — « rendez-vous médical » �
 pas : ces tests sont le seul filet.
 
 Trois sorties possibles, toutes couvertes ici : le journal d'audit, les logs
-applicatifs, et le corps des webhooks.
+applicatifs, et le corps des webhooks. La brique 3-quater y ajoute la reprise
+par fichier : `absence_importee` et `import_absences` sont muets eux aussi.
 """
 
 import datetime
@@ -274,3 +275,56 @@ def test_le_conflit_ne_journalise_ni_type_ni_precision(webhook_actif, cabinet):
         assert TYPE_SENSIBLE not in texte
         assert "médical" not in texte and "CHU" not in texte
         assert "DUPONT" not in texte and "Alice" not in texte
+
+
+# --- Brique 3-quater : la reprise par fichier reste muette -------------------
+
+
+def test_l_import_ne_journalise_ni_type_ni_precision(cabinet):
+    personne = fabrique.personne(nom="DUPONT", prenom="Alice")
+    type_ = fabrique.type_absence(
+        libelle=TYPE_SENSIBLE, categorie=TypeAbsence.Categorie.DECLARE
+    )
+
+    services.importer(personne, type_, DEBUT, FIN, cabinet, ref="notion:a1")
+
+    evenement = EvenementAudit.objects.get(action="absence_importee")
+    # Quatre clés, pas une de plus : ni type, ni précision, ni nom. Les jours
+    # comptés voyagent en chaîne, comme dans `absence_decidee`.
+    assert set(evenement.details) == {"personne_id", "statut", "jours_comptes", "ref"}
+    assert isinstance(evenement.details["jours_comptes"], str)
+    journal = _journal()
+    assert TYPE_SENSIBLE not in journal
+    assert "DUPONT" not in journal
+    assert "Alice" not in journal
+
+
+def test_l_execution_de_l_import_reste_muette(cabinet, caplog):
+    fabrique.personne(nom="DUPONT", prenom="Alice")
+    fabrique.type_absence(libelle=TYPE_SENSIBLE, categorie=TypeAbsence.Categorie.DECLARE)
+    lignes = services.analyser_import(
+        [
+            {
+                "ref": "notion:a1",
+                "nom": "DUPONT",
+                "prenom": "Alice",
+                "type": TYPE_SENSIBLE,
+                "debut": DEBUT.isoformat(),
+                "fin": FIN.isoformat(),
+            }
+        ]
+    )
+
+    with caplog.at_level(logging.DEBUG):
+        services.executer_import(lignes, cabinet, "empreinte-de-test")
+
+    for texte in (_journal(), caplog.text):
+        assert TYPE_SENSIBLE not in texte
+        assert "DUPONT" not in texte
+        assert "Alice" not in texte
+    bilan = EvenementAudit.objects.get(action="import_absences")
+    assert bilan.details == {
+        "nb_creees": 1,
+        "nb_ignorees": 0,
+        "empreinte": "empreinte-de-test",
+    }

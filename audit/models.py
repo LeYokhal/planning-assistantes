@@ -53,6 +53,12 @@ class Action(models.TextChoices):
         "absence_conflit_publication",
         "Absence en conflit avec un planning publié",
     )
+    # Brique 3-quater (C3.9) : reprise exceptionnelle de l'existant Notion par
+    # import de fichier. `absence_importee` : identifiant de personne, statut,
+    # jours comptés (chaîne) et référence Notion opaque. `import_absences` :
+    # compteurs et empreinte SHA-256 du fichier. Jamais de nom, jamais de type.
+    ABSENCE_IMPORTEE = "absence_importee", "Absence importée"
+    IMPORT_ABSENCES = "import_absences", "Import d'absences"
 
 
 class EvenementAudit(models.Model):

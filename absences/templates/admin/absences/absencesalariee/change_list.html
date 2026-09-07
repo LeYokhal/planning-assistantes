@@ -1,0 +1,7 @@
+{% extends "admin/change_list.html" %}
+{% comment %}Brique 3-quater (C3.9) : bouton d'import dans les outils de la liste des absences.{% endcomment %}
+
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:absences_absencesalariee_importer' %}">Importer un fichier</a></li>
+  {{ block.super }}
+{% endblock %}
