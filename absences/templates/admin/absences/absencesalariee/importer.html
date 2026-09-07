@@ -1,0 +1,92 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Brique 3-quater (C3.9) : reprise exceptionnelle de l'existant Notion.
+Page d'administration réservée au rôle cabinet : le type d'absence y figure,
+comme dans la liste des absences (C2.3b). Rien de cette page ne part dans un
+log, un webhook ni le journal d'audit.
+{% endcomment %}
+
+{% block title %}Importer des absences | {{ site_title|default:"Administration" }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Accueil</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:absences_absencesalariee_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; Importer
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Importer des absences (reprise exceptionnelle)</h1>
+<p>
+  Fichier JSON produit hors de l'application (contrat du plan 3-quater, § 1), 1 Mo au plus.
+  Rien n'est écrit avant la confirmation : le rapport d'analyse vient d'abord, la confirmation
+  est refusée tant qu'il reste une erreur, et l'écriture est tout ou rien.
+</p>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ formulaire.as_p }}
+  <input type="submit" value="Analyser le fichier">
+</form>
+
+{% if rapport is not None %}
+<h2>{% if resultat %}Import terminé{% else %}Rapport d'analyse{% endif %}</h2>
+<p>
+  <strong>{{ compteurs.creer }}</strong> à créer,
+  <strong>{{ compteurs.deja_presente }}</strong> déjà présente(s),
+  <strong>{{ compteurs.erreur }}</strong> en erreur.
+  {% if resultat %}Créées : {{ resultat.nb_creees }}, ignorées : {{ resultat.nb_ignorees }}.{% endif %}
+</p>
+<div class="results">
+<table>
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Personne</th>
+      <th>Dates</th>
+      <th>Type</th>
+      <th>Statut prévu</th>
+      <th>Jours comptés</th>
+      <th>Signal</th>
+      <th>Verdict</th>
+      <th>Conflit planning publié</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for ligne in rapport %}
+    <tr{% if ligne.verdict == "erreur" %} class="errors"{% endif %}>
+      <td>{{ ligne.indice }}</td>
+      <td>{{ ligne.nom }} {{ ligne.prenom }}</td>
+      <td>{{ ligne.debut|date:"d/m/Y"|default:"?" }} au {{ ligne.fin|date:"d/m/Y"|default:"?" }}</td>
+      <td>{{ ligne.type_libelle }}</td>
+      <td>{{ ligne.statut_libelle }}</td>
+      <td>{% if ligne.jours is not None %}{{ ligne.jours }}{% endif %}</td>
+      <td>{{ ligne.message }}</td>
+      <td>{{ ligne.verdict_libelle }}{% if ligne.motif %} : {{ ligne.motif }}{% endif %}</td>
+      <td>{% for conflit in ligne.conflits %}{{ conflit.mois }} v{{ conflit.numero }} ({{ conflit.dates|join:", " }}){% if not forloop.last %} ; {% endif %}{% endfor %}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% if peut_confirmer %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="confirmer" value="1">
+  <input type="hidden" name="empreinte" value="{{ empreinte }}">
+  <input type="hidden" name="nb_creer" value="{{ compteurs.creer }}">
+  <input type="hidden" name="nb_deja_presente" value="{{ compteurs.deja_presente }}">
+  <input type="submit" class="default" value="Confirmer l'import de {{ compteurs.creer }} absence(s)">
+</form>
+{% elif not resultat %}
+  {% if compteurs.erreur %}
+  <p class="errornote">La confirmation est refusée tant qu'il reste une erreur : corrigez le fichier et téléversez-le à nouveau.</p>
+  {% else %}
+  <p>Aucune absence à créer : toutes les lignes sont déjà présentes.</p>
+  {% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}

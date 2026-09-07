@@ -1,0 +1,11 @@
+{
+  "source": "jeu-fictif-de-test",
+  "exporte": "2026-09-07T00:00:00",
+  "regles": ["fixture fictive : personnes de la fabrique, aucune donnee reelle"],
+  "ecartees": [],
+  "absences": [
+    {"ref": "notion:aaa1", "nom": "DUPONT", "prenom": "Alice", "type": "Congé payé", "debut": "2026-05-26", "fin": "2026-05-30", "precision": ""},
+    {"ref": "notion:bbb2,bbb3", "nom": "MARTIN", "prenom": "Bob", "type": "Maladie", "debut": "2026-06-02", "fin": "2026-06-03", "precision": ""},
+    {"ref": "notion:ccc4", "nom": "DUPONT", "prenom": "Alice", "type": "Retard", "debut": "2026-06-10", "fin": "2026-06-10", "precision": ""}
+  ]
+}
