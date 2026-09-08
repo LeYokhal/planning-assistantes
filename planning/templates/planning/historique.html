@@ -1,0 +1,102 @@
+{% extends "socle/base.html" %}
+{% comment %}
+Brique 7b (C7.1, décision D3) : lecture d'un mois repris par l'import historique.
+Page serveur bâtie sur le `state` d'une version publiée, sur le patron de
+`mes_jours.html` : ni `DATA`, ni `STATE`, ni `moteur.js`, ni `json_script`.
+Aucun congé, aucun type d'absence — le `state` n'en porte pas et la vue n'en lit
+pas. Les libellés de `t` et de `x` sont ceux de `mes_jours.html`, mot pour mot.
+{% endcomment %}
+
+{% block classe_corps %}large{% endblock %}
+{% block titre %}Planning historique — {{ libelle }} — Planning Assistantes{% endblock %}
+{% block entete %}Planning historique — {{ libelle }}{% endblock %}
+
+{% block tete %}
+  <style>
+    table { border-collapse: collapse; font-size: 0.85rem; }
+    th, td { border: 1px solid #ccc; padding: 0.3rem 0.45rem; text-align: left; vertical-align: top; }
+    thead th { font-weight: 600; }
+    th.jour { position: sticky; left: 0; background: #fff; white-space: nowrap; z-index: 1; }
+    tr.ferie th.jour, tr.hors th.jour { background: rgba(0,0,0,.04); }
+    tr.ferie td, tr.hors td { background: rgba(0,0,0,.02); }
+    .marque { color: #666; font-weight: 400; font-size: 0.8rem; display: block; }
+    .brique { display: block; }
+    .brique + .brique { margin-top: 0.2rem; }
+    .close { font-weight: 400; font-size: 0.8rem; display: block; }
+    .version { color: #666; margin-top: 0; }
+    .cadre { overflow-x: auto; }
+    .notes { margin-top: 1.25rem; }
+    .notes li { margin-bottom: 0.25rem; }
+  </style>
+{% endblock %}
+
+{% block contenu %}
+  <p class="version">
+    Version {{ version.numero }}{% if importe_le %}, importée le
+    {{ importe_le|date:"d/m/Y" }} à {{ importe_le|date:"H:i" }}{% endif %} —
+    <strong>non vérifiée</strong> : ce mois n'a aucune présence Doctolib, les
+    règles n'y sont pas contrôlables. Les semaines complètes du mois sont
+    affichées.
+  </p>
+
+  {% if lignes %}
+  <div class="cadre">
+    <table>
+      <thead>
+        <tr>
+          <th class="jour">Jour</th>
+          {% for colonne in colonnes %}
+            <th style="background: {{ colonne.couleur.0 }}; color: {{ colonne.couleur.1 }}">
+              {{ colonne.libelle }}
+              {% if colonne.fiche_close %}<span class="close">fiche close</span>{% endif %}
+            </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+          <tr class="{% if ligne.ferie %}ferie{% elif ligne.hors_ouverture %}hors{% endif %}">
+            <th class="jour">
+              {{ ligne.jour_fr }} {{ ligne.date|date:"d/m" }}
+              {% if ligne.ferie %}<span class="marque">férié : {{ ligne.ferie }}</span>
+              {% elif ligne.hors_ouverture %}<span class="marque">hors jours d'ouverture</span>{% endif %}
+            </th>
+            {% for cellule in ligne.cellules %}
+              <td>
+                {% for brique in cellule %}
+                  <span class="brique">{{ brique.libelle }} —
+                    {% if brique.t == "C" %}journée courte (fin 16h30){% else %}journée{% endif %}{% if brique.x %} (heures sup){% endif %}
+                  </span>
+                {% endfor %}
+              </td>
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="message">Cette version historique ne porte aucune journée à afficher.</p>
+  {% endif %}
+
+  {% if notes %}
+  <div class="notes">
+    <h2>Notes</h2>
+    <ul>
+      {% for iso, textes in notes %}
+        <li><strong>{{ iso }}</strong> : {{ textes|join:" · " }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block navigation %}
+  <a href="{% url 'planning:mois' precedent %}">← {{ precedent }}</a> —
+  <a href="{% url 'planning:mois' suivant %}">{{ suivant }} →</a> —
+  <a href="/">Accueil</a> —
+  <form method="post" action="/deconnexion/" style="display:inline">
+    {% csrf_token %}
+    <button type="submit">Se déconnecter</button>
+  </form>
+{% endblock %}

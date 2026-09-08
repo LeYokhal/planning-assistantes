@@ -6,6 +6,11 @@
 {% block contenu %}
   <p class="message">Aucun import de présences réussi ne couvre ce mois : il n'y a
      rien à planifier tant que les présences Doctolib ne sont pas entrées.</p>
+  {% if historique %}
+  <p>Ce mois n'a pas de présences Doctolib, mais un planning historique a été
+     importé —
+     <a href="{% url 'planning:historique' mois %}">le consulter</a>.</p>
+  {% endif %}
   <p>
     {% if peut_importer %}
       <a href="{% url 'presences:importer' %}">Importer un fichier S7</a>, puis revenir ici.
