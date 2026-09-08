@@ -169,6 +169,62 @@ def brique(s, t="J", x=False, a=False):
     return {"s": s, "t": t, "x": x, "a": a}
 
 
+# --- Brique 7a : planning historique (C7.1) ------------------------------------
+
+# Mois passé, distinct de `MOIS` : sa plage (2026-02-23 au 2026-04-05) ne porte
+# aucun férié, ce qui laisse les cas nominaux propres.
+MOIS_HISTORIQUE = "2026-03"
+# `2026-01` porte le Jour de l'an (2026-01-01, un jeudi) dans sa plage : c'est
+# le mois du cas « jour fermé porteur de briques ».
+MOIS_FERIE = "2026-01"
+
+
+def personnes_historiques():
+    """Deux fiches fictives pour l'import historique, indexées par code.
+
+    `test_pra` est **close et non planifiée, sans agenda Doctolib** : c'est
+    exactement le cas C7.4 (`lisa_ser`, `william_kra`), que `donnees.construire`
+    exclut et que l'import doit accepter. `test_ass` et `test_sec` sont deux
+    salariées ordinaires. Codes posés par `Personne.save` via `code_pour` :
+    « prénom_trois premières lettres du nom ».
+    """
+    return {
+        "test_pra": praticien("PRATICIEN", "Test", "blue", agenda="", planifiee=False, actif=False),
+        "test_ass": salariee("ASSISTANTE", "Test", 39, "green"),
+        "test_sec": salariee(
+            "SECRETAIRE", "Test", 35, "pink", role=Personne.RoleMetier.SECRETAIRE
+        ),
+    }
+
+
+def planning_exporte(mois=MOIS_HISTORIQUE, affectations=None, feries=None, notes=None):
+    """Un fichier au format de l'export JSON de la page (`moteur.exporter`).
+
+    `numero` et `exporte` sont présents comme dans un vrai export, et ignorés à
+    l'import : le numéro est décidé par le serveur.
+    """
+    return {
+        "mois": mois,
+        "numero": 0,
+        "affectations": affectations if affectations is not None else {},
+        "feries": feries or {},
+        "feries_off": [],
+        "notes": notes or {},
+        "exporte": "2026-09-08T17:57:00.000Z",
+    }
+
+
+def affectations_historiques():
+    """Deux jours, trois briques : la colonne de la fiche close, et le secrétariat."""
+    return {
+        "2026-03-03": {
+            "test_pra": [brique("test_ass")],
+            "secretariat": [brique("test_sec", "C")],
+        },
+        "2026-03-04": {"test_pra": [brique("test_ass")]},
+    }
+
+
 def etat(affectations=None, feries=None, feries_off=None, notes=None):
     return {
         "affectations": affectations or {},

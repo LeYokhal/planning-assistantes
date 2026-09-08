@@ -1,0 +1,7 @@
+{% extends "admin/change_list.html" %}
+{% comment %}Brique 7a (C7.1) : bouton d'import dans les outils de la liste des versions.{% endcomment %}
+
+{% block object-tools-items %}
+  <li><a href="{% url 'admin:planning_planningversion_importer_historique' %}">Importer un planning historique</a></li>
+  {{ block.super }}
+{% endblock %}

@@ -13,7 +13,7 @@ import pytest
 
 from absences.models import AbsenceSalariee
 from absences.tests import fabrique as fabrique_absences
-from planning import services
+from planning import historique, services
 from planning.models import PlanningVersion
 from planning.tests import fabrique
 
@@ -188,3 +188,39 @@ def test_plage_entiere_et_mois_calendaire_prioritaire(client, emma, connecter):
 
 def test_service_sans_version_publiee(jeu):
     assert services.jours_publies(jeu["personnes"]["Emma"], fabrique.MOIS) is None
+
+
+def test_mois_historique_importe(client, salariee, connecter, cabinet):
+    """Brique 7a (C7.1) : « Mes jours » lit une version historique **sans changement**.
+
+    Aucune présence Doctolib n'est importée pour ce mois : `jours_publies` ne lit
+    que le `state` et les personnes, jamais `DATA`. La colonne d'une fiche close
+    et non planifiée garde son libellé (P3, C7.4).
+    """
+    fiches = fabrique.personnes_historiques()
+    fabrique_absences.lier(salariee, fiches["test_ass"])
+    affectations = dict(fabrique.affectations_historiques())
+    # Jeudi 2 avril : dans la plage de mars (semaines complètes), hors du mois.
+    affectations["2026-04-02"] = {"secretariat": [fabrique.brique("test_ass", "C", x=True)]}
+    version = historique.executer(
+        historique.analyser(fabrique.planning_exporte(affectations=affectations)), cabinet
+    )
+
+    connecter(client, salariee)
+    reponse = client.get(f"/mes-jours/{fabrique.MOIS_HISTORIQUE}/")
+    contenu = reponse.content.decode()
+
+    assert reponse.status_code == 200
+    assert f"Version {version.numero}, publiée le" in contenu
+    assert [
+        (j["date"].isoformat(), j["t"], j["x"], j["slot_libelle"], j["hors_mois"])
+        for j in reponse.context["resultat"]["jours"]
+    ] == [
+        ("2026-03-03", "J", False, "Test PRATICIEN", False),
+        ("2026-03-04", "J", False, "Test PRATICIEN", False),
+        ("2026-04-02", "C", True, "Secrétariat", True),
+    ]
+    assert 'class="voisin"' in contenu and "(heures sup)" in contenu
+    # Rien de la secrétaire du même jour, et toujours pas de `DATA`.
+    for mot in ("test_sec", "SECRETAIRE", "planning-data", "conges"):
+        assert mot not in contenu, mot

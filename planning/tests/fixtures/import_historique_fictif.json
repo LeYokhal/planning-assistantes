@@ -1,0 +1,17 @@
+{
+  "mois": "2026-03",
+  "numero": 0,
+  "affectations": {
+    "2026-03-03": {
+      "test_pra": [{"a": false, "s": "test_ass", "t": "J", "x": false}],
+      "secretariat": [{"a": false, "s": "test_sec", "t": "C", "x": false}]
+    },
+    "2026-03-04": {
+      "test_pra": [{"a": false, "s": "test_ass", "t": "J", "x": false}]
+    }
+  },
+  "feries": {},
+  "feries_off": [],
+  "notes": {},
+  "exporte": "2026-09-08T17:57:00.000Z"
+}

@@ -1,0 +1,135 @@
+{% extends "admin/base_site.html" %}
+{% comment %}
+Brique 7a (C7.1) : reprise des plannings de 2026, produits hors de l'application.
+Page d'administration réservée au rôle cabinet. Elle ne lit ni les absences ni
+`DATA` : aucun congé, aucun type d'absence, aucun nom de salariée associé à une
+absence n'y figure. Les codes de personnes y sont affichés — ils sont
+nécessaires pour corriger un fichier. Rien de cette page ne part dans un log,
+un webhook ni le journal d'audit.
+{% endcomment %}
+
+{% block title %}Importer un planning historique | {{ site_title|default:"Administration" }}{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Accueil</a>
+  &rsaquo; <a href="{% url 'admin:app_list' app_label=opts.app_label %}">{{ opts.app_config.verbose_name }}</a>
+  &rsaquo; <a href="{% url 'admin:planning_planningversion_changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+  &rsaquo; Importer un planning historique
+</div>
+{% endblock %}
+
+{% block content %}
+<h1>Importer un planning historique</h1>
+<p>
+  Fichier JSON au format de l'export de la page planning, produit hors de l'application,
+  1 Mo au plus. Un fichier couvre un mois et donne <strong>une version publiée, marquée
+  « historique »</strong>.
+</p>
+<p class="help">
+  Cette version est écrite <strong>sans revérification des règles</strong> — sans présences
+  Doctolib, la vérification n'a rien à contrôler — et <strong>sans notification</strong> :
+  publier un mois de 2026 ne doit prévenir personne. Les colonnes portées par une fiche
+  close ou non planifiée sont conservées. Rien n'est écrit avant la confirmation.
+</p>
+
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{ formulaire.as_p }}
+  <input type="submit" value="Analyser">
+</form>
+
+{% if analyse %}
+<h2>{% if resultat %}Import terminé{% else %}Rapport d'analyse{% endif %}</h2>
+<p>
+  Mois <strong>{{ analyse.mois }}</strong>
+  {% if analyse.debut %}(plage du {{ analyse.debut }} au {{ analyse.fin }}){% endif %} —
+  <strong>{{ analyse.nb_briques }}</strong> brique(s) sur
+  <strong>{{ analyse.nb_jours }}</strong> jour(s),
+  {{ analyse.colonnes|length }} colonne(s), {{ analyse.personnes|length }} personne(s).
+  Verdict : <strong>{{ analyse.verdict_libelle }}</strong>.
+  {% if resultat %}Version {{ resultat.numero }} créée, publiée et marquée historique.{% endif %}
+</p>
+
+{% if analyse.erreurs %}
+<p class="errornote">L'import est refusé tant que ces points ne sont pas corrigés :</p>
+<ul class="errorlist">
+  {% for erreur in analyse.erreurs %}<li>{{ erreur }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if analyse.avertissements %}
+<p><strong>Avertissements</strong> (ils ne bloquent pas l'import) :</p>
+<ul>
+  {% for avertissement in analyse.avertissements %}<li>{{ avertissement }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+{% if analyse.colonnes %}
+<h3>Colonnes</h3>
+<div class="results">
+<table>
+  <thead>
+    <tr><th>Colonne</th><th>Libellé</th><th>Nature</th><th>Briques</th><th>Personnes</th><th>Fiche</th></tr>
+  </thead>
+  <tbody>
+  {% for colonne in analyse.colonnes %}
+    <tr{% if colonne.genre == "inconnu" %} class="errors"{% endif %}>
+      <td>{{ colonne.slot }}</td>
+      <td>{{ colonne.libelle }}</td>
+      <td>{{ colonne.genre }}</td>
+      <td>{{ colonne.nb_briques }}</td>
+      <td>{{ colonne.codes|join:", " }}</td>
+      <td>
+        {% if colonne.genre == "inconnu" %}code inconnu{% else %}
+          {% if colonne.inactive %}close{% else %}active{% endif %}{% if colonne.non_planifiee %}, non planifiée{% endif %}{% if colonne.sans_agenda %}, sans agenda{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if analyse.personnes %}
+<h3>Personnes</h3>
+<div class="results">
+<table>
+  <thead>
+    <tr><th>Code</th><th>Libellé</th><th>Jours</th><th>Briques</th><th>Fiche</th></tr>
+  </thead>
+  <tbody>
+  {% for personne in analyse.personnes %}
+    <tr{% if not personne.connue %} class="errors"{% endif %}>
+      <td>{{ personne.code }}</td>
+      <td>{{ personne.libelle }}</td>
+      <td>{{ personne.nb_jours }}</td>
+      <td>{{ personne.nb_briques }}</td>
+      <td>
+        {% if not personne.connue %}code inconnu{% else %}
+          {% if personne.inactive %}close{% else %}active{% endif %}{% if personne.non_planifiee %}, non planifiée{% endif %}
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endif %}
+
+{% if not resultat %}
+  {% if analyse.peut_confirmer %}
+<form method="post">
+  {% csrf_token %}
+  <input type="hidden" name="confirmer" value="1">
+  <input type="hidden" name="empreinte" value="{{ analyse.empreinte }}">
+  <input type="hidden" name="nb_briques" value="{{ analyse.nb_briques }}">
+  <input type="submit" class="default" value="Confirmer l'import de {{ analyse.mois }} ({{ analyse.nb_briques }} brique(s))">
+</form>
+  {% elif analyse.verdict == "deja_presente" %}
+<p>Déjà présente : ce mois porte déjà exactement ce planning historique. Rien n'est écrit.</p>
+  {% endif %}
+{% endif %}
+{% endif %}
+{% endblock %}
