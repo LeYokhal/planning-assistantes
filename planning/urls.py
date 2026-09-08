@@ -15,6 +15,12 @@ urlpatterns = [
     path("planning/", views.planning_courant, name="courant"),
     re_path(r"^planning/(?P<mois>\d{4}-\d{2})/$", views.planning_mois, name="mois"),
     re_path(r"^planning/(?P<mois>\d{4}-\d{2})/copie/$", views.copie, name="copie"),
+    # Brique 7b : lecture d'un mois repris par l'import historique.
+    re_path(
+        r"^planning/(?P<mois>\d{4}-\d{2})/historique/$",
+        views.planning_historique,
+        name="historique",
+    ),
     re_path(
         r"^api/planning/(?P<mois>\d{4}-\d{2})/versions/$",
         views.api_versions,
