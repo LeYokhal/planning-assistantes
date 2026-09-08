@@ -14,7 +14,9 @@ production. R4a-1 est acté (planning réel de septembre importé, une violation
 (brique orpheline invisible), réglé en 4b par la ligne « hors présence »
 (§ 11.4). Réserve R4b-1 : le 422 serveur à la publication est couvert par
 `test_publication` mais n'a pas été vu en production, la page l'ayant refusé
-avant l'appel.
+avant l'appel. Brique **7a** mergée le 08/09/2026 (`95e6ba9`, PR #21) :
+l'import d'un planning historique (§ 13), qui reprend les mois de 2026
+antérieurs à l'application ; sa partie lecture (7b) n'est pas livrée.
 
 ## 1. Routes et rôles
 
@@ -28,6 +30,7 @@ avant l'appel.
 | `POST /api/erreurs/` | plafond par IP, puis `cabinet`, `principale` | journalise une erreur JS de la page, sans rien stocker |
 | `GET /mes-jours/` | `salariee`, `principale` | redirige vers le mois courant |
 | `GET /mes-jours/<AAAA-MM>/` | `salariee`, `principale` | « Mes jours » : les jours de la personne connectée dans le planning publié (§ 11.3) ; `cabinet` reçoit 403 |
+| `GET`/`POST /admin/planning/planningversion/importer-historique/` | `cabinet` + `is_staff`, session + CSRF | import d'un planning historique, en deux temps (§ 13) |
 
 Le contrôle de rôle est `comptes.acces.role_requis` : un anonyme est redirigé
 vers `/connexion/`, un autre rôle reçoit 403. `page.js` teste `redirected` et
@@ -306,8 +309,10 @@ depuis le crochet.
   et les recettes des données, de la vérification, des versions, des pages, de
   la copie, des erreurs, de la confidentialité et, depuis la 4b, de la
   publication (`test_publication.py`), du conflit (`test_conflits.py`) et de
-  « Mes jours » (`test_mes_jours.py`). `conftest.py` substitue les règles
-  fictives aux règles du dépôt pour les tests de vue.
+  « Mes jours » (`test_mes_jours.py`) ; depuis la 7a, de l'import historique
+  (`test_import_historique.py`, avec la fixture
+  `tests/fixtures/import_historique_fictif.json`). `conftest.py` substitue les
+  règles fictives aux règles du dépôt pour les tests de vue.
 - **Node** : `node --test "planning/tests_js/**/*.test.js"` — module intégré
   `node:test`, aucun `package.json`, aucun `npm`. Le motif glob entre
   guillemets est développé par Node lui-même (v21 et plus).
@@ -316,9 +321,10 @@ depuis le crochet.
   message « tests JS non exécutés : node absent ». Dans l'image Docker
   (`python:3.14-slim`, sans Node), les tests JS ne tournent donc pas.
 
-Totaux au 07/09/2026 (post-squash `0a53bdf`) : **825 tests Python** (+47 en
-4b) et **57 tests Node** (+2 en 4b : `orphelins`, et l'import qui compte les
-briques orphelines sans les écarter, dans `moteur.test.js`).
+Totaux au 08/09/2026 (post-squash `95e6ba9`) : **917 tests Python** (+43 en
+7a) et **57 tests Node**, inchangés depuis la 4b (+2 alors : `orphelins`, et
+l'import qui compte les briques orphelines sans les écarter, dans
+`moteur.test.js`). La 7a ne touche pas au moteur.
 
 ### Fixture de référence
 
@@ -530,3 +536,184 @@ le serveur (422) à l'enregistrement — troisième cas vu en recette, qui montr
 que la double vérification n'est pas redondante. Règle d'usage : recharger le
 planning après toute saisie d'absence, jusqu'à ce que la page se rafraîchisse
 seule (backlog).
+
+## 13. Import d'un planning historique (brique 7a)
+
+### 13.1 Pourquoi
+
+Décision **C7.1** : les plannings de janvier à août 2026 sont antérieurs à
+l'application. Ils ont été reconstitués hors de l'application depuis les
+entrées « Présence » de Notion, au format de l'export JSON de la page, et
+entrés par un écran d'administration. Ces mois n'ont **aucune présence
+Doctolib importée**, et n'en auront pas nécessairement : les présences sont
+optionnelles ici. Conséquence directe de **C6.9** : aucun marqueur d'effectif
+n'est calculable sur un mois historique tant que ses présences ne sont pas
+importées — `verifications.imports` reste vide.
+
+Les huit mois de janvier à août 2026 ont été importés en production le
+08/09/2026.
+
+### 13.2 Qui et où
+
+`/admin/planning/planningversion/importer-historique/`, bouton **« Importer un
+planning historique »** dans les outils de la liste des versions (bloc
+`object-tools-items` de `admin/planning/planningversion/change_list.html`).
+
+Rôle `cabinet` : dans `PlanningVersionAdmin.get_urls`,
+`role_requis(Compte.Role.CABINET)` enveloppe `self.admin_site.admin_view(…)`
+**par l'extérieur** — un autre rôle reçoit le 403 journalisé du projet
+(`acces_refuse`, `{"vue": "vue_import_historique"}`), pas la redirection de
+connexion de l'admin ; `admin_view` conserve la protection CSRF, `never_cache`
+et l'exigence `is_staff`. Aucune garde `is_superuser`. La route est déclarée
+**avant** `super().get_urls()`, sinon `<path:object_id>/` la capturerait.
+
+Les trois `has_*_permission` restent à `False` : la liste des versions demeure
+en lecture seule. Elle gagne seulement une colonne « historique », calculée par
+`services.est_historique` — pas un champ, donc pas un filtre.
+
+### 13.3 Le fichier
+
+Format de l'export JSON de la page (`moteur.exporter`, § 7) : `mois`, `numero`,
+`affectations`, `feries`, `feries_off`, `notes`, `exporte`. `numero` et
+`exporte` sont **acceptés et ignorés** — le numéro est décidé par le serveur.
+Une brique est `{a, s, t, x}` (§ 3), un slot un code de praticien ou
+`secretariat` / `sureffectif` / `administratif`. Un fichier couvre les
+**semaines complètes** du mois, la plage de `presences.fenetres.plage_mois` :
+les jours de bord sont partagés avec le fichier du mois voisin, et c'est normal.
+
+`planning/forms.py::FormulaireImportHistorique` ne juge que l'enveloppe :
+
+| Contrôle | Message |
+|---|---|
+| taille, 1 Mo au plus | « Fichier trop volumineux (maximum 1 Mo). » |
+| extension | « Le fichier doit porter l'extension .json. » |
+| encodage, `utf-8-sig` (BOM toléré) | « Le fichier doit être encodé en UTF-8. » |
+| JSON | « JSON illisible. » |
+
+La **structure** est contrôlée par `historique.analyser`, dont les messages ne
+citent que la date, la colonne et le rang de la brique, jamais une valeur :
+« Champ « mois » absent ou illisible (attendu « AAAA-MM ») »,
+« 2026-03-03 / « secretariat » / brique 2 : champ « t » hors J | C ».
+
+**Colonnes sur fiches fermées (C7.4)** : la résolution des codes lit
+`Personne.objects.exclude(code=None).exclude(code="")`, **sans aucun filtre
+`actif` ni `planifiee`**. Une colonne portée par une fiche close, non
+planifiée, sans agenda Doctolib est **conservée**, avec l'avertissement
+« Colonne « … » : fiche close — colonne conservée (C7.4) ». C'est l'inverse de
+`donnees.construire` (§ 2), qui filtre `planifiee=True, actif=True` : ces
+praticiens n'apparaissent pas sur la page d'un mois courant, et doivent
+apparaître dans un planning de 2026.
+
+### 13.4 Les deux temps
+
+**Analyser** — `historique.analyser(fichier)` rend une `Analyse` et **n'écrit
+rien** : ni base, ni audit, ni log. Le rapport porte le mois et sa plage, le
+nombre de jours porteurs et de briques, la table des **colonnes** (slot,
+libellé, nature, briques, personnes, état de la fiche), celle des
+**personnes** (code, libellé, jours, briques), les avertissements et les
+refus. Verdicts : `creer` (« à importer »), `deja_presente` (« déjà présente »),
+`refuse` (« refusé »).
+
+| Bloquant | Non bloquant |
+|---|---|
+| code de personne inconnu, en colonne ou en brique | jour fermé ou férié porteur de briques |
+| jour hors de la plage du mois | colonne sur fiche close ou non planifiée |
+| même personne posée deux fois le même jour | |
+| fichier sans aucune brique, ou de forme invalide | |
+
+**Confirmer** — l'état vit en session (`import_planning_historique`), jamais
+sur disque, avec l'empreinte et un horodatage ; il périme au bout de **15
+minutes** (`IMPORT_SESSION_MINUTES` ; `_perime` et `_entier` sont recopiés de
+`absences/admin.py`, décision D10). À la confirmation, **l'analyse est
+rejouée** sur le fichier gardé en session, et l'écriture est refusée si le
+verdict, l'empreinte ou le nombre de briques a bougé : « La base a changé
+depuis l'analyse : relisez le rapport avant de confirmer. » Une version
+enregistrée depuis un autre onglet entre les deux POST est ainsi attrapée.
+
+### 13.5 Mois déjà versé (décision D1)
+
+`analyser` lit **toutes** les versions du mois, pas seulement la dernière :
+
+| État du mois | Verdict |
+|---|---|
+| une version **non historique**, quel que soit son rang | refus — « Ce mois porte déjà une version enregistrée dans l'application (vN) : l'import historique est refusé. » |
+| que des versions historiques, la dernière de **même empreinte** | « déjà présente » : `executer` rend `None`, zéro écriture, zéro audit |
+| que des versions historiques, état différent | `creer` : `numero` = numéro courant + 1, `version_de_base` = numéro courant |
+
+**L'empreinte porte sur `(mois, state)` sérialisé canoniquement**
+(`historique.empreinte_de`, `sort_keys`, séparateurs compacts), pas sur les
+octets reçus : un ré-export du même planning change `exporte` mais reste
+reconnu « déjà présente ». L'ordre des briques d'une journée, lui, est
+significatif et conservé.
+
+Une version historique **ne se supprime pas** — `PlanningVersion` est en
+lecture seule. Elle se corrige par une version suivante, publiée à son tour,
+qui supersède la précédente (§ 6).
+
+### 13.6 Ce qui est écrit
+
+`historique.executer(analyse, qui)` crée **une** ligne dans
+`transaction.atomic()`, l'`IntegrityError` de la contrainte unique
+`(mois, numero)` attrapée **hors** du bloc (patron d'`enregistrer`, § 6) :
+`publiee=True`, `publie_le`, `publie_par`, `auteur`, `state` nettoyé par
+`verification.nettoyer`, et
+
+```
+{"historique": true, "importe_le": "<ISO>", "empreinte": "<sha256>", "imports": [], "nb_briques": <n>, "nb_jours": <n>}
+```
+
+**Pas de clé `verifie_le`** (décision D2) : rien n'a été vérifié, et l'écrire
+serait faux. `services.est_historique(version)` lit ce marqueur avec une garde
+de type, `verifications` valant `[]` tant qu'une version n'est pas publiée.
+
+Le chemin est **entièrement distinct de `services.publier`**, qui n'est pas
+modifié :
+
+- **aucune revérification des règles.** Sans import de présences, `DATA.jours`
+  est vide (§ 2) et *toutes* les briques deviendraient `praticien_absent` ou
+  `sans_donnees`. La règle n'est pas contournée : elle est sans objet, et
+  l'écran le dit en toutes lettres ;
+- **aucun webhook** (C7.6). Importer mars 2026 ne doit pas déclencher
+  l'événement `planning.publie` (§ 11.5) quand la brique 5 existera. Cela
+  s'obtient en ne passant pas par `publier`, pas en le modifiant.
+
+**Audit** : un seul événement par import (décision D4),
+`planning_historique_importe`, `{mois, numero, nb_briques, nb_jours,
+empreinte}` — jamais un nom, jamais un code de personne, jamais le `state`. Le
+log dit « planning historique AAAA-MM : version N importee (N briques, N
+jours) ». Les codes de personnes n'apparaissent **qu'à l'écran d'analyse**,
+pour le cabinet : ils sont nécessaires pour corriger un fichier.
+
+### 13.7 Après l'import
+
+- **« Mes jours » fonctionne tel quel**, sans une ligne de changement :
+  `jours_publies` (§ 11.3) ne lit que le `state` publié et les personnes,
+  jamais `DATA`, et interroge les praticiens **sans filtre `actif`** — le
+  libellé d'un praticien dont la fiche est fermée est conservé.
+- **La page `/planning/<AAAA-MM>/` d'un mois historique rend encore
+  `sans_import.html`** : `planning_mois` teste `donnees.mois_couvert(plage)`,
+  faux sans aucun import de présences, et ne sait rien des versions
+  historiques. Elle ne pourrait pas servir non plus : sans `DATA.jours`, le
+  moteur ne dessine aucune colonne de praticien (`SHOWN`, `moteur.js`) et
+  toutes les briques passeraient en « hors présence » (§ 11.4).
+- **À venir (brique 7b)** : une page de lecture dédiée
+  `/planning/<AAAA-MM>/historique/` construite depuis le `state` seul, le lien
+  qui y mène depuis `sans_import.html`, et `copie` → 404 sur un mois
+  historique — aujourd'hui elle rendrait une copie au moteur vide.
+
+### 13.8 Limites
+
+- Un **jour ouvert exceptionnellement** un dimanche ou un férié est importé
+  sans perte — l'analyse se contente d'avertir —, mais la page ne le
+  dessinerait pas : `moteur.js` ne montre jamais le dimanche et tient un férié
+  pour fermé du lundi au vendredi. À cadrer avec la 7b.
+- **Aucun marqueur d'effectif** (C6.9) sur un mois historique :
+  `verifications.imports` est vide, il n'y a pas de présences sur quoi les
+  calculer. Un tableau de bord ne doit donc pas lire un tel mois comme
+  « données Doctolib manquantes ».
+- L'écran **n'a plus de source** une fois 2026 repris : le garder ou le retirer
+  en v2 est au backlog, comme celui de la 3-quater.
+
+**Procédure recommandée** : relire le fichier, puis faire un pilote sur un seul
+mois — analyser, confirmer, puis rejouer le même fichier pour voir « déjà
+présente » et zéro écriture — avant d'enchaîner les autres.
