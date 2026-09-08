@@ -96,6 +96,17 @@ def numero_courant(mois):
     return derniere.numero if derniere else 0
 
 
+def est_historique(version):
+    """Vrai si la version vient de l'import historique (brique 7a, C7.1).
+
+    `verifications` vaut `[]` tant qu'une version n'est pas publiée et un dict
+    ensuite : la garde de type est indispensable. Une version publiée par
+    `publier` ne porte jamais cette clé.
+    """
+    marques = version.verifications if isinstance(version.verifications, dict) else {}
+    return marques.get("historique") is True
+
+
 def etat_vide():
     """L'état servi quand aucune version n'existe : la page propose alors."""
     return {"affectations": {}, "feries": {}, "feries_off": [], "notes": {}}

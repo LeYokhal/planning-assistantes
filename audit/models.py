@@ -59,6 +59,15 @@ class Action(models.TextChoices):
     # compteurs et empreinte SHA-256 du fichier. Jamais de nom, jamais de type.
     ABSENCE_IMPORTEE = "absence_importee", "Absence importée"
     IMPORT_ABSENCES = "import_absences", "Import d'absences"
+    # Brique 7a (C7.1) : reprise d'un planning de 2026 par import de fichier.
+    # Un fichier = un mois = une version : un seul événement (décision D4).
+    # `details` : mois, numéro de version, nombre de briques, nombre de jours,
+    # empreinte SHA-256 de l'état importé. Jamais de nom, jamais de code de
+    # personne, jamais le `state`.
+    PLANNING_HISTORIQUE_IMPORTE = (
+        "planning_historique_importe",
+        "Planning historique importé",
+    )
 
 
 class EvenementAudit(models.Model):
