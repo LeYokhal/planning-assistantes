@@ -62,7 +62,16 @@ d'administration.
   analyse rejouée et écriture tout ou rien —, sans migration ni webhook, audit
   `absence_importee` / `import_absences`. Recettée en production : 201 absences
   importées, ré-import idempotent (toutes « déjà présente »), tir de paie
-  d'août contrôlé sur les bulletins. 874 tests Python, 57 tests Node.
+  d'août contrôlé sur les bulletins.
+- **Brique 7a mergée le 08/09/2026** (`95e6ba9`, PR #21) : import d'un
+  **planning historique** (décision C7.1) par un écran d'administration en deux
+  temps, sur le modèle de la 3-quater. Un fichier au format de l'export JSON de
+  la page donne une version **publiée et marquée historique**, écrite sans
+  revérification des règles et sans webhook — ces mois n'ont aucune présence
+  Doctolib. Les colonnes portées par une fiche de praticien fermée sont
+  conservées (C7.4). Les huit mois de janvier à août 2026 ont été importés en
+  production le 08/09/2026 ; « Mes jours » les sert sans changement. La page de
+  lecture d'un mois historique reste à faire (7b). 917 tests Python, 57 tests Node.
 - **Prochaine étape** : brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
@@ -88,6 +97,7 @@ d'administration.
 | Planning servi par l'application, moteur JS testé sous Node, versions (409 / 422), copie autonome | |
 | Publication d'une version, conflit absence ↔ planning publié, « Mes jours » pour les salariées | |
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
+| Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | Page de lecture d'un mois historique (7b) |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -167,7 +177,7 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
-- Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
+- Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, import historique, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - JSON des trois workflows n8n (à importer tels quels, puis credentials et
@@ -189,7 +199,7 @@ presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
 personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
 regles/      regles.json et son chargeur validant (sans modèle)
 absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision, import exceptionnel (admin)
-planning/    PlanningVersion, DATA côté serveur, vérification stricte, page, copie, publication, conflits, « Mes jours » ; moteur.js et page.js dans static/, tests Node dans tests_js/
+planning/    PlanningVersion, DATA côté serveur, vérification stricte, page, copie, publication, conflits, « Mes jours », import historique (admin) ; moteur.js et page.js dans static/, tests Node dans tests_js/
 n8n/         API entrante appelée par n8n (sans modèle)
 docs/        cadrage, déploiement, personnes, absences, planning, webhooks n8n
 reference/   version 1 du skill de planning, à titre de référence (non exécutée, hors image Docker)
@@ -283,5 +293,15 @@ présence », à déplacer ou à retirer.
 onglet ouvert est un instantané : la page ne voit pas une absence saisie après
 son affichage, et le serveur refuse la brique posée dessus (422).
 
-Architecture, contrat `DATA`, codes de violation, versions et tests Node :
-[`docs/PLANNING.md`](docs/PLANNING.md).
+**Planning historique (7a).** Avec le compte **cabinet**, sur
+`/admin/planning/planningversion/importer-historique/` (bouton « Importer un
+planning historique » dans la liste des versions), déposer un fichier au format
+de l'export JSON de la page : un rapport d'analyse d'abord — jours, briques,
+colonnes, codes inconnus, doublons —, l'écriture sur confirmation seulement,
+avec l'analyse rejouée. La version créée est **publiée et marquée historique** :
+ni revérification des règles, ni notification, puisque ces mois n'ont aucune
+présence Doctolib. Rejouer le même fichier ne crée rien (« déjà présente »).
+Détail dans [`docs/PLANNING.md`](docs/PLANNING.md) § 13.
+
+Architecture, contrat `DATA`, codes de violation, versions, import historique
+et tests Node : [`docs/PLANNING.md`](docs/PLANNING.md).
