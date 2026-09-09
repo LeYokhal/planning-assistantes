@@ -16,7 +16,8 @@ production. R4a-1 est acté (planning réel de septembre importé, une violation
 `test_publication` mais n'a pas été vu en production, la page l'ayant refusé
 avant l'appel. Brique **7a** mergée le 08/09/2026 (`95e6ba9`, PR #21) :
 l'import d'un planning historique (§ 13), qui reprend les mois de 2026
-antérieurs à l'application ; sa partie lecture (7b) n'est pas livrée.
+antérieurs à l'application ; brique **7b** mergée le 09/09/2026 (`fdfc912`,
+PR #23) : leur page de lecture (§ 13.7). Les deux sont recettées en production.
 
 ## 1. Routes et rôles
 
@@ -30,6 +31,7 @@ antérieurs à l'application ; sa partie lecture (7b) n'est pas livrée.
 | `POST /api/erreurs/` | plafond par IP, puis `cabinet`, `principale` | journalise une erreur JS de la page, sans rien stocker |
 | `GET /mes-jours/` | `salariee`, `principale` | redirige vers le mois courant |
 | `GET /mes-jours/<AAAA-MM>/` | `salariee`, `principale` | « Mes jours » : les jours de la personne connectée dans le planning publié (§ 11.3) ; `cabinet` reçoit 403 |
+| `GET /planning/<AAAA-MM>/historique/` | `cabinet`, `principale` | lecture d'un mois repris par l'import historique ; 404 s'il n'a pas de version publiée historique (§ 13.7) |
 | `GET`/`POST /admin/planning/planningversion/importer-historique/` | `cabinet` + `is_staff`, session + CSRF | import d'un planning historique, en deux temps (§ 13) |
 
 Le contrôle de rôle est `comptes.acces.role_requis` : un anonyme est redirigé
@@ -311,8 +313,11 @@ depuis le crochet.
   publication (`test_publication.py`), du conflit (`test_conflits.py`) et de
   « Mes jours » (`test_mes_jours.py`) ; depuis la 7a, de l'import historique
   (`test_import_historique.py`, avec la fixture
-  `tests/fixtures/import_historique_fictif.json`). `conftest.py` substitue les
-  règles fictives aux règles du dépôt pour les tests de vue.
+  `tests/fixtures/import_historique_fictif.json`) et, depuis la 7b, de sa
+  lecture (`test_historique_lecture.py`). `conftest.py` substitue les règles
+  fictives aux règles du dépôt pour les tests de vue — **des deux côtés** :
+  `donnees.charger` et `views.charger`, la page historique chargeant les
+  règles pour son compte.
 - **Node** : `node --test "planning/tests_js/**/*.test.js"` — module intégré
   `node:test`, aucun `package.json`, aucun `npm`. Le motif glob entre
   guillemets est développé par Node lui-même (v21 et plus).
@@ -321,10 +326,10 @@ depuis le crochet.
   message « tests JS non exécutés : node absent ». Dans l'image Docker
   (`python:3.14-slim`, sans Node), les tests JS ne tournent donc pas.
 
-Totaux au 08/09/2026 (post-squash `95e6ba9`) : **917 tests Python** (+43 en
-7a) et **57 tests Node**, inchangés depuis la 4b (+2 alors : `orphelins`, et
-l'import qui compte les briques orphelines sans les écarter, dans
-`moteur.test.js`). La 7a ne touche pas au moteur.
+Totaux au 09/09/2026 (post-squash `fdfc912`) : **939 tests Python** (+43 en
+7a, +22 en 7b) et **57 tests Node**, inchangés depuis la 4b (+2 alors :
+`orphelins`, et l'import qui compte les briques orphelines sans les écarter,
+dans `moteur.test.js`). Ni la 7a ni la 7b ne touchent au moteur.
 
 ### Fixture de référence
 
@@ -537,7 +542,7 @@ que la double vérification n'est pas redondante. Règle d'usage : recharger le
 planning après toute saisie d'absence, jusqu'à ce que la page se rafraîchisse
 seule (backlog).
 
-## 13. Import d'un planning historique (brique 7a)
+## 13. Import et lecture d'un planning historique (briques 7a et 7b)
 
 ### 13.1 Pourquoi
 
@@ -684,35 +689,96 @@ log dit « planning historique AAAA-MM : version N importee (N briques, N
 jours) ». Les codes de personnes n'apparaissent **qu'à l'écran d'analyse**,
 pour le cabinet : ils sont nécessaires pour corriger un fichier.
 
-### 13.7 Après l'import
+### 13.7 Lire un mois historique (brique 7b)
 
-- **« Mes jours » fonctionne tel quel**, sans une ligne de changement :
-  `jours_publies` (§ 11.3) ne lit que le `state` publié et les personnes,
-  jamais `DATA`, et interroge les praticiens **sans filtre `actif`** — le
-  libellé d'un praticien dont la fiche est fermée est conservé.
-- **La page `/planning/<AAAA-MM>/` d'un mois historique rend encore
-  `sans_import.html`** : `planning_mois` teste `donnees.mois_couvert(plage)`,
-  faux sans aucun import de présences, et ne sait rien des versions
-  historiques. Elle ne pourrait pas servir non plus : sans `DATA.jours`, le
-  moteur ne dessine aucune colonne de praticien (`SHOWN`, `moteur.js`) et
-  toutes les briques passeraient en « hors présence » (§ 11.4).
-- **À venir (brique 7b)** : une page de lecture dédiée
-  `/planning/<AAAA-MM>/historique/` construite depuis le `state` seul, le lien
-  qui y mène depuis `sans_import.html`, et `copie` → 404 sur un mois
-  historique — aujourd'hui elle rendrait une copie au moteur vide.
+`GET /planning/<AAAA-MM>/historique/`, rôles `cabinet` et `principale`
+(`salariee` reçoit 403, un anonyme la redirection de connexion). **404** si le
+mois n'a pas de version publiée, ou si sa version publiée n'est pas historique :
+une version ordinaire se lit sur la page normale.
+
+Décision **D3** : une page **serveur**, bâtie sur le `state` de la version
+publiée et sur les personnes — ni `DATA`, ni `STATE`, ni `moteur.js`, ni
+`json_script`, exactement la doctrine de « Mes jours » (§ 11.3). `DATA` ne
+pourrait pas servir : sans import de présences, `DATA.jours` est vide, le moteur
+ne dessine aucune colonne de praticien (`SHOWN`, `moteur.js`) et tout le
+planning passerait en « hors présence » (§ 11.4).
+
+**Colonnes** (décision D9) — les slots qui portent au moins une brique, résolus
+par `Personne.code` **sans filtre `actif` ni `planifiee`** (C7.4). Ordre :
+
+1. les praticiens, par `(à part, nom, prénom)` — « à part » est lu dans
+   `regles.json` par `regles.chargeur.resoudre`, comme `donnees.construire` ;
+2. les cases hors praticien, dans l'ordre de `services.LIBELLES_MISC`
+   (Secrétariat, Sureffectif, Administratif) ;
+3. les codes que plus aucune fiche ne porte, bruts, en fin — une fiche supprimée
+   après l'import ne fait pas disparaître sa colonne.
+
+Une colonne portée par une fiche fermée est marquée « fiche close ». Les
+couleurs viennent de `regles.chargeur.couleur_hex`, comme `DATA` (§ 2).
+
+**Journées** — une journée de la plage fait une ligne si **le cabinet ouvre ce
+jour-là**, ou si **elle porte au moins une brique** :
+
+| Journée | Ligne ? |
+|---|---|
+| jour d'ouverture, avec ou sans brique | oui — vide s'il n'y a rien de posé |
+| jour d'ouverture **férié** | oui, vide, marquée `« férié : <libellé> »` |
+| dimanche, ou lundi d'avant le 05/10/2026, **sans** brique | non |
+| dimanche, ou lundi d'avant le 05/10/2026, **avec** brique | oui, marquée « hors jours d'ouverture » |
+
+L'ouverture est lue par `regles.chargeur.jours_ouverture(jour, regles)` sur les
+périodes datées de `regles.json`, comparée à `comptes.noms.JOURS_FR` — la règle
+du calcul de paie (C3.2), **jamais réécrite**. C'en est une **extension** : ce
+champ ne servait qu'à la paie jusqu'ici, son `_doc` le dit désormais. Un mois
+repris n'a aucune présence Doctolib : il n'y a rien d'autre à quoi raccrocher la
+grille des jours.
+
+**Fériés** — les fichiers repris portent un `feries` vide : le calendrier vient
+de `socle.feries.feries_entre`, comme `donnees.construire`. La combinaison
+reprend celle du moteur (`isFerie`) : un férié du calendrier rouvert par
+`state["feries_off"]` ne compte plus, un jour fermé à la main dans
+`state["feries"]` compte toujours.
+
+**Cellules** — une ligne par brique : le libellé de la personne (`str(Personne)`,
+le code brut si plus aucune fiche ne le porte), puis « journée » ou « journée
+courte (fin 16h30) », et « (heures sup) » si `x` — les libellés de
+`mes_jours.html`, mot pour mot.
+
+**Le reste de la page** : en-tête « Version N, importée le … — **non vérifiée** »
+(le marqueur `importe_le` de `verifications`, § 13.6) ; les `notes` du `state`
+sous le tableau ; navigation vers `/planning/<mois±1>/`, la page ordinaire, qui
+aiguille à son tour — jamais vers `/historique/`. Le log ne porte que
+« planning AAAA-MM : historique vN lu (N jours) ».
+
+**Les deux autres surfaces** :
+
+- **`sans_import.html`** garde son message inchangé et gagne, quand le mois
+  porte un planning historique publié, un lien « le consulter » vers cette page.
+  `/planning/<AAAA-MM>/` n'est **pas** redirigée : elle reste l'entrée de tous
+  les mois, et c'est elle qui aiguille.
+- **`copie`** rend **404** sur un mois dont la dernière version est historique
+  (décision D6) : elle sortirait un document au moteur muet — un fichier
+  durable, et trompeur.
+
+**« Mes jours »** n'a pas changé d'une ligne, et remonte désormais jusqu'à
+janvier 2026 par ses flèches de navigation.
 
 ### 13.8 Limites
 
-- Un **jour ouvert exceptionnellement** un dimanche ou un férié est importé
-  sans perte — l'analyse se contente d'avertir —, mais la page ne le
-  dessinerait pas : `moteur.js` ne montre jamais le dimanche et tient un férié
-  pour fermé du lundi au vendredi. À cadrer avec la 7b.
+- **Un jour hors ouverture porteur d'une brique se lit** sur la page historique,
+  marqué. Mais la **page ordinaire** ne le dessinerait pas : `moteur.js` ne
+  montre jamais le dimanche (`SHOWN`) et tient un férié pour fermé du lundi au
+  vendredi. Le « jour ouvert exceptionnellement » d'un mois **vivant** reste donc
+  à cadrer — la 7b ne règle que la lecture du passé.
+- **Une version historique ne se supprime pas** : `PlanningVersion` est en
+  lecture seule. Elle se corrige par une version suivante, publiée à son tour,
+  qui supersède la précédente (§ 6, § 13.5).
 - **Aucun marqueur d'effectif** (C6.9) sur un mois historique :
   `verifications.imports` est vide, il n'y a pas de présences sur quoi les
   calculer. Un tableau de bord ne doit donc pas lire un tel mois comme
   « données Doctolib manquantes ».
-- L'écran **n'a plus de source** une fois 2026 repris : le garder ou le retirer
-  en v2 est au backlog, comme celui de la 3-quater.
+- L'écran d'import **n'a plus de source** une fois 2026 repris : le garder ou le
+  retirer en v2 est au backlog, comme celui de la 3-quater.
 
 **Procédure recommandée** : relire le fichier, puis faire un pilote sur un seul
 mois — analyser, confirmer, puis rejouer le même fichier pour voir « déjà

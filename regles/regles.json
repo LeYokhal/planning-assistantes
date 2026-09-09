@@ -109,7 +109,7 @@
     "default": ["#E3E3E3", "#3A3A3A"]
   },
   "periodes_ouverture": {
-    "_doc": "Jours d'ouverture du cabinet, par période datée. Sert UNIQUEMENT au calcul des jours comptés pour la paie : le planning affiche les jours d'après les présences Doctolib réelles. La première période porte a_partir_du null (origine) ; les suivantes une date de bascule, calée sur un lundi pour qu'aucune semaine ne soit à cheval sur deux régimes.",
+    "_doc": "Jours d'ouverture du cabinet, par période datée. Sert au calcul des jours comptés pour la paie et, en lecture, à la page historique (brique 7b : une journée d'un mois repris fait une ligne si le cabinet ouvre ce jour-là ou si elle porte une brique). Le planning courant affiche ses jours d'après les présences Doctolib réelles. La première période porte a_partir_du null (origine) ; les suivantes une date de bascule, calée sur un lundi pour qu'aucune semaine ne soit à cheval sur deux régimes.",
     "liste": [
       {
         "a_partir_du": null,

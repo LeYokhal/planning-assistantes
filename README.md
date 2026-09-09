@@ -70,8 +70,14 @@ d'administration.
   revérification des règles et sans webhook — ces mois n'ont aucune présence
   Doctolib. Les colonnes portées par une fiche de praticien fermée sont
   conservées (C7.4). Les huit mois de janvier à août 2026 ont été importés en
-  production le 08/09/2026 ; « Mes jours » les sert sans changement. La page de
-  lecture d'un mois historique reste à faire (7b). 917 tests Python, 57 tests Node.
+  production le 08/09/2026 ; « Mes jours » les sert sans changement.
+- **Brique 7b mergée le 09/09/2026** (`fdfc912`, PR #23) : **lecture** d'un mois
+  historique sur `/planning/<AAAA-MM>/historique/` (rôles `cabinet` et
+  `principale`) — une page serveur bâtie sur la version publiée, sans `DATA` ni
+  moteur, où une journée fait une ligne si le cabinet ouvre ce jour-là ou si elle
+  porte une brique. L'écran « aucun import » y renvoie ; la copie autonome d'un
+  mois historique répond 404. Recettée en production le 09/09/2026.
+  939 tests Python, 57 tests Node.
 - **Prochaine étape** : brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
@@ -97,7 +103,8 @@ d'administration.
 | Planning servi par l'application, moteur JS testé sous Node, versions (409 / 422), copie autonome | |
 | Publication d'une version, conflit absence ↔ planning publié, « Mes jours » pour les salariées | |
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
-| Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | Page de lecture d'un mois historique (7b) |
+| Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | |
+| Lecture d'un mois historique : page dédiée, sans `DATA` ni moteur | |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
@@ -301,6 +308,9 @@ colonnes, codes inconnus, doublons —, l'écriture sur confirmation seulement,
 avec l'analyse rejouée. La version créée est **publiée et marquée historique** :
 ni revérification des règles, ni notification, puisque ces mois n'ont aucune
 présence Doctolib. Rejouer le même fichier ne crée rien (« déjà présente »).
+Un mois ainsi repris se **lit** sur `/planning/<AAAA-MM>/historique/` : l'écran
+« aucun import » y renvoie par un lien, chaque salariée retrouve ses jours sur
+`/mes-jours/`, et la copie autonome d'un tel mois répond 404.
 Détail dans [`docs/PLANNING.md`](docs/PLANNING.md) § 13.
 
 Architecture, contrat `DATA`, codes de violation, versions, import historique
