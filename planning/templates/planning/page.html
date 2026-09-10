@@ -4,30 +4,25 @@
 {% block classe_html %} class="planning"{% endblock %}
 {% block classe_corps %}planning{% endblock %}
 {% block titre %}Planning assistantes — {{ libelle }}{% endblock %}
-{% block style_base %}{% endblock %}
+{# Brique 6d : la barre commune vient de barre.css seule — ni commun.css (largeur de lecture, #}
+{# formulaires, boutons) ni polices.css (les @font-face sont dans styles.css). #}
+{% block style_base %}<link rel="stylesheet" href="{% static 'socle/barre.css' %}">{% endblock %}
 {% block tete %}<link rel="stylesheet" href="{% static 'planning/styles.css' %}">{% endblock %}
-{% block en_tete_page %}{% endblock %}
+{# La barre, l'avatar et le menu (en_tete_page) restent ; le titre de coquille, non. #}
+{% block titre_page %}{% endblock %}
 
 {% block contenu %}
   {# Explicite : c'est ce rendu qui pose le cookie csrftoken lu par page.js. #}
   {% csrf_token %}
-  {% include "planning/_corps.html" %}
+  {# nav_mois : les mois voisins de l'en-tête ; la copie autonome inclut le même squelette sans eux. #}
+  {% include "planning/_corps.html" with nav_mois=nav_mois %}
   {{ data|json_script:"planning-data" }}
   {{ state|json_script:"planning-state" }}
   {{ meta|json_script:"planning-meta" }}
 {% endblock %}
 
-{% block navigation %}
-  <a href="/">Accueil</a> —
-  <a href="{% url 'presences:mois' mois %}">Présences</a> —
-  <a href="{% url 'absences:decider' %}?mois={{ mois }}">Absences</a> —
-  <a href="{% url 'planning:mois' precedent %}">← {{ precedent }}</a> —
-  <a href="{% url 'planning:mois' suivant %}">{{ suivant }} →</a> —
-  <form method="post" action="/deconnexion/" style="display:inline">
-    {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
-  </form>
-{% endblock %}
+{# Plus de navigation de bas de page : la barre porte Planning, Absences, Présences et la déconnexion. #}
+{% block navigation_page %}{% endblock %}
 
 {% block scripts %}
 <script src="{% static 'planning/moteur.js' %}"></script>

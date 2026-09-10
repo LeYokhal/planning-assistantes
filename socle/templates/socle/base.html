@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="{% static 'socle/favicon.png' %}">
   <link rel="apple-touch-icon" href="{% static 'socle/favicon.png' %}">
   {% block style_base %}<link rel="stylesheet" href="{% static 'socle/polices.css' %}">
+  <link rel="stylesheet" href="{% static 'socle/barre.css' %}">
   <link rel="stylesheet" href="{% static 'socle/commun.css' %}">{% endblock %}
   {% block tete %}{% endblock %}
 </head>
@@ -48,7 +49,8 @@
     <a href="{% url 'absences:mes_absences' %}"{% if nav_courante == "mes_absences" %} aria-current="page"{% endif %}>Mes absences</a>
   </nav>
   {% endif %}
-  <div class="titre-page"><h1>{% block entete %}Planning Assistantes{% endblock %}</h1></div>{% endblock %}
+  {# Bloc à part : la page planning le vide et garde la barre (brique 6d). #}
+  {% block titre_page %}<div class="titre-page"><h1>{% block entete %}Planning Assistantes{% endblock %}</h1></div>{% endblock %}{% endblock %}
   <main>
     {% if messages %}
       <ul class="messages">

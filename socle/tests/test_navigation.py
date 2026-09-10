@@ -1,7 +1,7 @@
 """Navigation par rôle de la coquille (brique 6a, C6.6) : chaque entrée chez son rôle, absente chez les autres.
 
-Une page par app pour chaque rôle ; la page planning, elle, ne reçoit rien de
-la coquille (ses blocs `style_base` et `en_tete_page` sont vidés par `page.html`).
+Une page par app pour chaque rôle ; la page planning, elle, reçoit la barre
+(`barre.css`, brique 6d) mais ni `commun.css` ni le titre de la coquille.
 """
 
 import pytest
@@ -93,17 +93,25 @@ def test_onglet_bas_courant(client, salariee, connecter):
     assert 'href="/mes-absences/" aria-current="page"' not in contenu
 
 
-# --- Page planning : rien de la coquille ------------------------------------
+# --- Page planning : la barre, rien d'autre de la coquille --------------------
 
 
-def test_page_planning_sans_coquille(client, cabinet, connecter):
+def test_page_planning_avec_barre_sans_commun(client, cabinet, connecter):
+    """Brique 6d : la barre commune sur la page planning, sans la feuille ni le titre de la coquille."""
     fabrique.jeu_complet(cabinet)
     connecter(client, cabinet)
     contenu = _page(client, f"/planning/{MOIS}/")
     assert "planning-data" in contenu
-    for marque in ('class="barre"', '<details class="avatar"', "socle/commun.css", "socle/polices.css"):
+    for marque in (
+        'class="barre"',
+        '<details class="avatar"',
+        "socle/barre.css",
+        "socle/favicon.png",
+        'href="/planning/" aria-current="page"',
+    ):
+        assert marque in contenu, marque
+    for marque in ("socle/commun.css", "socle/polices.css", 'class="titre-page"'):
         assert marque not in contenu, marque
-    assert "socle/favicon.png" in contenu  # le seul élément commun, hors bloc
 
 
 def test_page_sans_import_avec_coquille(client, cabinet, connecter):

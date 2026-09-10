@@ -1,7 +1,9 @@
 """Processeur de contexte de la coquille (brique 6a) : garde, navigation courante, paresse, coût.
 
-Les nombres de requêtes des pages qui ne rendent pas la coquille sont ceux
-mesurés sur `main` avant la brique : la barre ne doit rien leur coûter.
+Les nombres de requêtes sont figés : la barre ne coûte rien à un compte sans
+personne ; la page planning porte en plus, depuis la brique 6d, la requête
+`Max("importe_le")` de la pastille « Données Doctolib du … », et une lecture
+de `personne` pour un compte rattaché.
 """
 
 import pytest
@@ -106,14 +108,27 @@ def test_paresse(principale, django_assert_num_queries):
         str(contexte["prenom"])
 
 
-# --- Coût des pages qui ne rendent pas la coquille : inchangé par rapport à `main` ---
+# --- Coût des pages : figé ------------------------------------------------------
 
 
 def test_cout_page_planning(client, cabinet, connecter, django_assert_num_queries):
+    """9 sur `main` avant la 6d, + 1 : la date du dernier import retenu (`_donnees_du`)."""
     fabrique.jeu_complet(cabinet)
     services.enregistrer(fabrique.MOIS, 0, fabrique.etat_propre(), cabinet)
     connecter(client, cabinet)
-    with django_assert_num_queries(9):
+    with django_assert_num_queries(10):
+        assert client.get(f"/planning/{fabrique.MOIS}/").status_code == 200
+
+
+def test_cout_page_planning_principale_rattachee(
+    client, principale, cabinet, connecter, django_assert_num_queries
+):
+    """Compte rattaché : la barre lit `personne` une fois (prénom, initiales) — 10 + 1."""
+    fabrique.jeu_complet(cabinet)
+    services.enregistrer(fabrique.MOIS, 0, fabrique.etat_propre(), cabinet)
+    fabrique_absences.lier(principale, fabrique_absences.personne(nom="LEFEVRE", prenom="Manon"))
+    connecter(client, principale)
+    with django_assert_num_queries(11):
         assert client.get(f"/planning/{fabrique.MOIS}/").status_code == 200
 
 

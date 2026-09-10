@@ -1,0 +1,39 @@
+/* Barre haute de la coquille (brique 6a), extraite de commun.css en brique 6d.
+   Chargée par socle/base.html avec commun.css, et par la page planning SANS commun.css :
+   tout ce dont la barre a besoin est ici, scopé — socle typographique, boutons, survol.
+   Les variables de la charte (`:root`) viennent de commun.css ou de planning/styles.css,
+   dont les jeux sont identiques. `--barre-h` est lu par la page planning (`.topbar`). */
+
+:root { --barre-h: 52px; }
+
+/* ---------- socle scopé : commun.css (14 px / 1.45) et styles.css (13 px / 1.3 / 500) diffèrent ---------- */
+.barre, .sous-onglets, .barre *, .sous-onglets * { box-sizing: border-box; }
+.barre, .sous-onglets { font-family: var(--font); font-size: 14px; line-height: 1.45; font-weight: 400; color: var(--ink); }
+.barre button { font: inherit; cursor: pointer; }
+
+/* ---------- barre haute (PC), avatar et menu ---------- */
+.barre { position: sticky; top: 0; z-index: 21; height: var(--barre-h); display: flex; align-items: center; gap: 28px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+.marque { font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.marque span { color: var(--ink-2); font-weight: 500; }
+.marque:hover { color: var(--accent-ink); }
+.onglets { display: flex; gap: 28px; align-self: stretch; margin-left: 12px; }
+.onglets a { display: flex; align-items: center; color: var(--ink-2); text-decoration: none; }
+.onglets a[aria-current="page"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+.avatar { position: relative; margin-left: auto; }
+.avatar summary { list-style: none; width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.avatar summary::-webkit-details-marker { display: none; }
+.avatar[open] summary { background: var(--accent); color: #fff; }
+.avatar .menu { position: absolute; right: 0; top: 44px; width: 250px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 30; }
+.menu-titre { margin: 0; padding: 10px 12px; font-weight: 700; border-bottom: 1px solid var(--line-2); }
+.menu a, .menu button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; background: none; border: 0; border-radius: var(--r-slot); color: var(--ink); font-weight: 500; text-decoration: none; cursor: pointer; }
+.menu a:hover, .menu button:hover { background: var(--card-2); color: var(--ink); }
+.menu form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--line-2); }
+
+/* ---------- sous-onglets (Présences | Personnes), rendus par le même bloc que la barre ---------- */
+.sous-onglets { display: flex; gap: 22px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+.sous-onglets a { padding: 11px 0; color: var(--ink-2); text-decoration: none; }
+.sous-onglets a[aria-current="page"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+
+@media print {
+  .barre, .sous-onglets { display: none; }
+}

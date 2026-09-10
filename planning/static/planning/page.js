@@ -57,10 +57,10 @@ function messageRefus(code, b, iso, slot) {   // toast d'un dépôt refusé par 
   const s = SAL[b.s], p = PRAT[slot];
   const noms = ids => ids.map(x => SAL[x]?.label ?? PRAT[x]?.label).filter(Boolean).join(" et ");
   switch (code) {
-    case "autre_semaine": return "Une brique appartient à sa semaine : reprends-la dans la réserve de l'autre semaine.";
+    case "autre_semaine": return "Une brique appartient à sa semaine : reprenez-la dans la réserve de l'autre semaine.";
     case "jour_bloque": return `${s.label} ne peut pas être placée le ${fmtJour(iso)} : jour fermé, absence ou cours.`;
     case "doublon_jour": return `${s.label} est déjà placée le ${fmtJour(iso)}`;
-    case "quota_depasse": return `Plus de brique « ${b.t === "C" ? "courte" : "journée"} » pour ${s.label} cette semaine. Utilise + pour une journée hors quota.`;
+    case "quota_depasse": return `Plus de brique « ${b.t === "C" ? "courte" : "journée"} » pour ${s.label} cette semaine. Utilisez + pour une journée hors quota.`;
     case "exclusive_ailleurs": return `${s.label} est exclusive : elle ne va que chez ${noms(s.binomes ?? [])}.`;
     case "exclusif_intrus": return `${p?.label ?? slot} ne reçoit que ${noms(p?.binomes ?? [])}.`;
     case "praticien_absent": return `${p?.label ?? slot} n'est pas présent le ${fmtJour(iso)}.`;
@@ -150,7 +150,7 @@ function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:
   e.style.setProperty("--bg", s.couleur[0]); e.style.setProperty("--fg", s.couleur[1]);
   e.draggable = true; e.tabIndex = 0;
   e.innerHTML = `${esc(s.label)}${b.t === "C" ? '<span class="tag">16h30</span>' : ""}${b.x ? '<span class="tag">+</span>' : ""}`;
-  e.title = `${s.nom} · ${s.role === "secretaire" ? "secrétaire" : "assistante"} ${s.heures} h` + (b.t === "C" ? " · journée courte, fin 16h30" : "") + (b.x ? " · hors quota" : "") + (b.a && !ctx.palette ? " · proposée par le moteur, déplace-la pour la confirmer" : "");
+  e.title = `${s.nom} · ${s.role === "secretaire" ? "secrétaire" : "assistante"} ${s.heures} h` + (b.t === "C" ? " · journée courte, fin 16h30" : "") + (b.x ? " · hors quota" : "") + (b.a && !ctx.palette ? " · proposée par le moteur, déplacez-la pour la confirmer" : "");
   e.addEventListener("dragstart", ev => {
     DRAG = {b:{s:b.s, t:b.t, x:b.x}, from: ctx.from ?? null};
     ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", b.s);
@@ -158,7 +158,7 @@ function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:
   });
   e.addEventListener("dragend", () => { DRAG = null; e.classList.remove("ghost"); document.body.classList.remove("placing"); document.querySelectorAll(".slot.nodrop,.slot.over").forEach(x => x.classList.remove("nodrop","over")); document.getElementById("palette").classList.remove("over"); });
   if (ctx.palette) {
-    e.addEventListener("click", () => { const same = ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x; ARMED = same ? null : {s:b.s, t:b.t, x:b.x}; render(); if (ARMED) toast(`${s.label} sélectionnée : clique une case pour la placer (Échap pour annuler).`); });
+    e.addEventListener("click", () => { const same = ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x; ARMED = same ? null : {s:b.s, t:b.t, x:b.x}; render(); if (ARMED) toast(`${s.label} sélectionnée : cliquez une case pour la placer (Échap pour annuler).`); });
     if (ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x) e.classList.add("armed");
   } else {
     const rm = el("button", "rm", "×"); rm.title = "Retirer"; rm.addEventListener("click", ev => { ev.stopPropagation(); retirer(ctx.from); });
@@ -206,13 +206,24 @@ function render() {
   marquerViolations();
   majEntete();
 }
-function majEntete() {   // numéro de version, publication, état « modifié », boutons d'API
+function majEntete() {   // pastilles de version et de données, filtre, boutons d'API
   const modifie = M.empreinte() !== DERNIERE;
   const v = document.getElementById("version");
   const pub = META.publiee ? (META.publiee === META.numero ? " · publiée" : ` · publiée : v${META.publiee}`) : "";
+  const publiee = !!META.numero && META.publiee === META.numero;
+  // Brique 6d : les libellés du tableau de bord ; la copie garde le sien.
   if (META.autonome) v.textContent = `Copie de la version ${META.numero}${pub}`;
-  else v.textContent = (META.numero ? `Version ${META.numero}${pub}` : "Aucune version enregistrée") + (modifie ? " · modifié, non enregistré" : "");
+  else if (modifie) v.textContent = "Modifié, non enregistré";
+  else if (!META.numero) v.textContent = "Aucune version enregistrée";
+  else if (publiee) v.textContent = `Publiée (v${META.numero})`;
+  else if (META.publiee) v.textContent = `Version ${META.numero} — publiée : v${META.publiee}`;
+  else v.textContent = `Version ${META.numero} · non publiée`;
   v.classList.toggle("modifie", modifie && !META.autonome);
+  v.classList.toggle("publiee", publiee && !modifie && !META.autonome);
+  // « Données Doctolib du jj/mm » : date locale « AAAA-MM-JJ » servie par la vue, découpée sans Date (le jour est celui du cabinet)
+  const d = document.getElementById("donnees"), du = META.donnees_du;
+  d.hidden = !du; d.textContent = du ? `Données Doctolib du ${du.slice(8, 10)}/${du.slice(5, 7)}` : "";
+  document.getElementById("filtre").value = FILTER?.s ?? "";
   document.getElementById("btnUndo").disabled = !M.peutAnnuler();
   document.getElementById("btnSave").disabled = META.autonome || !modifie;
   document.getElementById("btnCopie").disabled = META.autonome || modifie || !META.numero;
@@ -226,13 +237,14 @@ function marquerViolations() {
   document.querySelectorAll(".slot.viol").forEach(x => x.classList.remove("viol"));
   for (const v of VIOLATIONS) { if (!v.date || !v.slot) continue; document.querySelector(`.day[data-date="${v.date}"] .slot[data-slot="${v.slot}"]`)?.classList.add("viol"); }
 }
-function afficherViolations(liste, titre) {
+function afficherViolations(liste, titre, action = "enregistré") {   // `action` : « enregistré » ou « publié » (brique 6d)
   VIOLATIONS = liste;
   const b = document.getElementById("violations");
   if (!liste.length) { b.innerHTML = ""; marquerViolations(); return; }
-  b.innerHTML = `<b>${esc(titre)}</b> : ${liste.length} règle${liste.length > 1 ? "s" : ""} stricte${liste.length > 1 ? "s" : ""} enfreinte${liste.length > 1 ? "s" : ""}. Corrige puis enregistre à nouveau.<ul>${liste.slice(0, 30).map(v => `<li>${esc(messageViolation(v))}</li>`).join("")}${liste.length > 30 ? `<li>… et ${liste.length - 30} autre(s)</li>` : ""}</ul>`;
+  const suite = action === "publié" ? "Corrigez, enregistrez puis publiez à nouveau." : "Corrigez puis enregistrez à nouveau.";
+  b.innerHTML = `<b>${esc(titre)}</b> : ${liste.length} règle${liste.length > 1 ? "s" : ""} stricte${liste.length > 1 ? "s" : ""} enfreinte${liste.length > 1 ? "s" : ""}. ${suite}<ul>${liste.slice(0, 30).map(v => `<li>${esc(messageViolation(v))}</li>`).join("")}${liste.length > 30 ? `<li>… et ${liste.length - 30} autre(s)</li>` : ""}</ul>`;
   marquerViolations();
-  toast(`${liste.length} règle(s) stricte(s) enfreinte(s) : rien n'a été enregistré.`, true);
+  toast(`${liste.length} règle(s) stricte(s) enfreinte(s) : rien n'a été ${action}.`, true);
 }
 function bilanEl() {
   let manq = 0, supTot = 0, absTot = 0; for (const wk of WEEKS) manq += manquantes(wk);
@@ -328,7 +340,7 @@ function dayEl(iso) {
     if (p) sl.style.setProperty("--pc", p.couleur[1]);
     const motif = p ? (fer ? "jour fermé" : "absent ce jour-là") : "inconnu";
     sl.appendChild(el("div", "sl", `<b>${esc(p?.label ?? slot)}</b><span class="et">hors présence · ${motif}</span>`));
-    sl.title = p ? `${p.nom} · ${fer ? "le cabinet est fermé ce jour-là" : "n'est pas présent ce jour-là"} : déplace ou retire la brique` : `case « ${slot} » inconnue : déplace ou retire la brique`;
+    sl.title = p ? `${p.nom} · ${fer ? "le cabinet est fermé ce jour-là" : "n'est pas présent ce jour-là"} : déplacez ou retirez la brique` : `case « ${slot} » inconnue : déplacez ou retirez la brique`;
     const bk = el("div", "bricks"); bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot, index:i}})));
     sl.appendChild(bk); prats.appendChild(sl);
   }
@@ -387,7 +399,7 @@ function renderPalette() {
       const nm = el("div", "nm", `<i></i>${esc(s.label)}${badgeHtml}<small>${s.heures_fixes ? `${s.fixes.length} j fixes` : s.etudiante ? "étudiante" : `${s.heures} h`}</small>`);
       const acts = el("div", "acts");
       const plus = el("button", null, "+"); plus.title = `Journée supplémentaire (hors quota, +${fmtH(HB.J)}) pour ${s.label}`;
-      plus.addEventListener("click", ev => { ev.stopPropagation(); ARMED = {s:s.id, t:"J", x:true}; render(); toast(`Journée supplémentaire pour ${s.label} (+${fmtH(HB.J)}) : clique la case où la placer.`); });
+      plus.addEventListener("click", ev => { ev.stopPropagation(); ARMED = {s:s.id, t:"J", x:true}; render(); toast(`Journée supplémentaire pour ${s.label} (+${fmtH(HB.J)}) : cliquez la case où la placer.`); });
       acts.appendChild(plus);
       nm.appendChild(acts); tile.appendChild(nm);
       if (s.etudiante) { const n = nbCoursMois(s.id); tile.appendChild(el("div", "crs", `<span>cours ce mois</span><b>${n}</b>`)); }
@@ -398,9 +410,9 @@ function renderPalette() {
     }
     pal.appendChild(grid);
   }
-  if (ARMED?.x) { const note = el("div", "sub", `Journée supplémentaire de ${SAL[ARMED.s].label} en main — clique une case.`); note.style.color = "var(--warn)"; note.style.marginTop = "8px"; pal.appendChild(note); }
+  if (ARMED?.x) { const note = el("div", "sub", `Journée supplémentaire de ${SAL[ARMED.s].label} en main — cliquez une case.`); note.style.color = "var(--warn)"; note.style.marginTop = "8px"; pal.appendChild(note); }
   document.body.classList.toggle("placing", !!ARMED);
-  pal.appendChild(el("div", "hint", "Clique un nom pour filtrer. Glisse une brique (ou clique-la puis la case). + journée sup. Les absences et les cours se corrigent depuis l'écran des absences. Glisse une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
+  pal.appendChild(el("div", "hint", "Cliquez un nom pour filtrer. Glissez une brique (ou cliquez-la puis la case). + journée sup. Les absences et les cours se corrigent depuis l'écran des absences. Glissez une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
   palette.addEventListener("dragover", ev => { if (DRAG?.from) { ev.preventDefault(); palette.classList.add("over"); } });
   palette.addEventListener("dragleave", () => palette.classList.remove("over"));
   palette.addEventListener("drop", ev => { ev.preventDefault(); palette.classList.remove("over"); if (DRAG?.from) { retirer(DRAG.from); DRAG = null; } });
@@ -435,7 +447,7 @@ async function enregistrer() {
     r = await fetch(META.urls.versions, {method: "POST", credentials: "same-origin", headers: {"Content-Type": "application/json", "X-CSRFToken": csrf()}, body: JSON.stringify(M.charge(META.numero))});
   } catch (e) { toast("Réseau indisponible : rien n'a été enregistré.", true); return; }
   if (r.redirected || !(r.headers.get("content-type") || "").includes("application/json")) {
-    bandeau("Session expirée : exporte ton travail (Exporter JSON), puis recharge la page pour te reconnecter.", true); return;
+    bandeau("Session expirée : exportez votre travail (Exporter (JSON)), puis rechargez la page pour vous reconnecter.", true); return;
   }
   let corps = {}; try { corps = await r.json(); } catch (e) {}
   if (r.status === 201) {
@@ -453,28 +465,28 @@ async function publier() {   // brique 4b : publie la dernière version enregist
   if (META.autonome || !META.urls?.publier) return;
   if (!confirm(`Publier la version ${META.numero} ? Chaque salariée verra ses jours dans « Mes jours ».`)) return;
   const locales = M.verifier();
-  if (locales.length) { afficherViolations(locales, "Publication refusée par la page"); return; }
+  if (locales.length) { afficherViolations(locales, "Publication refusée par la page", "publié"); return; }
   let r;
   try {
     r = await fetch(META.urls.publier, {method: "POST", credentials: "same-origin", headers: {"X-CSRFToken": csrf()}});
   } catch (e) { toast("Réseau indisponible : rien n'a été publié.", true); return; }
   if (r.redirected || !(r.headers.get("content-type") || "").includes("application/json")) {
-    bandeau("Session expirée : recharge la page pour te reconnecter, puis publie à nouveau.", true); return;
+    bandeau("Session expirée : rechargez la page pour vous reconnecter, puis publiez à nouveau.", true); return;
   }
   let corps = {}; try { corps = await r.json(); } catch (e) {}
   if (r.status === 200) { META.publiee = corps.numero; afficherViolations([], ""); bandeau(""); majEntete(); toast(corps.deja_publiee ? `Version ${corps.numero} déjà publiée.` : `Version ${corps.numero} publiée.`); }
   else if (r.status === 409) bandeauConflit(corps.derniere, "publication");
-  else if (r.status === 422) afficherViolations(corps.violations ?? [], "Publication refusée par le serveur");
+  else if (r.status === 422) afficherViolations(corps.violations ?? [], "Publication refusée par le serveur", "publié");
   else if (r.status === 403) bandeau("Accès refusé : ce compte ne peut pas publier le planning.", true);
   else toast(`Publication impossible (${r.status}).`, true);
 }
 function bandeauConflit(derniere, contexte = "enregistrement") {
   const b = document.getElementById("banner"); b.className = "banner err";
   if (contexte === "publication") {
-    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : la publication est refusée. Recharge la page pour voir cette version.`;
+    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : la publication est refusée. Rechargez la page pour voir cette version.`;
   } else {
-    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : ton enregistrement est refusé. Exporte ton travail (Exporter JSON), puis recharge la page et réimporte-le.`;
-    const exp = el("button", "btn", "Exporter JSON"); exp.addEventListener("click", exportJson); b.appendChild(exp);
+    b.textContent = `Quelqu'un a enregistré la version ${derniere} entre-temps : votre enregistrement est refusé. Exportez votre travail (Exporter (JSON)), puis rechargez la page et réimportez-le.`;
+    const exp = el("button", "btn", "Exporter (JSON)"); exp.addEventListener("click", exportJson); b.appendChild(exp);
   }
   const rl = el("button", "btn", "Recharger"); rl.addEventListener("click", () => location.reload()); b.appendChild(rl);
 }
@@ -492,7 +504,8 @@ function boot() {
   document.title = `Planning assistantes — ${DATA.meta.libelle}` + (META.autonome ? ` (copie v${META.numero})` : "");
   const genere = new Date(DATA.meta.genere); const quand = isNaN(genere.getTime()) ? DATA.meta.genere : genere.toLocaleString("fr-FR", {dateStyle: "short", timeStyle: "short"});
   document.getElementById("subtitle").textContent = `Généré le ${quand} · Doctolib · présence = agenda ouvert ou ≥ ${DATA.meta.seuils.presence_h} h de rendez-vous`;
-  const mesure = () => document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").getBoundingClientRect().height + "px");
+  // Brique 6d : `bottom` du .topbar collé = barre commune (absente de la copie) + barre d'outils ; la réserve colle dessous
+  const mesure = () => document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").getBoundingClientRect().bottom + "px");
   mesure(); window.addEventListener("resize", mesure); if (window.ResizeObserver) new ResizeObserver(mesure).observe(document.querySelector(".topbar"));
   const alertes = (DATA.meta.alertes ?? []).slice();
   if (alertes.length) bandeau(esc(alertes.join(" · ")));
@@ -509,6 +522,14 @@ function boot() {
   document.getElementById("btnImport").addEventListener("click", () => document.getElementById("importFile").click());
   document.getElementById("importFile").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; f.text().then(importFrom); ev.target.value = ""; });
   document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Refaire toute la proposition ? Les placements manuels seront perdus.")) { M.snapshot(); M.initialState(); commit(); toast("Nouvelle proposition calculée"); } });
+  // Brique 6d : contrôle « Planning individuel » sur le filtre existant (FILTER {s}) ; les options viennent de DATA.salaries
+  const filtre = document.getElementById("filtre");
+  for (const s of DATA.salaries) { const o = document.createElement("option"); o.value = s.id; o.textContent = s.label; filtre.appendChild(o); }
+  filtre.addEventListener("change", ev => setFilter(ev.target.value ? {s: ev.target.value} : null));
+  // Brique 6d : le menu « Plus » (<details>) se referme après une entrée ou un clic hors du menu
+  const plus = document.querySelector(".plus");
+  plus.querySelector(".plus-menu").addEventListener("click", ev => { if (ev.target.closest("button")) plus.open = false; });
+  document.addEventListener("click", ev => { if (plus.open && !(ev.composedPath ? ev.composedPath() : []).includes(plus)) plus.open = false; });
   document.addEventListener("click", ev => { if (!CPOP) return; const chemin = ev.composedPath ? ev.composedPath() : []; if (!chemin.some(n => n.id === "cpop" || n.classList?.contains("cbub") || n.classList?.contains("cbtn"))) closeCpop(); });
   document.addEventListener("keydown", ev => {
     if (ev.key === "Escape") { hideTip(true); if (CPOP) closeCpop(); else if (ARMED) { ARMED = null; render(); } else if (FILTER) setFilter(null); }

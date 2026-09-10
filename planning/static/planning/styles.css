@@ -22,12 +22,13 @@
   h1 .who{color:var(--ink-2);font-weight:500}
 
   /* ---------- barre haute ---------- */
-  .topbar{position:sticky;top:0;z-index:20;background:rgba(248,254,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-2);
-    display:flex;flex-direction:column;gap:10px;padding:14px 22px 12px}
-  .topbar .titles{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
-  .topbar .sub{color:var(--ink-2);font-size:12px;font-weight:400}
-  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;width:100%}
-  .actions .primary{margin-left:auto}
+  /* brique 6d : collée sous la barre commune (--barre-h, absente de la copie autonome), sur une ligne */
+  .topbar{position:sticky;top:var(--barre-h,0px);z-index:20;background:rgba(248,254,255,.94);backdrop-filter:blur(8px);border-bottom:1px solid var(--line-2);
+    display:flex;flex-direction:row;align-items:center;flex-wrap:wrap;gap:10px 16px;padding:10px 22px}
+  .topbar .titles{display:flex;align-items:center;gap:8px;flex-wrap:nowrap}
+  .topbar .sub{color:var(--ink-2);font-size:11px;font-weight:400}
+  .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;justify-content:flex-end}
+  .actions #btnUndo{margin-left:auto}
   .btn{border:1px solid var(--line);background:var(--card);border-radius:var(--r-pill);padding:8px 16px;cursor:pointer;font-size:13px;font-weight:500;transition:background .15s,border-color .15s}
   .btn:hover{background:var(--card-2);border-color:#C8DBE2}
   .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
@@ -299,17 +300,15 @@
   }
 
   /* ---------------------------------------------------------------- brique 4a
-     Page servie par l'application (page.html étend socle/base.html, blocs
-     de base vidés) et copie autonome (copie.html). */
+     Page servie par l'application (page.html étend socle/base.html ; depuis
+     la brique 6d il garde la barre commune, sans le titre ni la navigation de
+     bas de page de la coquille) et copie autonome (copie.html). */
   html.planning{color-scheme:light}
   body.planning{max-width:none;margin:0;padding:0;line-height:1.3}
-  body.planning main{display:block}
-  body.planning nav{padding:10px 16px 18px;font-size:12px;color:var(--ink-2)}
-  body.planning nav a{color:var(--accent-ink)}
-  body.planning nav form{display:inline}
-  body.planning nav button{font:inherit;font-size:12px;padding:2px 9px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--card);color:var(--ink);cursor:pointer}
-  .topbar .version{font-size:12px;color:var(--ink-2);padding:0 8px;white-space:nowrap}
-  .topbar .version.modifie{color:var(--warn);font-weight:700}
+  body.planning main{display:block;max-width:none;margin:0;padding:0}
+  .topbar .version{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);background:var(--line-2);color:var(--ink-2);font-size:12px;white-space:nowrap}
+  .topbar .version.publiee{background:var(--ok-bg);color:var(--ok)}
+  .topbar .version.modifie{background:var(--warn-bg);color:var(--warn);font-weight:700}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   body.autonome .btn.api{display:none}
   .banner.err{background:var(--alert-bg);color:var(--alert);border-color:var(--alert)}
@@ -325,3 +324,25 @@
   .day .nc{font-size:10px;color:var(--ink-3);padding:2px 6px;font-style:italic}
   .attente{display:inline-block;font-size:10px;color:var(--warn);background:var(--warn-bg);border-radius:var(--r-pill);padding:1px 7px;margin:2px 4px 0}
   .vbrick.lecture{cursor:default}
+
+  /* ---------------------------------------------------------------- brique 6d
+     Enveloppe : en-tête sur une ligne (‹ mois ›, titre et sous-titre en colonne,
+     pastilles), filtre « Planning individuel », menu « Plus », bandeau « écran
+     large ». Rien de la grille (brique 8). */
+  .topbar .titre{display:flex;flex-direction:column}
+  .topbar h1{font-size:18px}
+  .topbar .mois{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--card);color:var(--ink-2);text-decoration:none;font-size:16px;line-height:1}
+  .topbar .mois:hover{border-color:var(--accent);color:var(--accent)}
+  .topbar .donnees{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);background:var(--line-2);color:var(--ink-2);font-size:12px;white-space:nowrap}
+  .topbar .filtre{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);white-space:nowrap}
+  .topbar .filtre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--card);color:var(--ink)}
+  .plus{position:relative}
+  .plus summary{display:inline-flex;align-items:center;list-style:none}
+  .plus summary::-webkit-details-marker{display:none}
+  .plus[open] summary{background:var(--card-2)}
+  .plus-menu{position:absolute;right:0;top:40px;width:260px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--shadow);padding:6px;z-index:30;display:flex;flex-direction:column}
+  .plus-menu .btn{display:block;width:100%;min-height:44px;text-align:left;border:0;background:none;border-radius:var(--r-slot);padding:10px 12px}
+  .plus-menu .btn:hover{background:var(--card-2)}
+  .ecran-large{display:none}
+  @media (max-width:767px){.ecran-large{display:block;background:var(--accent-soft);color:var(--accent-ink);padding:10px 22px;font-size:14px}}
+  @media print{.topbar .mois,.plus,.ecran-large{display:none}}

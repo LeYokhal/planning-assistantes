@@ -11,6 +11,7 @@ import logging
 from pathlib import Path
 
 from django.contrib.staticfiles import finders
+from django.db.models import Max
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
@@ -22,6 +23,7 @@ from comptes.acces import role_requis
 from comptes.models import Compte, Personne
 from comptes.noms import JOURS_FR, normaliser
 from presences.fenetres import libelle_mois, mois_precedent, mois_suivant, plage_mois
+from presences.models import ImportPresences
 from regles.chargeur import charger, couleur_hex, jours_ouverture, resoudre
 from socle.debit import limite_par_ip
 from socle.feries import feries_entre
@@ -57,18 +59,29 @@ def _plage_ou_404(mois):
 
 
 def _contexte_mois(request, mois):
+    precedent, suivant = mois_precedent(mois), mois_suivant(mois)
     return {
         "mois": mois,
         "libelle": libelle_mois(mois),
-        "precedent": mois_precedent(mois),
-        "suivant": mois_suivant(mois),
+        "precedent": precedent,
+        "suivant": suivant,
+        # Brique 6d : les mois voisins de l'en-tête (« ‹ » / « › »), servis en
+        # valeurs à `_corps.html` — partagé avec la copie autonome, ce gabarit ne
+        # porte aucune URL de l'application ; la copie est rendue sans `nav_mois`.
+        "nav_mois": {"precedent": _lien_mois(precedent), "suivant": _lien_mois(suivant)},
         "peut_importer": request.user.role == CABINET,
     }
 
 
-def _meta(mois, numero, autonome, publiee=0):
-    """`{mois, numero, autonome, publiee, urls}` : `publiee` = numéro de la version
-    publiée courante, 0 sinon ; `urls.publier` n'existe que s'il y a une version."""
+def _lien_mois(mois):
+    return {"url": reverse("planning:mois", kwargs={"mois": mois}), "libelle": libelle_mois(mois)}
+
+
+def _meta(mois, numero, autonome, publiee=0, donnees_du=None):
+    """`{mois, numero, autonome, publiee, urls, donnees_du}` : `publiee` = numéro de la
+    version publiée courante, 0 sinon ; `urls.publier` n'existe que s'il y a une version ;
+    `donnees_du` = date locale (« AAAA-MM-JJ ») du dernier import Doctolib retenu, ou
+    None (brique 6d, pastille « Données Doctolib du … »)."""
     urls = {}
     if not autonome:
         urls = {
@@ -86,12 +99,47 @@ def _meta(mois, numero, autonome, publiee=0):
         "autonome": autonome,
         "publiee": publiee,
         "urls": urls,
+        "donnees_du": donnees_du.isoformat() if donnees_du else None,
     }
 
 
 def _numero_publie(mois):
     publiee = services.version_publiee(mois)
     return publiee.numero if publiee else 0
+
+
+def _donnees_du(data):
+    """Date locale du dernier import retenu pour le mois, ou None.
+
+    Les imports retenus sont ceux de `DATA.meta.imports` (identifiants et
+    empreintes, rien d'autre) : une requête d'agrégat, `donnees.py` intouché.
+    """
+    ids = [import_["id"] for import_ in data["meta"]["imports"]]
+    if not ids:
+        return None
+    valeur = ImportPresences.objects.filter(pk__in=ids).aggregate(Max("importe_le"))
+    dernier = valeur["importe_le__max"]
+    return timezone.localdate(dernier) if dernier else None
+
+
+# Brique 6d (E4) : le suffixe des alertes de collision de code s'adresse au cabinet,
+# seul rôle à voir l'administration ; la principale le signale.
+SUFFIXE_CABINET = " — à saisir dans l'administration"
+SUFFIXE_PRINCIPALE = " — à signaler au cabinet"
+
+
+def _alertes_pour(alertes, role):
+    """Les alertes de `DATA.meta` reformulées pour le rôle : nouvelle liste, même contrat."""
+    if role != PRINCIPALE:
+        return list(alertes)
+    return [alerte.replace(SUFFIXE_CABINET, SUFFIXE_PRINCIPALE) for alerte in alertes]
+
+
+def _data_pour(request, mois):
+    """`DATA` du mois, ses alertes reformulées pour le rôle du compte."""
+    data = donnees.construire(mois)
+    data["meta"]["alertes"] = _alertes_pour(data["meta"]["alertes"], request.user.role)
+    return data
 
 
 # --- Pages ---------------------------------------------------------------------
@@ -123,11 +171,14 @@ def planning_mois(request, mois):
 
     derniere = services.derniere_version(mois)
     numero = derniere.numero if derniere else 0
+    data = _data_pour(request, mois)
     contexte.update(
         {
-            "data": donnees.construire(mois),
+            "data": data,
             "state": derniere.state if derniere else services.etat_vide(),
-            "meta": _meta(mois, numero, autonome=False, publiee=_numero_publie(mois)),
+            "meta": _meta(
+                mois, numero, autonome=False, publiee=_numero_publie(mois), donnees_du=_donnees_du(data)
+            ),
             "numero": numero,
         }
     )
@@ -163,12 +214,15 @@ def copie(request, mois):
     if services.est_historique(derniere):
         raise Http404("mois historique : pas de copie autonome")
 
+    data = _data_pour(request, mois)
     contexte = {
         "mois": mois,
         "libelle": libelle_mois(mois),
-        "data": donnees.construire(mois),
+        "data": data,
         "state": derniere.state,
-        "meta": _meta(mois, derniere.numero, autonome=True, publiee=_numero_publie(mois)),
+        "meta": _meta(
+            mois, derniere.numero, autonome=True, publiee=_numero_publie(mois), donnees_du=_donnees_du(data)
+        ),
     }
     contexte.update({cle: _statique(chemin) for cle, chemin in STATIQUES.items()})
     html = render_to_string("planning/copie.html", contexte, request=request)

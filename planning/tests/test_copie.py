@@ -39,6 +39,17 @@ def test_copie_de_la_derniere_version(client, cabinet, connecter):
     assert "Satoshi" in contenu
     assert "/static/" not in contenu
     assert 'href="/' not in contenu and "{% url" not in contenu
+    # Brique 6d : l'enveloppe est dans la copie (neuf boutons, menu « Plus », bandeau,
+    # date des données), la coquille et les mois voisins n'y sont pas.
+    for id_ in (
+        "btnPropose", "btnUndo", "btnImport", "btnExport", "btnPrint", "btnReset",
+        "btnCopie", "btnSave", "btnPublier",
+    ):
+        assert f'id="{id_}"' in contenu, id_
+    assert '<details class="plus">' in contenu
+    assert "Le planning se travaille sur un écran large" in contenu
+    assert 'class="barre"' not in contenu and 'class="mois"' not in contenu
+    assert '"donnees_du": "' in contenu
 
 
 def test_aucune_sequence_de_fermeture_dans_les_scripts_inlines(client, cabinet, connecter):
