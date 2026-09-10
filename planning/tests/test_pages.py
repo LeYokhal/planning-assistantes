@@ -5,6 +5,7 @@ from django.utils import timezone
 
 from planning import services
 from planning.tests import fabrique
+from presences.fenetres import mois_precedent
 
 pytestmark = pytest.mark.django_db
 
@@ -78,12 +79,18 @@ def test_page_servie(client, principale, connecter, cabinet):
         assert f'<script id="{bloc}" type="application/json">' in contenu
     assert "planning/moteur.js" in contenu and "planning/page.js" in contenu
     assert "planning/styles.css" in contenu
-    # Blocs de base vidés : ni sous-titre, ni feuille de style de base.
-    assert "sous-titre" not in contenu
-    assert "max-width: 40rem" not in contenu
-    assert "Espace K Dentaire" not in contenu
-    # Navigation propre à la page.
-    assert f"/presences/{fabrique.MOIS}/" in contenu and "/absences/" in contenu
+    # Brique 6d : la barre commune vient de barre.css seule — ni commun.css (largeur de
+    # lecture), ni polices.css, ni le titre de la coquille.
+    assert 'class="barre"' in contenu
+    assert "socle/barre.css" in contenu
+    assert "socle/commun.css" not in contenu
+    assert "socle/polices.css" not in contenu
+    assert 'class="titre-page"' not in contenu
+    # Navigation : la barre porte les liens de gestion et l'unique déconnexion ;
+    # l'en-tête porte les mois voisins.
+    assert 'href="/presences/"' in contenu and 'href="/absences/"' in contenu
+    assert f'href="/planning/{mois_precedent(fabrique.MOIS)}/"' in contenu
+    assert contenu.count('action="/deconnexion/"') == 1
 
 
 def test_page_pose_le_cookie_csrftoken(client, cabinet, connecter):
