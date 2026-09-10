@@ -10,9 +10,11 @@ appariement des agendas Doctolib, comptes des salariées, les **absences
 le **planning (brique 4a)** : page servie par l'application, moteur de
 proposition dans le navigateur, versions enregistrées, copie autonome, et sa
 **publication (brique 4b)** : version publiée, conflit absence ↔ planning
-publié, « Mes jours » pour chaque salariée, et la **reprise de l'existant 2026
+publié, « Mes jours » pour chaque salariée, la **reprise de l'existant 2026
 (brique 3-quater)** : import exceptionnel des absences Notion par un écran
-d'administration.
+d'administration, et la **coquille de l'interface (brique 6a)** : barre et menu
+par rôle, tableau de bord sur `/`, connexion à quatre états, pages d'état,
+administration habillée.
 
 ## État
 
@@ -77,8 +79,20 @@ d'administration.
   moteur, où une journée fait une ligne si le cabinet ouvre ce jour-là ou si elle
   porte une brique. L'écran « aucun import » y renvoie ; la copie autonome d'un
   mois historique répond 404. Recettée en production le 09/09/2026.
-  939 tests Python, 57 tests Node.
-- **Prochaine étape** : brique 5 (mail comptable — dates et catégorie de paie
+- **Brique 6a mergée le 10/09/2026** (`2e30150`, PR #26) : la **coquille** de
+  l'interface. `socle/base.html` porte la barre haute et le menu avatar par
+  rôle (`user.role`, jamais `is_staff`), les onglets bas de la salariée, une
+  déconnexion unique en `POST` et les messages stylés ; `/` devient le tableau
+  de bord de `principale` et `cabinet` (versions par horizon, demandes à
+  décider, présences et personnes) et redirige la salariée vers « Mes jours » ;
+  connexion à quatre états (lien périmé → `/connexion/?expire=1`), pages
+  403 / 404 / 500, administration habillée (`admin/base_site.html`, index en
+  cinq blocs), favicon. La page planning ne reçoit rien de la coquille (test
+  d'isolement). Recettée en production le 10/09/2026.
+  1 011 tests Python, 57 tests Node.
+- **Prochaine étape** : la suite de la brique 6 — 6d (enveloppe de la page
+  planning) en premier, puis 6b (espace salariée sur téléphone) et 6c (écrans
+  absences, présences et personnes) —, puis brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
   (endpoint présences, projet VoiceDoctolib). Le périmètre v1 de l'application
@@ -105,10 +119,13 @@ d'administration.
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
 | Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | |
 | Lecture d'un mois historique : page dédiée, sans `DATA` ni moteur | |
+| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) | Espace salariée, écrans absences / présences & personnes, enveloppe du planning (6b, 6c, 6d) |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
-reçoit un lien, on clique. L'administration Django (`/admin/`) passe par la même
-porte.
+reçoit un lien, on clique. Un lien périmé ou déjà utilisé ramène sur
+`/connexion/?expire=1`. Une fois connecté, `/` mène au tableau de bord
+(`principale`, `cabinet`) ou à « Mes jours » (`salariee`). L'administration
+Django (`/admin/`) passe par la même porte.
 
 ## Démarrage local
 
@@ -185,6 +202,7 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
 - Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, import historique, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
+- Interface (brique 6) : coquille `base.html`, tableau de bord, connexion, pages d'état, administration habillée, statiques : [`docs/INTERFACE.md`](docs/INTERFACE.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - JSON des trois workflows n8n (à importer tels quels, puis credentials et
@@ -201,14 +219,14 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 config/      réglages, URLs, WSGI/ASGI
 comptes/     Personne, Compte, connexion par lien, mails, normalisation des noms, admin
 audit/       EvenementAudit et service de journalisation
-socle/       page de santé, accueil, gabarits communs, limitation de débit, fériés, client n8n
+socle/       page de santé, page d'arrivée `/` (tableau de bord), coquille base.html et gabarits d'état, admin habillé, statiques communs (static/socle/), limitation de débit, fériés, client n8n
 presences/   import S7, invariant, verrou, écran du mois, webhooks sortants
 personnes/   import de la fiche personnel, appariement Doctolib, écrans (sans modèle)
 regles/      regles.json et son chargeur validant (sans modèle)
 absences/    TypeAbsence, AbsenceSalariee, jours comptés, espace salariée, décision, import exceptionnel (admin)
 planning/    PlanningVersion, DATA côté serveur, vérification stricte, page, copie, publication, conflits, « Mes jours », import historique (admin) ; moteur.js et page.js dans static/, tests Node dans tests_js/
 n8n/         API entrante appelée par n8n (sans modèle)
-docs/        cadrage, déploiement, personnes, absences, planning, webhooks n8n
+docs/        cadrage, déploiement, personnes, absences, planning, interface, webhooks n8n
 reference/   version 1 du skill de planning, à titre de référence (non exécutée, hors image Docker)
 ```
 
