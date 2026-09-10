@@ -272,7 +272,7 @@ sur le déploiement.
 ## Périmètre
 
 Le cadrage complet (périmètre v1, décisions C2 → C5, journal de livraison des
-briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.7) : il fait foi sur
+briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.10 — 09/09/2026) : il fait foi sur
 le périmètre, ce fichier sur les règles de travail.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
