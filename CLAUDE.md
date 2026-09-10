@@ -68,6 +68,15 @@ python -m venv .venv                      # une seule fois
   `comptes.acces.role_requis(*roles)`. Il redirige un anonyme vers `/connexion/`
   et refuse un rôle absent par un `403` journalisé (`acces_refuse`).
   `is_superuser` ne contourne pas le rôle. Ne pas en écrire un second.
+- **Ordre d'`INSTALLED_APPS`** : `socle` précède `django.contrib.admin`. Ses
+  gabarits `admin/base_site.html` et `admin/index.html` (brique 6a) ne seraient
+  jamais trouvés sinon — le chargeur de gabarits par app suit cet ordre. Ne pas
+  réordonner.
+- **Coquille (`socle/base.html`)** : tout balisage ajouté va dans le bloc
+  `style_base` ou `en_tete_page`, que `page.html` vide — la page planning ne
+  doit rien recevoir de la coquille (test d'isolement
+  `socle/tests/test_navigation.py`). Jamais `is_staff` dans un gabarit d'app :
+  le rôle seul décide de la navigation, `is_staff` ne garde que l'admin.
 - **Imports de présences** : une ligne `ImportPresences` n'est **jamais modifiée
   après sa fin, ni supprimée** — c'est la preuve de ce qui est entré dans
   l'application. Un import fautif est dépassé par un import plus récent couvrant

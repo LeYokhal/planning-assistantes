@@ -156,9 +156,15 @@ Trois blocs `json_script` alimentent la page : `planning-data`,
 le cookie `csrftoken` lu par `page.js` pour l'en-tête `X-CSRFToken`.
 
 `socle/base.html` a reçu cinq blocs pour que la page impose sa mise en page :
-`classe_html`, `style_base`, `en_tete_page`, `navigation_page`, `scripts`. Leur
-contenu par défaut est l'existant : un test rend l'accueil et l'espace
-salariée avec l'ancien `base.html` chargé en mémoire et compare les chaînes.
+`classe_html`, `style_base`, `en_tete_page`, `navigation_page`, `scripts`.
+Depuis la brique 6a, `base.html` porte la coquille commune (barre, menu, feuille
+de style) **dans** `style_base` et `en_tete_page`, que `page.html` vide : la
+page planning ne reçoit rien de la coquille, ce que vérifie
+`socle/tests/test_navigation.py::test_page_planning_sans_coquille` (ni
+`class="barre"`, ni `<details class="avatar"`, ni `socle/commun.css`, ni
+`socle/polices.css` ; seul le favicon, hors bloc, est commun) et
+`socle/tests/test_contexte.py::test_cout_page_planning` (9 requêtes, comme
+avant). Voir `docs/INTERFACE.md` § 2.
 
 ## 5. Vérification stricte : deux implémentations, un jeu de cas
 
@@ -445,8 +451,10 @@ planning n'est pas encore publié. Sinon (C4.8) :
   publication garde son libellé), sinon le slot brut.
 
 Ni congé, ni note, ni férié, ni type d'absence. Le log ne porte que le mois et
-un comptage (« mes jours AAAA-MM : N jour(s) »). L'accueil des rôles
-`salariee` et `principale` a reçu le lien « Mes jours ».
+un comptage (« mes jours AAAA-MM : N jour(s) »). Depuis la brique 6a,
+« Mes jours » est la page d'arrivée de la salariée (`/` l'y redirige) et figure
+dans ses onglets bas comme dans le menu avatar de la principale
+(`docs/INTERFACE.md` § 2 et § 4).
 
 ### 11.4 Ligne « hors présence » (C4.9)
 
