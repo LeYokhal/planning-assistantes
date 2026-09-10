@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% load static %}
+{% comment %}
+Brique 6a (C6.4) : habillage de l'administration, zéro vue réécrite. Trouvé
+avant le gabarit natif parce que `socle` précède `django.contrib.admin` dans
+INSTALLED_APPS. Le bloc `dark-mode-vars` vidé retire dark_mode.css et theme.js :
+thème clair seul, comme le reste de l'application.
+{% endcomment %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | {{ site_title }}{% endblock %}
+
+{% block dark-mode-vars %}{% endblock %}
+
+{% block extrastyle %}{{ block.super }}<link rel="stylesheet" href="{% static 'socle/polices.css' %}"><link rel="stylesheet" href="{% static 'socle/administration.css' %}">{% endblock %}
+
+{% block extrahead %}{{ block.super }}<link rel="icon" type="image/png" href="{% static 'socle/favicon.png' %}">{% endblock %}
+
+{% block branding %}<div id="site-name"><a href="{% url 'admin:index' %}">{{ site_header }}</a></div>{% endblock %}
+
+{% block userlinks %}<a href="{{ site_url }}">← Retour à l'app</a> / <form id="logout-form" method="post" action="{% url 'admin:logout' %}">{% csrf_token %}<button type="submit">Déconnexion</button></form>{% endblock %}
+
+{% block nav-global %}{% endblock %}

@@ -5,22 +5,22 @@
 
 {% block contenu %}
   {% if bloque %}
-    <p class="message">Trop de demandes. Réessayez dans quelques minutes.</p>
+    <p class="bandeau erreur">Trop de demandes. Réessayez dans quelques minutes.</p>
   {% else %}
     {% if envoye %}
-      <p class="message">
+      <p class="bandeau">
         Si cette adresse correspond à un compte actif, un lien de connexion vient
         d'être envoyé. Il est valable 15 minutes et ne sert qu'une fois.
       </p>
-    {% else %}
-      <p>Saisissez votre adresse e-mail : vous recevrez un lien de connexion.
-         Il n'y a pas de mot de passe.</p>
+    {% elif expire %}
+      <p class="bandeau avertissement">Ce lien a expiré ou a déjà été utilisé. Demandez-en un nouveau ci-dessous.</p>
     {% endif %}
 
-    <form method="post" action="/connexion/">
+    <form method="post" action="{% url 'comptes:connexion' %}">
       {% csrf_token %}
       {{ formulaire.as_p }}
-      <button type="submit">Recevoir un lien</button>
+      <button type="submit" class="bouton">Recevoir mon lien de connexion</button>
+      <p class="aide">Vous recevrez un lien valable 15 minutes, sans mot de passe.</p>
     </form>
   {% endif %}
 {% endblock %}

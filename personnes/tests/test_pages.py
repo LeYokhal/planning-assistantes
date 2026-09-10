@@ -240,13 +240,15 @@ def test_appariement_get_n_ecrit_rien(client, cabinet, connecter, agendas_import
 # --- Accueil -----------------------------------------------------------------
 
 
-def test_accueil_message_pour_la_salariee(client, salariee, connecter):
+def test_accueil_renvoie_la_salariee_sans_lien_personnes(client, salariee, connecter):
+    """Brique 6a : `/` redirige la salariée vers « Mes jours », dont la coquille ne mène pas aux personnes."""
     connecter(client, salariee)
 
-    contenu = client.get("/").content.decode()
+    reponse = client.get("/")
 
-    assert "Votre compte est actif" in contenu
-    assert LISTE not in contenu
+    assert reponse.status_code == 302
+    assert reponse["Location"] == "/mes-jours/"
+    assert LISTE not in client.get("/mes-jours/2026-10/").content.decode()
 
 
 @pytest.mark.parametrize("role", ["cabinet", "principale"])
@@ -258,4 +260,3 @@ def test_accueil_lien_personnes_selon_le_role(
     contenu = client.get("/").content.decode()
 
     assert LISTE in contenu
-    assert "Votre compte est actif" not in contenu

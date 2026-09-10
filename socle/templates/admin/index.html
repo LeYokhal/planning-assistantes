@@ -1,0 +1,17 @@
+{% extends "admin/index.html" %}
+{% comment %}
+Brique 6a (C6.4) : index regroupé en cinq blocs — un par app enregistrée, dans
+cet ordre. Étend l'index natif du même nom (Django saute ce fichier grâce à
+l'historique de `{% extends %}`) : la colonne « Actions récentes » et tout le
+reste viennent de Django. `auth` (Groupes) n'est pas listé, mais reste servi.
+{% endcomment %}
+
+{% block content %}
+<div id="content-main" class="blocs-admin">
+  {% include "socle/_bloc_admin.html" with label="comptes" %}
+  {% include "socle/_bloc_admin.html" with label="absences" %}
+  {% include "socle/_bloc_admin.html" with label="planning" %}
+  {% include "socle/_bloc_admin.html" with label="presences" %}
+  {% include "socle/_bloc_admin.html" with label="audit" %}
+</div>
+{% endblock %}

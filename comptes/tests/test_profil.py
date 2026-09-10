@@ -254,7 +254,9 @@ def test_confirmation_invalide_les_liens_magiques_en_circulation(
 
     client.logout()
     reponse = client.get("/connexion/lien/" + lien_ancien)
-    assert reponse.status_code == 403
+    # Brique 6a (A-1) : tout jeton refusé renvoie vers la page de connexion.
+    assert reponse.status_code == 302
+    assert reponse["Location"] == "/connexion/?expire=1"
 
 
 # --- Jeton (unitaire) -------------------------------------------------------

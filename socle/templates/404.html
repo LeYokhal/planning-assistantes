@@ -1,13 +1,11 @@
 {% extends "socle/base.html" %}
 
 {% block titre %}Page introuvable — Planning Assistantes{% endblock %}
-{% block entete %}Page introuvable{% endblock %}
+{% block entete %}Cette page n'existe pas{% endblock %}
 
 {% block contenu %}
-  <p>Cette adresse ne correspond à aucune page de l'application. Un mois se
-     saisit sous la forme <code>/presences/2026-10/</code>.</p>
-{% endblock %}
-
-{% block navigation %}
-  <a href="/">Retour à l'accueil</a>
+  <p class="code-etat">404</p>
+  <p>Le lien est peut-être incomplet ou périmé. Un mois se saisit sous la forme
+     <code>/presences/2026-10/</code>.</p>
+  <p>{% include "socle/_lien_arrivee.html" %}</p>
 {% endblock %}
