@@ -1,13 +1,11 @@
 {% extends "socle/base.html" %}
 
 {% block titre %}Accès refusé — Planning Assistantes{% endblock %}
-{% block entete %}Accès refusé{% endblock %}
+{% block entete %}Vous n'avez pas accès à cette page{% endblock %}
 
 {% block contenu %}
-  <p>Votre compte n'a pas le rôle nécessaire pour consulter cette page. Si vous
-     pensez qu'il s'agit d'une erreur, demandez au cabinet de vérifier votre rôle.</p>
-{% endblock %}
-
-{% block navigation %}
-  <a href="/">Retour à l'accueil</a>
+  <p class="code-etat">403</p>
+  <p>Cette page est réservée à un autre rôle. Si vous pensez qu'il s'agit d'une
+     erreur, demandez au cabinet de vérifier votre rôle.</p>
+  <p>{% include "socle/_lien_arrivee.html" %}</p>
 {% endblock %}

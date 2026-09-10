@@ -1,0 +1,106 @@
+/* Coquille commune de l'application (brique 6a).
+   Variables de la charte Espace K Dentaire, recopiées de planning/static/planning/styles.css ;
+   chargée par le bloc `style_base` de socle/base.html — jamais par la page planning, qui le vide.
+   Aucune règle de largeur ici : les points de rupture sont la brique 6b. */
+
+:root {
+  color-scheme: light;
+  --bg: #F8FEFF; --card: #FFFFFF; --card-2: #EEF8FA; --ink: #141717; --ink-2: #5C6B70; --ink-3: #93A1A6;
+  --line: #D9E6EA; --line-2: #E9F1F4; --outside: #F1F6F8;
+  --accent: #1764D8; --accent-soft: #E4EEFB; --accent-ink: #0F4FAE;
+  --alert: #D92124; --alert-bg: #FDECEC; --warn: #B86E00; --warn-bg: #FFF3DF; --ok: #1E8A4C; --ok-bg: #E6F5EC;
+  --font: "Satoshi", "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --r-card: 12px; --r-slot: 8px; --r-pill: 999px;
+  --shadow: 0 1px 2px rgba(20,23,23,.04), 0 6px 18px rgba(23,100,216,.06);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+a { color: var(--accent); }
+a:hover { color: var(--accent-ink); }
+button, input, select, textarea { font: inherit; }
+h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+h2 { font-size: 16px; font-weight: 700; margin: 0 0 .5rem; }
+h3 { font-size: 12px; font-weight: 700; margin: .75rem 0 .35rem; color: var(--ink-3); letter-spacing: .04em; text-transform: uppercase; }
+
+/* ---------- barre haute (PC), avatar et menu ---------- */
+.barre { position: sticky; top: 0; z-index: 20; height: 52px; display: flex; align-items: center; gap: 28px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+.marque { font-size: 15px; font-weight: 700; color: var(--ink); text-decoration: none; white-space: nowrap; }
+.marque span { color: var(--ink-2); font-weight: 500; }
+.onglets { display: flex; gap: 28px; align-self: stretch; margin-left: 12px; }
+.onglets a { display: flex; align-items: center; color: var(--ink-2); text-decoration: none; }
+.onglets a[aria-current="page"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+.avatar { position: relative; margin-left: auto; }
+.avatar summary { list-style: none; width: 34px; height: 34px; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent-ink); font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.avatar summary::-webkit-details-marker { display: none; }
+.avatar[open] summary { background: var(--accent); color: #fff; }
+.avatar .menu { position: absolute; right: 0; top: 44px; width: 250px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); box-shadow: var(--shadow); padding: 6px; display: flex; flex-direction: column; z-index: 30; }
+.menu-titre { margin: 0; padding: 10px 12px; font-weight: 700; border-bottom: 1px solid var(--line-2); }
+.menu a, .menu button { display: block; width: 100%; min-height: 44px; padding: 10px 12px; text-align: left; background: none; border: 0; border-radius: var(--r-slot); color: var(--ink); font-weight: 500; text-decoration: none; cursor: pointer; }
+.menu a:hover, .menu button:hover { background: var(--card-2); color: var(--ink); }
+.menu form { margin: 4px 0 0; padding-top: 4px; border-top: 1px solid var(--line-2); }
+
+/* ---------- sous-onglets (Présences | Personnes) et onglets bas (salariée) ---------- */
+.sous-onglets { display: flex; gap: 22px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--line); }
+.sous-onglets a { padding: 11px 0; color: var(--ink-2); text-decoration: none; }
+.sous-onglets a[aria-current="page"] { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--accent); }
+.onglets-bas { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; height: 60px; display: flex; background: var(--card); border-top: 1px solid var(--line-2); }
+.onglets-bas a { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-size: 12px; color: var(--ink-2); text-decoration: none; }
+.onglets-bas a::before { content: ""; width: 22px; height: 3px; border-radius: 2px; }
+.onglets-bas a[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.onglets-bas a[aria-current="page"]::before { background: var(--accent); }
+.onglets-bas ~ main { padding-bottom: 4rem; }
+
+/* ---------- corps de page : la largeur de lecture est celle de <main>, la barre prend tout ---------- */
+.titre-page, main, body > nav:last-of-type { max-width: 40rem; margin-left: auto; margin-right: auto; padding-left: 1.25rem; padding-right: 1.25rem; }
+body.large > .titre-page, body.large > main, body.large > nav:last-of-type { max-width: 90rem; }
+.titre-page { margin-top: 1.5rem; }
+main { margin-top: 1rem; margin-bottom: 1.5rem; }
+body > nav:last-of-type { margin-top: 2.5rem; margin-bottom: 1.5rem; font-size: .85rem; color: var(--ink-3); }
+body > nav:last-of-type button { min-height: 32px; padding: 0 12px; font-weight: 500; }
+
+/* ---------- formulaires et boutons ---------- */
+form p { margin: 0 0 .9rem; }
+label { display: block; font-weight: 500; color: var(--ink-2); font-size: 13px; margin-bottom: .35rem; }
+input[type="email"], input[type="text"], input[type="date"], input[type="number"], input[type="file"], select, textarea { width: 100%; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-slot); background: var(--card); color: var(--ink); font-size: 15px; }
+textarea { padding: 10px 12px; }
+input[type="number"], input[type="file"] { width: auto; }
+button { font: inherit; cursor: pointer; }
+.bouton { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 18px; border-radius: var(--r-pill); border: 1px solid var(--accent); background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; cursor: pointer; }
+.bouton:hover { background: var(--accent-ink); border-color: var(--accent-ink); color: #fff; }
+.bouton.contour { background: var(--card); color: var(--ink); border-color: var(--line); font-weight: 500; }
+.bouton.contour:hover { background: var(--card-2); color: var(--ink); border-color: var(--line); }
+button:disabled { background: var(--line-2); border-color: var(--line-2); color: var(--ink-3); cursor: not-allowed; }
+.aide { color: var(--ink-2); font-size: 13px; margin: .5rem 0 0; }
+.errorlist { color: var(--alert); margin: 0 0 .5rem; padding-left: 1.1rem; }
+
+/* ---------- messages Django (quatre niveaux) et bandeaux statiques ---------- */
+.messages { list-style: none; padding: 0; margin: 0 0 1.25rem; }
+.messages li, .message, .bandeau { border-radius: var(--r-slot); padding: 12px 14px; margin: 0 0 .6rem; background: var(--accent-soft); color: var(--accent-ink); line-height: 1.4; }
+.messages li.success { background: var(--ok-bg); color: var(--ok); }
+.messages li.info, .messages li.debug { background: var(--accent-soft); color: var(--accent-ink); }
+.messages li.warning, .bandeau.avertissement { background: var(--warn-bg); color: var(--warn); }
+.messages li.error, .bandeau.erreur { background: var(--alert-bg); color: var(--alert); }
+
+/* ---------- cartes, pastilles et listes (tableau de bord) ---------- */
+.cartes { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+.carte { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); padding: 18px 20px; }
+.carte .sous { margin: -.25rem 0 .75rem; color: var(--ink-2); font-size: 13px; }
+.carte p { margin: .35rem 0; }
+.carte ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.carte li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-slot); }
+.carte li.demande { flex-direction: column; align-items: flex-start; gap: 3px; }
+.carte .nom { font-weight: 500; }
+.carte .detail, .carte .vide { color: var(--ink-2); font-size: 13px; }
+.carte .reserve { color: var(--warn); font-size: 12px; }
+.carte details summary { cursor: pointer; color: var(--ink-2); font-size: 13px; margin: .75rem 0 .35rem; }
+.carte .bouton, .carte > a { display: inline-flex; margin-top: .9rem; }
+.pastille { display: inline-block; padding: 3px 10px; border-radius: var(--r-pill); font-size: 12.5px; font-weight: 500; background: var(--line-2); color: var(--ink-2); white-space: nowrap; }
+.pastille.ok { background: var(--ok-bg); color: var(--ok); }
+.pastille.attente { background: var(--warn-bg); color: var(--warn); }
+.pastille.refuse { background: var(--alert-bg); color: var(--alert); }
+.pastille.neutre { background: var(--line-2); color: var(--ink-2); }
+.code-etat { color: var(--ink-3); font-weight: 700; letter-spacing: .06em; margin: 0 0 .5rem; }
+
+@media print {
+  .barre, .sous-onglets, .onglets-bas, body > nav:last-of-type { display: none; }
+}

@@ -220,10 +220,14 @@ def test_les_methodes_get_sont_refusees_sur_les_actions(client, principale, conn
 # --- Navigation -------------------------------------------------------------
 
 
-def test_l_accueil_propose_ses_absences_a_la_salariee(client, salariee, connecter):
+def test_l_accueil_renvoie_la_salariee_vers_ses_jours(client, salariee, connecter):
+    """Brique 6a (C6.5) : `/` n'est plus une page pour la salariée, mais une redirection."""
     connecter(client, salariee)
-    contenu = client.get("/").content.decode()
-    assert "/mes-absences/" in contenu
+    reponse = client.get("/")
+    assert reponse.status_code == 302
+    assert reponse["Location"] == "/mes-jours/"
+    # L'onglet bas de la coquille mène à ses absences depuis chacune de ses pages.
+    assert 'href="/mes-absences/"' in client.get("/mes-absences/").content.decode()
 
 
 def test_l_accueil_propose_l_ecran_de_decision_a_la_principale(
@@ -234,11 +238,11 @@ def test_l_accueil_propose_l_ecran_de_decision_a_la_principale(
     assert "/absences/" in contenu
 
 
-def test_l_accueil_ne_propose_pas_l_ecran_de_decision_a_la_salariee(
+def test_la_coquille_ne_propose_pas_l_ecran_de_decision_a_la_salariee(
     client, salariee, connecter
 ):
     connecter(client, salariee)
-    contenu = client.get("/").content.decode()
+    contenu = client.get("/mes-absences/").content.decode()
     assert 'href="/absences/"' not in contenu
 
 

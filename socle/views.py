@@ -1,4 +1,4 @@
-"""Vues du socle : page de santé et accueil."""
+"""Vues du socle : page de santé et page d'arrivée (`/`)."""
 
 import logging
 
@@ -6,7 +6,11 @@ from django.contrib.auth.decorators import login_required
 from django.db import connections
 from django.db.migrations.executor import MigrationExecutor
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+
+from comptes.models import Compte
+
+from . import tableau_de_bord
 
 logger = logging.getLogger(__name__)
 
@@ -46,5 +50,7 @@ def sante(request):
 
 @login_required
 def accueil(request):
-    """Page d'accueil de l'application, réservée aux comptes connectés."""
-    return render(request, "socle/accueil.html")
+    """`/` : « Mes jours » pour une salariée, tableau de bord pour la principale et le cabinet (C6.5)."""
+    if request.user.role == Compte.Role.SALARIEE:
+        return redirect("planning:mes_jours_courant")
+    return render(request, "socle/tableau_de_bord.html", tableau_de_bord.construire(request.user))

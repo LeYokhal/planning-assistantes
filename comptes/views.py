@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.views import LogoutView
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from sesame.utils import get_query_string
 from sesame.views import LoginView as LoginViewSesame
 
@@ -64,7 +65,12 @@ def demander_lien(request):
     formulaire = FormulaireConnexion(request.POST or None)
 
     if request.method != "POST":
-        return render(request, "comptes/connexion.html", {"formulaire": formulaire})
+        # `expire` : retour d'un lien périmé ou déjà utilisé (brique 6a, A-1).
+        return render(
+            request,
+            "comptes/connexion.html",
+            {"formulaire": formulaire, "expire": request.GET.get("expire") == "1"},
+        )
 
     if not formulaire.is_valid():
         # Adresse mal formée : traitée comme une adresse inconnue.
@@ -100,18 +106,20 @@ def demander_lien(request):
 class VueConnexionLien(LoginViewSesame):
     """Consomme le lien de connexion.
 
-    django-sesame renvoie bien 403 sur un jeton invalide ou déjà utilisé, mais
-    n'écrit aucun événement d'audit. On utilise son crochet d'échec dédié
-    `login_failed()` pour journaliser `connexion_refusee` avant de laisser
-    remonter la PermissionDenied telle quelle. `lien_refuse` reste réservé aux
-    refus d'envoi (adresse inconnue, compte inactif).
+    django-sesame lève PermissionDenied (403) sur un jeton invalide ou déjà
+    utilisé, sans écrire d'événement d'audit. Son crochet d'échec dédié
+    `login_failed()` sert à journaliser `connexion_refusee`, puis à renvoyer
+    vers la page de connexion avec `?expire=1` (brique 6a, décision A-1) : la
+    même redirection quel que soit l'échec — jeton absent, périmé, rejoué ou
+    inventé — pour ne rien révéler. `lien_refuse` reste réservé aux refus
+    d'envoi (adresse inconnue, compte inactif).
     """
 
     next_page = "/"
 
     def login_failed(self):
         journaliser(Action.CONNEXION_REFUSEE, motif="jeton_invalide")
-        return super().login_failed()
+        return redirect(f"{reverse('comptes:connexion')}?expire=1")
 
 
 @role_requis(Compte.Role.SALARIEE, Compte.Role.PRINCIPALE)

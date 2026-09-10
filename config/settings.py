@@ -67,6 +67,9 @@ SECURE_HSTS_PRELOAD = False
 # --- Applications -----------------------------------------------------------
 
 INSTALLED_APPS = [
+    # `socle` précède l'administration : ses gabarits `admin/base_site.html` et
+    # `admin/index.html` (brique 6a) doivent être trouvés avant ceux de Django.
+    "socle",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -75,7 +78,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "comptes",
     "audit",
-    "socle",
     "presences",
     "n8n",
     "regles",
@@ -108,6 +110,8 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                # Coquille (brique 6a) : page courante, initiales et prénom du menu.
+                "socle.contexte.coquille",
             ],
         },
     },

@@ -120,7 +120,9 @@ def test_jeton_valide_connecte(client, compte_actif):
     reponse = client.get("/connexion/lien/" + get_query_string(compte_actif))
     assert reponse.status_code == 302
     assert reponse["Location"] == "/"
-    assert client.get("/").status_code == 200
+    # Brique 6a : `/` renvoie la salariée (rôle par défaut) vers « Mes jours ».
+    accueil = client.get("/")
+    assert accueil.status_code == 302 and accueil["Location"] == "/mes-jours/"
 
     assert EvenementAudit.objects.filter(action="connexion").count() == 1
     compte_actif.refresh_from_db()
@@ -134,8 +136,10 @@ def test_jeton_reutilise_est_refuse(client, compte_actif):
     assert client.get(lien).status_code == 302
     client.post("/deconnexion/")
 
+    # Brique 6a (A-1) : le refus renvoie vers la page de connexion, avec l'explication.
     seconde = client.get(lien)
-    assert seconde.status_code == 403
+    assert seconde.status_code == 302
+    assert seconde["Location"] == "/connexion/?expire=1"
 
     refus = EvenementAudit.objects.filter(action="connexion_refusee")
     assert refus.count() == 1
@@ -147,7 +151,8 @@ def test_jeton_reutilise_est_refuse(client, compte_actif):
 @pytest.mark.django_db
 def test_jeton_invente_est_refuse(client):
     reponse = client.get("/connexion/lien/?sesame=jeton-invente")
-    assert reponse.status_code == 403
+    assert reponse.status_code == 302
+    assert reponse["Location"] == "/connexion/?expire=1"
     assert EvenementAudit.objects.get(action="connexion_refusee").details == {
         "motif": "jeton_invalide"
     }

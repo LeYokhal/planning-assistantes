@@ -1,0 +1,35 @@
+/* Habillage de l'administration Django (brique 6a, C6.4).
+   Les noms de variables sont ceux de admin/css/base.css ; les valeurs, celles de la charte
+   (planning/static/planning/styles.css). Aucune règle sur les formulaires, listes ou filtres. */
+
+html[data-theme="light"], :root {
+  color-scheme: light;
+  --primary: #1764D8; --secondary: #141717; --accent: #E4EEFB; --primary-fg: #fff;
+  --body-fg: #141717; --body-bg: #F8FEFF; --body-quiet-color: #5C6B70; --body-medium-color: #141717; --body-loud-color: #141717;
+  --header-color: #93A1A6; --header-branding-color: #fff; --header-bg: #141717; --header-link-color: #E4EEFB;
+  --breadcrumbs-fg: #5C6B70; --breadcrumbs-link-fg: #1764D8; --breadcrumbs-bg: #EEF8FA;
+  --link-fg: #1764D8; --link-hover-color: #0F4FAE; --link-selected-fg: #0F4FAE;
+  --hairline-color: #E9F1F4; --border-color: #D9E6EA; --error-fg: #D92124;
+  --message-success-bg: #E6F5EC; --message-warning-bg: #FFF3DF; --message-error-bg: #FDECEC;
+  --darkened-bg: #EEF8FA; --selected-bg: #E4EEFB; --selected-row: #EEF8FA;
+  --button-fg: #fff; --button-bg: #1764D8; --button-hover-bg: #0F4FAE; --default-button-bg: #0F4FAE; --default-button-hover-bg: #1764D8;
+  --object-tools-bg: #5C6B70; --object-tools-hover-bg: #141717;
+  --font-family-primary: "Satoshi", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+}
+
+/* ---------- en-tête ---------- */
+#header { height: 52px; padding: 0 24px; }
+#site-name { font-size: 15px; font-weight: 700; }
+#user-tools { font-size: 13px; text-transform: none; letter-spacing: 0; }
+#user-tools a, #logout-form button { color: #E4EEFB; border-bottom: 0; }
+
+/* ---------- index en blocs ---------- */
+body.dashboard #content { width: auto; }
+.blocs-admin { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.bloc-admin { background: #fff; border: 1px solid #D9E6EA; border-radius: 12px; padding: 18px 20px; display: flex; flex-direction: column; gap: 6px; }
+.bloc-admin h2 { margin: 0 0 6px; padding: 0; background: none; font-size: 16px; color: #141717; }
+.bloc-admin h2 a { color: #141717; text-decoration: none; }
+.bloc-admin .ligne { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 12px; background: #F8FEFF; border: 1px solid #E9F1F4; border-radius: 8px; color: #141717; text-decoration: none; }
+.bloc-admin .ligne:hover { background: #EEF8FA; }
+.bloc-admin .ligne span { color: #5C6B70; font-size: 12.5px; }
+.bloc-admin .ajout { align-self: flex-end; font-size: 12.5px; margin: -2px 4px 4px 0; }

@@ -1,7 +1,5 @@
 """Recette des pages : accès, blocs de base, écran sans import, non-régression."""
 
-import re
-
 import pytest
 from django.utils import timezone
 
@@ -11,59 +9,6 @@ from planning.tests import fabrique
 pytestmark = pytest.mark.django_db
 
 URL = f"/planning/{fabrique.MOIS}/"
-
-# `socle/base.html` tel qu'il était avant la brique 4a. Les blocs ajoutés
-# doivent rendre exactement ce texte pour les pages qui ne les utilisent pas.
-ANCIEN_BASE = """<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block titre %}Planning Assistantes{% endblock %}</title>
-  <style>
-    :root { color-scheme: light dark; }
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      max-width: 40rem; margin: 3rem auto; padding: 0 1.25rem; line-height: 1.55;
-    }
-    /* Les écrans à tableaux (présences) ont besoin de toute la largeur. */
-    body.large { max-width: 90rem; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .sous-titre { color: #666; margin-top: 0; }
-    form p { margin: 0.75rem 0; }
-    label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-    input[type="email"] { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
-    button { padding: 0.55rem 1.1rem; font-size: 1rem; cursor: pointer; }
-    .message { border-left: 3px solid #4a7; padding: 0.75rem 1rem; background: rgba(68,170,119,.08); }
-    .messages { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-    .messages li { border-left: 3px solid #4a7; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: rgba(68,170,119,.08); }
-    .messages li.info { border-left-color: #1764D8; background: rgba(23,100,216,.08); }
-    .messages li.error { border-left-color: #c33; background: rgba(204,51,51,.08); }
-    nav { margin-top: 2.5rem; font-size: 0.9rem; }
-  </style>
-  {% block tete %}{% endblock %}
-</head>
-<body class="{% block classe_corps %}{% endblock %}">
-  <header>
-    <h1>{% block entete %}Planning Assistantes{% endblock %}</h1>
-    <p class="sous-titre">Espace K Dentaire</p>
-  </header>
-  <main>
-    {% if messages %}
-      <ul class="messages">
-        {% for message in messages %}<li class="{{ message.tags }}">{{ message }}</li>{% endfor %}
-      </ul>
-    {% endif %}
-    {% block contenu %}{% endblock %}
-  </main>
-  <nav>{% block navigation %}{% endblock %}</nav>
-</body>
-</html>
-"""
-
-
-def sans_jeton(html):
-    return re.sub(r'name="csrfmiddlewaretoken" value="[^"]+"', 'name="csrfmiddlewaretoken" value="X"', html)
 
 
 # --- Accès ----------------------------------------------------------------------
@@ -107,7 +52,7 @@ def test_sans_import_ecran_dedie(client, cabinet, connecter):
     assert "Aucun import de présences réussi" in contenu
     assert "planning-data" not in contenu
     assert "/presences/importer/" in contenu       # rôle cabinet
-    assert "sous-titre" in contenu                  # page ordinaire, blocs de base conservés
+    assert 'class="barre"' in contenu               # page ordinaire, coquille de base présente
 
 
 def test_sans_import_principale_sans_lien_d_import(client, principale, connecter):
@@ -178,32 +123,5 @@ def test_entree_planning_dans_l_accueil(client, cabinet, salariee, connecter):
     assert 'href="/planning/"' in client.get("/").content.decode()
     client.logout()
     connecter(client, salariee)
-    assert 'href="/planning/"' not in client.get("/").content.decode()
-
-
-@pytest.mark.parametrize("url", ["/", "/mes-absences/"])
-def test_base_inchangee_pour_les_autres_pages(client, salariee, connecter, settings, url):
-    """Les blocs ajoutés à base.html rendent, vides, exactement l'ancien texte."""
-    connecter(client, salariee)
-    apres = sans_jeton(client.get(url).content.decode())
-
-    settings.TEMPLATES = [
-        {
-            "BACKEND": "django.template.backends.django.DjangoTemplates",
-            "DIRS": [],
-            "OPTIONS": {
-                "context_processors": [
-                    "django.template.context_processors.request",
-                    "django.contrib.auth.context_processors.auth",
-                    "django.contrib.messages.context_processors.messages",
-                ],
-                "loaders": [
-                    ("django.template.loaders.locmem.Loader", {"socle/base.html": ANCIEN_BASE}),
-                    "django.template.loaders.app_directories.Loader",
-                ],
-            },
-        }
-    ]
-    avant = sans_jeton(client.get(url).content.decode())
-
-    assert avant == apres
+    # Brique 6a : `/` redirige la salariée ; sa coquille (« Mes jours ») ne mène pas au planning.
+    assert 'href="/planning/"' not in client.get(f"/mes-jours/{fabrique.MOIS}/").content.decode()

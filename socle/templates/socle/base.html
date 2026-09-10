@@ -1,37 +1,54 @@
-<!doctype html>
+{% load static %}<!doctype html>
 <html lang="fr"{% block classe_html %}{% endblock %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block titre %}Planning Assistantes{% endblock %}</title>
-  {% block style_base %}<style>
-    :root { color-scheme: light dark; }
-    body {
-      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      max-width: 40rem; margin: 3rem auto; padding: 0 1.25rem; line-height: 1.55;
-    }
-    /* Les écrans à tableaux (présences) ont besoin de toute la largeur. */
-    body.large { max-width: 90rem; }
-    h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
-    .sous-titre { color: #666; margin-top: 0; }
-    form p { margin: 0.75rem 0; }
-    label { display: block; font-weight: 600; margin-bottom: 0.25rem; }
-    input[type="email"] { width: 100%; padding: 0.5rem; font-size: 1rem; box-sizing: border-box; }
-    button { padding: 0.55rem 1.1rem; font-size: 1rem; cursor: pointer; }
-    .message { border-left: 3px solid #4a7; padding: 0.75rem 1rem; background: rgba(68,170,119,.08); }
-    .messages { list-style: none; padding: 0; margin: 0 0 1.5rem; }
-    .messages li { border-left: 3px solid #4a7; padding: 0.75rem 1rem; margin-bottom: 0.5rem; background: rgba(68,170,119,.08); }
-    .messages li.info { border-left-color: #1764D8; background: rgba(23,100,216,.08); }
-    .messages li.error { border-left-color: #c33; background: rgba(204,51,51,.08); }
-    nav { margin-top: 2.5rem; font-size: 0.9rem; }
-  </style>{% endblock %}
+  <link rel="icon" type="image/png" href="{% static 'socle/favicon.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'socle/favicon.png' %}">
+  {% block style_base %}<link rel="stylesheet" href="{% static 'socle/polices.css' %}">
+  <link rel="stylesheet" href="{% static 'socle/commun.css' %}">{% endblock %}
   {% block tete %}{% endblock %}
 </head>
 <body class="{% block classe_corps %}{% endblock %}">
-  {% block en_tete_page %}<header>
-    <h1>{% block entete %}Planning Assistantes{% endblock %}</h1>
-    <p class="sous-titre">Espace K Dentaire</p>
-  </header>{% endblock %}
+  {% block en_tete_page %}<header class="barre">
+    <a class="marque" href="{% url 'accueil' %}">Espace K Dentaire <span>· Planning</span></a>
+    {% if user.is_authenticated %}
+      {% if user.role != "salariee" %}
+      <nav class="onglets" aria-label="Navigation principale">
+        <a href="{% url 'planning:courant' %}"{% if nav_courante == "planning" %} aria-current="page"{% endif %}>Planning</a>
+        <a href="{% url 'absences:decider' %}"{% if nav_courante == "absences" %} aria-current="page"{% endif %}>Absences</a>
+        <a href="{% url 'presences:courant' %}"{% if nav_courante == "donnees" %} aria-current="page"{% endif %}>Présences &amp; personnes</a>
+      </nav>
+      {% endif %}
+      <details class="avatar">
+        <summary aria-label="Menu du compte">{{ initiales }}</summary>
+        <div class="menu">
+          <p class="menu-titre">{% if prenom %}Bonjour {{ prenom }}{% else %}{{ user.get_role_display }}{% endif %}</p>
+          {% if user.role == "principale" %}
+            <a href="{% url 'planning:mes_jours_courant' %}">Mes jours</a>
+            <a href="{% url 'absences:mes_absences' %}">Mes absences</a>
+          {% endif %}
+          {% if user.role != "cabinet" %}<a href="{% url 'comptes:profil' %}">Mon profil</a>{% endif %}
+          {% if user.role == "cabinet" %}<a href="{% url 'admin:index' %}">Administration</a>{% endif %}
+          <form method="post" action="{% url 'comptes:deconnexion' %}">{% csrf_token %}<button type="submit">Déconnexion</button></form>
+        </div>
+      </details>
+    {% endif %}
+  </header>
+  {% if user.is_authenticated and nav_courante == "donnees" %}
+  <nav class="sous-onglets" aria-label="Présences et personnes">
+    <a href="{% url 'presences:courant' %}"{% if request.resolver_match.app_name == "presences" %} aria-current="page"{% endif %}>Présences</a>
+    <a href="{% url 'personnes:liste' %}"{% if request.resolver_match.app_name == "personnes" %} aria-current="page"{% endif %}>Personnes</a>
+  </nav>
+  {% endif %}
+  {% if user.is_authenticated and user.role == "salariee" %}
+  <nav class="onglets-bas" aria-label="Mon espace">
+    <a href="{% url 'planning:mes_jours_courant' %}"{% if nav_courante == "mes_jours" %} aria-current="page"{% endif %}>Mes jours</a>
+    <a href="{% url 'absences:mes_absences' %}"{% if nav_courante == "mes_absences" %} aria-current="page"{% endif %}>Mes absences</a>
+  </nav>
+  {% endif %}
+  <div class="titre-page"><h1>{% block entete %}Planning Assistantes{% endblock %}</h1></div>{% endblock %}
   <main>
     {% if messages %}
       <ul class="messages">

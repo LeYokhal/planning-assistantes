@@ -1,0 +1,57 @@
+{% extends "socle/base.html" %}
+{% comment %}
+Brique 6a (C6.10, C6.12) : page d'arrivée de la principale et du cabinet. Trois
+cartes, contexte assemblé par `socle/tableau_de_bord.py`. Le type d'une absence
+y figure : seuls ces deux rôles atteignent cette page (C2.3b, C4.1).
+{% endcomment %}
+
+{% block titre %}Tableau de bord — Planning Assistantes{% endblock %}
+{% block entete %}Tableau de bord{% endblock %}
+{% block classe_corps %}large{% endblock %}
+
+{% block contenu %}
+<div class="cartes">
+  <section class="carte planning">
+    <h2>Planning</h2>
+    <p class="sous">{% if planning.importees_jusqu_au %}Présences Doctolib importées jusqu'au {{ planning.importees_jusqu_au|date:"j F Y" }}{% else %}Aucun import de présences réussi{% endif %}</p>
+    {% for rubrique in planning.rubriques %}{% if rubrique.lignes %}
+      {% if rubrique.repliee %}<details><summary>Passés ({{ rubrique.lignes|length }} mois)</summary>{% else %}<h3>{{ rubrique.titre }}</h3>{% endif %}
+      <ul>
+        {% for ligne in rubrique.lignes %}
+        <li data-mois="{{ ligne.mois }}">
+          <span>{{ ligne.libelle|capfirst }} — <span class="pastille {{ ligne.classe }}">{{ ligne.etat }}</span>{% if ligne.manquantes %} <span class="pastille attente">Données Doctolib manquantes</span>{% endif %}</span>
+          <a href="{{ ligne.url }}">Ouvrir</a>
+        </li>
+        {% endfor %}
+      </ul>
+      {% if rubrique.repliee %}</details>{% endif %}
+    {% endif %}{% endfor %}
+    <a class="bouton contour" href="{{ planning.preparer_url }}" title="{{ planning.preparer_libelle|capfirst }}">Préparer un mois</a>
+  </section>
+
+  <section class="carte demandes">
+    <h2>Demandes à décider{% if nb_demandes %} <span class="pastille attente">{{ nb_demandes }} demande{{ nb_demandes|pluralize }}</span>{% endif %}</h2>
+    {% if demandes %}
+      <ul>
+        {% for absence in demandes %}
+        <li class="demande">
+          <span class="nom">{{ absence.personne }}</span>
+          <span class="detail">{{ absence.type.libelle }} · {{ absence.date_debut|date:"j F" }}{% if absence.date_fin != absence.date_debut %} → {{ absence.date_fin|date:"j F" }}{% endif %}</span>
+          {% if not absence.decidable %}<span class="reserve">Décision réservée au cabinet</span>{% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+      <a href="{% url 'absences:decider' %}">Voir tout</a>
+    {% else %}
+      <p class="vide">Aucune demande en attente.</p>
+    {% endif %}
+  </section>
+
+  <section class="carte donnees">
+    <h2>Présences &amp; personnes</h2>
+    <p>{% if dernier_import %}<a href="{% url 'presences:courant' %}">Présences</a> : dernier import #{{ dernier_import.pk }} le {{ dernier_import.importe_le|date:"d/m" }} ({{ dernier_import.debut|date:"j F" }} → {{ dernier_import.fin|date:"j F" }}){% else %}<a href="{% url 'presences:courant' %}">Présences</a> — Aucun import de présences réussi{% endif %}</p>
+    <p><a href="{% url 'personnes:liste' %}">Personnes planifiées : {{ nb_planifiees }}</a></p>
+    {% if peut_importer %}<a class="bouton contour" href="{% url 'presences:importer' %}">Importer un fichier</a>{% endif %}
+  </section>
+</div>
+{% endblock %}

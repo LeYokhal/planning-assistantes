@@ -73,8 +73,11 @@ def test_mois_invalide_introuvable(client, salariee, connecter):
 
 
 def test_lien_dans_l_accueil(client, salariee, cabinet, connecter):
+    """Brique 6a : `/` redirige la salariée vers ses jours ; le cabinet n'a pas ce lien."""
     connecter(client, salariee)
-    assert 'href="/mes-jours/"' in client.get("/").content.decode()
+    reponse = client.get("/")
+    assert reponse.status_code == 302 and reponse["Location"] == "/mes-jours/"
+    assert 'href="/mes-jours/"' in client.get(URL).content.decode()
     client.logout()
     connecter(client, cabinet)
     assert 'href="/mes-jours/"' not in client.get("/").content.decode()

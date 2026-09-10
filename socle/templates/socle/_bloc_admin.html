@@ -1,0 +1,15 @@
+{% comment %}
+Un bloc de l'index d'administration (brique 6a) : l'app `label` de `app_list`,
+ses modèles (mêmes champs que admin/app_list.html), et le lien d'import des
+absences sous « Absences » (décision H-4).
+{% endcomment %}
+{% for app in app_list %}{% if app.app_label == label %}
+<section class="module bloc-admin app-{{ app.app_label }}">
+  <h2><a href="{{ app.app_url }}">{{ app.name }}</a></h2>
+  {% for model in app.models %}
+    <a class="ligne" href="{{ model.admin_url }}">{{ model.name }}{% if model.view_only %} <span>lecture seule</span>{% endif %}</a>
+    {% if model.add_url %}<a class="ajout" href="{{ model.add_url }}">Ajouter</a>{% endif %}
+  {% endfor %}
+  {% if label == "absences" %}<a class="ligne" href="{% url 'admin:absences_absencesalariee_importer' %}">Importer un fichier</a>{% endif %}
+</section>
+{% endif %}{% endfor %}
