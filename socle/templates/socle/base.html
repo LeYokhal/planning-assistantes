@@ -36,6 +36,14 @@
           <form method="post" action="{% url 'comptes:deconnexion' %}">{% csrf_token %}<button type="submit">Déconnexion</button></form>
         </div>
       </details>
+      <script id="script-avatar">
+        (function () { // Brique 6a-bis (D6a-bis.2) : clic extérieur et Échap ferment le menu du compte.
+          var a = document.querySelector("details.avatar");
+          if (!a) { return; }
+          document.addEventListener("click", function (e) { if (a.open && !a.contains(e.target)) { a.open = false; } });
+          document.addEventListener("keydown", function (e) { if (e.key === "Escape" && a.open) { a.open = false; a.querySelector("summary").focus(); } });
+        })();
+      </script>
     {% endif %}
   </header>
   {% if user.is_authenticated and nav_courante == "donnees" %}

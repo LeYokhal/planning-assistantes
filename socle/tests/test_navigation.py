@@ -5,8 +5,10 @@ Une page par app pour chaque rôle ; la page planning, elle, reçoit la barre
 """
 
 import re
+from pathlib import Path
 
 import pytest
+from django.template.loader import get_template
 
 from absences.tests import fabrique as fabrique_absences
 from planning.tests import fabrique
@@ -120,10 +122,13 @@ def test_page_planning_avec_barre_sans_commun(client, cabinet, connecter):
         "socle/barre.css",
         "socle/favicon.png",
         f'href="/planning/{MOIS}/" aria-current="page"',   # brique 8 : l'onglet suit le mois
+        'id="script-avatar"',   # brique 6a-bis : le script de la barre vient avec elle
     ):
         assert marque in contenu, marque
     for marque in ("socle/commun.css", "socle/polices.css", 'class="titre-page"'):
         assert marque not in contenu, marque
+    # script-avatar en tête (dans la barre), puis les trois `json_script`, puis moteur.js et page.js.
+    assert contenu.count("<script") == 6
 
 
 def test_page_sans_import_avec_coquille(client, cabinet, connecter):
@@ -161,3 +166,20 @@ def test_onglets_suivent_le_mois(client, cabinet, connecter, url, statut, attend
     contenu = reponse.content.decode()
     assert 'class="onglets"' in contenu
     assert all(lien in contenu for lien in attendus), attendus
+
+
+# --- Brique 6a-bis (D6a-bis.2) : le script du menu avatar vit avec la barre ------
+
+
+def test_script_avatar_une_fois_par_page_jamais_anonyme(client, cabinet, connecter):
+    """Le `<details class="avatar">` n'est rendu qu'authentifié : son script aussi, une seule fois."""
+    assert 'id="script-avatar"' not in _page(client, "/connexion/")
+    connecter(client, cabinet)
+    assert _page(client, "/").count('id="script-avatar"') == 1
+
+
+def test_base_html_un_seul_script_apres_details():
+    """Garde de source : la coquille porte un seul `<script`, inline, juste après `</details>` — hors du bloc `scripts`."""
+    source = Path(get_template("socle/base.html").origin.name).read_text(encoding="utf-8")
+    assert source.count("<script") == 1
+    assert re.search(r'</details>\s*<script id="script-avatar">', source)
