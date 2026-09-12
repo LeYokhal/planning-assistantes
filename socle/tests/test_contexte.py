@@ -15,19 +15,30 @@ from django.urls import ResolverMatch
 from absences.tests import fabrique as fabrique_absences
 from planning import services
 from planning.tests import fabrique
-from socle.contexte import coquille
+from socle.contexte import _mois_de, coquille
 
 pytestmark = pytest.mark.django_db
 
-VIDE = {"nav_courante": "", "initiales": "", "prenom": ""}
+# Brique 8 (D8.5) : `nav_urls` est toujours présent, sur le mois courant quand la page n'en porte pas.
+URLS_COURANTES = {"planning": "/planning/", "absences": "/absences/", "presences": "/presences/"}
+URLS_2026_10 = {
+    "planning": "/planning/2026-10/",
+    "absences": "/absences/?mois=2026-10",
+    "presences": "/presences/2026-10/",
+}
+VIDE = {"nav_courante": "", "initiales": "", "prenom": "", "nav_urls": URLS_COURANTES}
 
 
-def _requete(utilisateur=None, app_name="", url_name=""):
-    requete = RequestFactory().get("/")
+def _requete(utilisateur=None, app_name="", url_name="", mois=None, query=None):
+    requete = RequestFactory().get("/", query or {})
     if utilisateur is not None:
         requete.user = utilisateur
     requete.resolver_match = ResolverMatch(
-        lambda r: None, (), {}, url_name=url_name, app_names=[app_name] if app_name else []
+        lambda r: None,
+        (),
+        {"mois": mois} if mois else {},
+        url_name=url_name,
+        app_names=[app_name] if app_name else [],
     )
     return requete
 
@@ -149,3 +160,40 @@ def test_cout_pages_anonymes(client, django_assert_num_queries):
         assert client.get("/connexion/").status_code == 200
     with django_assert_num_queries(0):
         assert client.get("/nexiste-pas/").status_code == 404
+
+
+# --- Brique 8 (D8.5) : le mois des onglets --------------------------------------
+
+
+def test_mois_de_kwargs():
+    """`/planning/<mois>/`, `/presences/<mois>/` : le mois vient de l'URL résolue."""
+    assert _mois_de(_requete(mois="2026-10")) == "2026-10"
+
+
+def test_mois_de_get():
+    """`/absences/?mois=` : le mois vient de la requête."""
+    assert _mois_de(_requete(query={"mois": "2026-10"})) == "2026-10"
+
+
+@pytest.mark.parametrize("brut", ["abcd", "2026-1", "2026-10-01", "", "2026-10\n", "2026-10;x"])
+def test_mois_de_get_invalide(brut):
+    assert _mois_de(_requete(query={"mois": brut})) is None
+
+
+def test_mois_de_aucun():
+    assert _mois_de(_requete()) is None
+
+
+def test_mois_de_sans_resolution():
+    """URL inconnue (404) : pas de `resolver_match`, la requête reste lue."""
+    requete = RequestFactory().get("/nexiste-pas/", {"mois": "2026-10"})
+    assert requete.resolver_match is None
+    assert _mois_de(requete) == "2026-10"
+    assert _mois_de(RequestFactory().get("/nexiste-pas/")) is None
+
+
+def test_nav_urls_suivent_le_mois():
+    assert coquille(_requete(AnonymousUser(), "planning", "mois", mois="2026-10"))["nav_urls"] == URLS_2026_10
+    assert coquille(_requete(AnonymousUser(), "absences", "decider", query={"mois": "2026-10"}))["nav_urls"] == URLS_2026_10
+    assert coquille(_requete(AnonymousUser(), "absences", "decider", query={"mois": "abcd"}))["nav_urls"] == URLS_COURANTES
+    assert coquille(_requete(AnonymousUser()))["nav_urls"] == URLS_COURANTES

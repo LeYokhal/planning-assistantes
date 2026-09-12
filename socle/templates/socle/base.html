@@ -17,9 +17,10 @@
     {% if user.is_authenticated %}
       {% if user.role != "salariee" %}
       <nav class="onglets" aria-label="Navigation principale">
-        <a href="{% url 'planning:courant' %}"{% if nav_courante == "planning" %} aria-current="page"{% endif %}>Planning</a>
-        <a href="{% url 'absences:decider' %}"{% if nav_courante == "absences" %} aria-current="page"{% endif %}>Absences</a>
-        <a href="{% url 'presences:courant' %}"{% if nav_courante == "donnees" %} aria-current="page"{% endif %}>Présences &amp; personnes</a>
+        {# Brique 8 (D8.5) : les onglets suivent le mois de la page (`nav_urls`, socle/contexte.py). #}
+        <a href="{{ nav_urls.planning }}"{% if nav_courante == "planning" %} aria-current="page"{% endif %}>Planning</a>
+        <a href="{{ nav_urls.absences }}"{% if nav_courante == "absences" %} aria-current="page"{% endif %}>Absences</a>
+        <a href="{{ nav_urls.presences }}"{% if nav_courante == "donnees" %} aria-current="page"{% endif %}>Présences &amp; personnes</a>
       </nav>
       {% endif %}
       <details class="avatar">
@@ -39,7 +40,7 @@
   </header>
   {% if user.is_authenticated and nav_courante == "donnees" %}
   <nav class="sous-onglets" aria-label="Présences et personnes">
-    <a href="{% url 'presences:courant' %}"{% if request.resolver_match.app_name == "presences" %} aria-current="page"{% endif %}>Présences</a>
+    <a href="{{ nav_urls.presences }}"{% if request.resolver_match.app_name == "presences" %} aria-current="page"{% endif %}>Présences</a>
     <a href="{% url 'personnes:liste' %}"{% if request.resolver_match.app_name == "personnes" %} aria-current="page"{% endif %}>Personnes</a>
   </nav>
   {% endif %}

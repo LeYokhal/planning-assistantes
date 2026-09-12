@@ -26,10 +26,47 @@ const {DOW_ABR, MOIS, toDate, weekday, fmtJour, fmtH, heure} = PlanningMoteur;
 let ARMED = null;      // brique sélectionnée au clic : {s,t,x}
 let CURRENT_WEEK = 0;  // semaine dont la réserve est affichée
 let DRAG = null;       // brique en cours de glisser
-let FILTER = null;     // {s: sid} ou {p: pid} : vue filtrée sur une personne
+let FILTER = null;     // brique 8 (D8.6) : null | {s: [sid, …]} | {p: [pid, …]} — jamais une liste vide, un genre à la fois
 let CPOP = null;       // {iso, edit: index|null} : fenêtre de commentaires ouverte
 let DERNIERE = M.empreinte();   // empreinte de l'état tel que le serveur le connaît
 let VIOLATIONS = [];   // dernières violations affichées (page ou serveur)
+let AUJOURDHUI = null; // brique 8 (D8.9-bis) : date du jour « AAAA-MM-JJ », locale, posée dans boot
+let PLIEES = new Set();   // brique 8 (D8.9) : indices des semaines repliées sur leur bande
+let DERNIER_Y = null, DERNIER_SCROLL = null, AUTOSCROLL = null;   // brique 8 (D8.12) : glisser assisté près des bords
+
+// ------------------------------------------------------------ lisibilité : brique pleine, texte par luminance (brique 8, lot 5, D8.14, décision A)
+const TXT = {};   // sid → couleur du texte sur l'encre de la personne ; la section palette de regles.json est intouchée
+function texteSur(hex) { const n = parseInt(hex.slice(1), 16); const r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255; return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.6 ? "#111" : "#fff"; }
+
+// ------------------------------------------------------------ filtre à plusieurs noms (brique 8, D8.6)
+const horsS = id => !!FILTER?.s && !FILTER.s.includes(id);        // salariée hors de la sélection
+const horsP = id => !!FILTER?.p && !FILTER.p.includes(id);        // praticien hors de la sélection
+const aucuneS = bricks => !!FILTER?.s && !bricks.some(b => FILTER.s.includes(b.s));   // aucune brique sélectionnée dans la case
+const nomsFiltre = () => FILTER?.s ? FILTER.s.map(id => SAL[id].label).join(", ") : FILTER?.p ? FILTER.p.map(id => PRAT[id].label).join(", ") : null;
+function basculer(genre, id) {   // le clic ajoute, un second clic sur le même nom retire ; l'autre genre s'efface ; liste vide → null
+  const liste = FILTER?.[genre];
+  if (!liste) return {[genre]: [id]};
+  const reste = liste.includes(id) ? liste.filter(x => x !== id) : [...liste, id];
+  return reste.length ? {[genre]: reste} : null;
+}
+
+// ------------------------------------------------------------ lignes de rôle : pictogrammes et repli (brique 8, D8.7, D8.8)
+const PICTO = {   // SVG inline, identiques sur tout appareil ; le CSS les dessine en 14 × 14
+  secretariat: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M3.5 1.5h2.2l1.2 3.1-1.6 1.2a9 9 0 0 0 4.9 4.9l1.2-1.6 3.1 1.2v2.2A1.5 1.5 0 0 1 13 14 12 12 0 0 1 2 3a1.5 1.5 0 0 1 1.5-1.5z"/></svg>',
+  administratif: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M3 1.5h10a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-11a1 1 0 0 1 1-1zm1.5 3v1.6h7V4.5zm0 3v1.6h7V7.5zm0 3v1.6h5v-1.6z"/></svg>',
+  sureffectif: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zm0 1.6a5.4 5.4 0 1 0 0 10.8A5.4 5.4 0 0 0 8 2.6zM7.2 5h1.6v2.2H11v1.6H8.8V11H7.2V8.8H5V7.2h2.2z"/></svg>',
+  absent: '<svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 1a7 7 0 1 1 0 14A7 7 0 0 1 8 1zm0 1.6a5.4 5.4 0 0 0-4.3 8.6l7.5-7.5A5.4 5.4 0 0 0 8 2.6zm4.3 2.2-7.5 7.5A5.4 5.4 0 0 0 12.3 4.8z"/></svg>',
+};
+const LIBELLE = {secretariat: "Secrétariat", administratif: "Administratif", sureffectif: "Sureffectif", absent: "Absent"};   // les mots de MISC (moteur.js)
+let REPLIS = {};   // {secretariat | administratif | sureffectif | absent: true} : lignes repliées, toutes les semaines à la fois — mémorisé par le navigateur, jamais dans STATE
+const CLE_REPLIS = "planning-assistantes.replis";
+function replier(type) { REPLIS[type] = !REPLIS[type]; try { localStorage.setItem(CLE_REPLIS, JSON.stringify(REPLIS)); } catch (e) {} render(); }
+function boutonLigne(type) {   // le pictogramme d'une ligne de rôle : libellé en infobulle et en aria-label, un clic replie ou déplie ce type de ligne
+  const ml = el("button", "ml", PICTO[type]); ml.type = "button"; ml.title = LIBELLE[type];
+  ml.setAttribute("aria-label", LIBELLE[type] + (REPLIS[type] ? " — déplier" : " — replier"));
+  ml.addEventListener("click", ev => { ev.stopPropagation(); replier(type); });
+  return ml;
+}
 
 // ------------------------------------------------------------ messages
 const MSG = {
@@ -96,6 +133,7 @@ function deposer(iso, slot, b, from) {   // rend le résultat de place() après 
   const r = M.place(iso, slot, b, from);
   if (!r.ok) { toast(messageRefus(r.code, b, iso, slot), true); return r; }
   commit();
+  document.querySelector(`.day[data-date="${iso}"] .slot[data-slot="${r.cible}"] .brick:last-child`)?.classList.add("posee");   // brique 8 (D8.12) : bref flash de la brique posée
   if (r.bascule) toast(`${r.bascule.label} a déjà ${r.bascule.attendues > 1 ? "ses " + r.bascule.attendues + " assistantes" : "son assistante"} le ${fmtJour(iso)} : ${SAL[b.s].label} passe en sureffectif.`);
   return r;
 }
@@ -146,8 +184,8 @@ function openCpop(iso, edit) {   // fenêtre ancrée sous la bulle (ou le bouton
 // ------------------------------------------------------------ rendu
 function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:true}
   const s = SAL[b.s];
-  const e = el("div", "brick" + (b.t === "C" ? " c" : "") + (b.x ? " x" : "") + (b.a && !ctx.palette ? " auto" : "") + (!ctx.palette && FILTER?.s && FILTER.s !== b.s ? " dim" : ""));
-  e.style.setProperty("--bg", s.couleur[0]); e.style.setProperty("--fg", s.couleur[1]);
+  const e = el("div", "brick" + (b.t === "C" ? " c" : "") + (b.x ? " x" : "") + (b.a && !ctx.palette ? " auto" : "") + (!ctx.palette && horsS(b.s) ? " dim" : ""));
+  e.style.setProperty("--bg", s.couleur[0]); e.style.setProperty("--fg", s.couleur[1]); e.style.setProperty("--txt", TXT[b.s] ?? "#fff");
   e.draggable = true; e.tabIndex = 0;
   e.innerHTML = `${esc(s.label)}${b.t === "C" ? '<span class="tag">16h30</span>' : ""}${b.x ? '<span class="tag">+</span>' : ""}`;
   e.title = `${s.nom} · ${s.role === "secretaire" ? "secrétaire" : "assistante"} ${s.heures} h` + (b.t === "C" ? " · journée courte, fin 16h30" : "") + (b.x ? " · hors quota" : "") + (b.a && !ctx.palette ? " · proposée par le moteur, déplacez-la pour la confirmer" : "");
@@ -155,8 +193,9 @@ function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:
     DRAG = {b:{s:b.s, t:b.t, x:b.x}, from: ctx.from ?? null};
     ev.dataTransfer.effectAllowed = "move"; ev.dataTransfer.setData("text/plain", b.s);
     e.classList.add("ghost"); markDroppables(b.s, ctx.from?.date); document.body.classList.add("placing");
+    DERNIER_Y = null; DERNIER_SCROLL = window.scrollY; AUTOSCROLL = requestAnimationFrame(defiler);   // brique 8 (D8.12)
   });
-  e.addEventListener("dragend", () => { DRAG = null; e.classList.remove("ghost"); document.body.classList.remove("placing"); document.querySelectorAll(".slot.nodrop,.slot.over").forEach(x => x.classList.remove("nodrop","over")); document.getElementById("palette").classList.remove("over"); });
+  e.addEventListener("dragend", () => { DRAG = null; cancelAnimationFrame(AUTOSCROLL); AUTOSCROLL = null; e.classList.remove("ghost"); document.body.classList.remove("placing"); document.querySelectorAll(".slot.nodrop,.slot.over").forEach(x => x.classList.remove("nodrop","over")); document.getElementById("palette").classList.remove("over"); });
   if (ctx.palette) {
     e.addEventListener("click", () => { const same = ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x; ARMED = same ? null : {s:b.s, t:b.t, x:b.x}; render(); if (ARMED) toast(`${s.label} sélectionnée : cliquez une case pour la placer (Échap pour annuler).`); });
     if (ARMED && ARMED.s === b.s && ARMED.t === b.t && ARMED.x === b.x) e.classList.add("armed");
@@ -169,6 +208,17 @@ function brickEl(b, ctx) {  // ctx : {from:{date,slot,index}, warn} ou {palette:
 }
 function markDroppables(sid, fromDate) {
   document.querySelectorAll(".slot").forEach(sl => { const iso = sl.closest(".day").dataset.date; if (reasonRefus(sid, iso, fromDate)) sl.classList.add("nodrop"); });
+}
+function defiler() {   // brique 8 (D8.12, Q3) : défilement assisté près des bords pendant un glisser ; se tait pour l'image où la page a bougé sans lui (défilement natif)
+  if (!DRAG) return;
+  const y = window.scrollY;
+  if (DERNIER_SCROLL !== null && y !== DERNIER_SCROLL) { DERNIER_SCROLL = y; AUTOSCROLL = requestAnimationFrame(defiler); return; }
+  const haut = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--topbar-h")) || 112;
+  let pas = 0;
+  if (DERNIER_Y !== null) { if (DERNIER_Y < haut + 48) pas = -8; else if (DERNIER_Y > innerHeight - 48) pas = 8; }
+  if (pas) window.scrollBy(0, pas);
+  DERNIER_SCROLL = window.scrollY;
+  AUTOSCROLL = requestAnimationFrame(defiler);
 }
 function dropHandlers(target, iso, slot) {
   target.addEventListener("dragover", ev => { if (!DRAG) return; ev.preventDefault(); ev.dataTransfer.dropEffect = "move"; if (!target.classList.contains("nodrop")) target.classList.add("over"); });
@@ -183,6 +233,7 @@ function dropHandlers(target, iso, slot) {
       const cible = MISC_LABEL[r.cible] ?? `chez ${PRAT[r.cible].label}`;
       if (armed.x || !rest) ARMED = null;
       render();
+      document.querySelector(`.day[data-date="${iso}"] .slot[data-slot="${r.cible}"] .brick:last-child`)?.classList.add("posee");
       toast(`${SAL[armed.s].label} placée ${cible} le ${fmtJour(iso)}` + (armed.x ? " (hors quota)" : rest ? ` — encore ${rest} à placer cette semaine` : " — semaine complète"));
     }
   });
@@ -193,7 +244,7 @@ function render() {
   const cp = CPOP;
   const cal = document.getElementById("calendar"); cal.innerHTML = "";
   WEEKS.forEach((w, wi) => {
-    const week = el("section", "week" + (wi === CURRENT_WEEK ? " current" : "")); week.dataset.week = wi;
+    const week = el("section", "week" + (wi === CURRENT_WEEK ? " current" : "") + (PLIEES.has(wi) ? " pliee" : "")); week.dataset.week = wi;
     week.addEventListener("mouseenter", () => { if (CURRENT_WEEK !== wi) { CURRENT_WEEK = wi; renderPalette(); document.querySelectorAll(".week").forEach((x,i) => x.classList.toggle("current", i === wi)); } });
     week.appendChild(bandEl(w, wi));
     const days = el("div", "days"); days.style.setProperty("--cols", SHOWN.length);
@@ -206,7 +257,11 @@ function render() {
   marquerViolations();
   majEntete();
 }
-function majEntete() {   // pastilles de version et de données, filtre, boutons d'API
+function allerA(wi) {   // brique 8 (D8.10, D8.13) : sommaire et flèches — déplie la semaine et la fait défiler sous la barre d'outils
+  CURRENT_WEEK = wi; PLIEES.delete(wi); render();
+  document.querySelector(`.week[data-week="${wi}"]`)?.scrollIntoView({block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth"});
+}
+function majEntete() {   // pastille de version, boutons d'API
   const modifie = M.empreinte() !== DERNIERE;
   const v = document.getElementById("version");
   const pub = META.publiee ? (META.publiee === META.numero ? " · publiée" : ` · publiée : v${META.publiee}`) : "";
@@ -220,10 +275,8 @@ function majEntete() {   // pastilles de version et de données, filtre, boutons
   else v.textContent = `Version ${META.numero} · non publiée`;
   v.classList.toggle("modifie", modifie && !META.autonome);
   v.classList.toggle("publiee", publiee && !modifie && !META.autonome);
-  // « Données Doctolib du jj/mm » : date locale « AAAA-MM-JJ » servie par la vue, découpée sans Date (le jour est celui du cabinet)
-  const d = document.getElementById("donnees"), du = META.donnees_du;
-  d.hidden = !du; d.textContent = du ? `Données Doctolib du ${du.slice(8, 10)}/${du.slice(5, 7)}` : "";
-  document.getElementById("filtre").value = FILTER?.s ?? "";
+  // Brique 8 (D8.2) : la pastille n'apparaît que hors de l'état stable « Publiée (vN) » ; toujours visible dans la copie
+  v.hidden = !META.autonome && publiee && !modifie;
   document.getElementById("btnUndo").disabled = !M.peutAnnuler();
   document.getElementById("btnSave").disabled = META.autonome || !modifie;
   document.getElementById("btnCopie").disabled = META.autonome || modifie || !META.numero;
@@ -256,7 +309,7 @@ function bilanEl() {
     const ab = absences(s.id, DATA.meta.debut, DATA.meta.fin); absTot += ab.total;
     const nbCours = nbCoursMois(s.id);
     const abTxt = [...Object.entries(ab.parType).map(([t, n]) => `<span class="${ABS[t]?.cls ?? ""}">${n} ${ABS[t]?.code ?? esc(t)}</span>`), ...(nbCours ? [`<span class="abs-cours">${nbCours} cours</span>`] : [])].join(" · ") || "—";
-    const dim = FILTER?.s && FILTER.s !== s.id ? " dimrow" : "";
+    const dim = horsS(s.id) ? " dimrow" : "";
     rows += `<tr><td class="${dim}" style="--fg:${s.couleur[1]}"><i></i>${esc(s.label)}</td><td class="${p < q ? "short" : "full"}${dim}">${p + x} / ${q}</td><td class="${dim}">${fmtH(hd)}</td><td class="${dim}">${fmtH(hp)}</td><td class="${hs ? "sup" : ""}${dim}">${hs ? "+" + fmtH(hs) : "—"}</td><td class="${dim}">${abTxt}</td></tr>`;
   }
   const premiers = shownDays(WEEKS[0]), derniers = shownDays(WEEKS[WEEKS.length - 1]);
@@ -273,12 +326,17 @@ function bilanEl() {
 function bandEl(w, wi) {
   const b = el("div", "band");
   const d = shownDays(w);
-  b.appendChild(el("div", "wk", `Semaine ${w.num}<small>du ${fmtJour(d[0] ?? w.days[0])} au ${fmtJour(d[d.length-1] ?? w.days[6])}</small>`));
+  // Brique 8 (D8.9) : le titre est un bouton à chevron qui replie la semaine sur sa bande ; le reste de la bande garde son clic (semaine courante de la réserve)
+  const pliee = PLIEES.has(wi);
+  const wk = el("button", "wk", `<span class="chev" aria-hidden="true"></span><span class="wkt">Semaine ${w.num}<small>du ${fmtJour(d[0] ?? w.days[0])} au ${fmtJour(d[d.length-1] ?? w.days[6])}</small></span>`);
+  wk.type = "button"; wk.setAttribute("aria-expanded", String(!pliee)); wk.title = pliee ? "Déplier la semaine" : "Replier la semaine sur sa bande";
+  wk.addEventListener("click", ev => { ev.stopPropagation(); if (PLIEES.has(wi)) PLIEES.delete(wi); else PLIEES.add(wi); render(); });
+  b.appendChild(wk);
   const meters = el("div", "meters");
   for (const s of DATA.salaries) {
     const j = jauge(s, w), h = heures(s, w);
     const m = el("div", "meter"); m.style.setProperty("--fg", s.couleur[1]);
-    m.className = "meter" + (!j.r.rest.length && !j.extras ? " done" : "") + (FILTER?.s && FILTER.s !== s.id ? " hide" : "");
+    m.className = "meter" + (!j.r.rest.length && !j.extras ? " done" : "") + (horsS(s.id) ? " hide" : "");
     m.innerHTML = `<b>${esc(s.label)}</b><span class="squares">${j.sq || '<span style="color:var(--ink-3)">—</span>'}</span><span class="cnt">${j.texte}</span>${h.sup ? `<span class="hs">+${fmtH(h.sup)}</span>` : ""}`;
     m.title = `${s.nom} · ${j.q.length} j de contrat cette semaine` + (j.v.length ? `, dont ${j.v.length} en absence/férié` : "") + ` · ${fmtH(h.posees)} posées pour ${fmtH(h.dues)} dues` + (h.sup ? ` (+${fmtH(h.sup)} sup)` : "");
     meters.appendChild(m);
@@ -298,7 +356,7 @@ function bandEl(w, wi) {
 function dayEl(iso) {
   const wd = weekday(iso), fer = isFerie(iso) ? ferieName(iso) : null;
   const coms = notesDe(iso);
-  const day = el("div", "day" + (iso.slice(0,7) === DATA.meta.mois ? "" : " outside") + (fer ? " ferie" : "") + (coms.length ? " noted" : "") + (nonCouvert(iso) ? " noncouvert" : "")); day.dataset.date = iso;
+  const day = el("div", "day" + (iso.slice(0,7) === DATA.meta.mois ? "" : " outside") + (fer ? " ferie" : "") + (coms.length ? " noted" : "") + (nonCouvert(iso) ? " noncouvert" : "") + (iso === AUJOURDHUI ? " today" : "")); day.dataset.date = iso;
   const d = toDate(iso);
   const head = el("div", "day-head", `<span class="num">${d.getDate()}</span><span>${DOW_ABR[wd]}</span>${d.getDate() === 1 || iso.slice(0,7) !== DATA.meta.mois ? `<span class="m">${MOIS[d.getMonth()]}</span>` : ""}${fer ? `<span class="fer">${esc(fer)}</span>` : ""}`);
   if (coms.length) {
@@ -321,7 +379,7 @@ function dayEl(iso) {
   if (nonCouvert(iso) && !fer) prats.appendChild(el("div", "nc", "sans données Doctolib"));
   for (const {p, l} of pres) {
     const bricks = bricksAt(iso, p.id), etat = bricks.length === 0 ? " empty" : bricks.length < p.attendues ? " partial" : "";
-    const sl = el("div", "slot prat" + etat + (p.a_part ? " wide" : "") + (FILTER?.p && FILTER.p !== p.id ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.style.setProperty("--pc", p.couleur[1]); sl.dataset.slot = p.id;
+    const sl = el("div", "slot prat" + etat + (p.a_part ? " wide" : "") + (horsP(p.id) ? " dim" : "") + (aucuneS(bricks) ? " dim" : "")); sl.style.setProperty("--pc", p.couleur[1]); sl.dataset.slot = p.id;
     const h = l.c.length ? l.c.map(([a,b]) => `${heure(a)}–${heure(b)}`).join(" · ") : (l.v === "planning fixe" ? "jours fixes" : "");
     sl.appendChild(el("div", "sl", `<b>${esc(p.label)}</b>${p.etiquette ? `<span class="et">${esc(p.etiquette)}</span>` : ""}${p.attendues > 1 ? `<span class="att">${bricks.length}/${p.attendues}</span>` : ""}${l.v === "ouvert (atypique)" || l.jc ? '<span class="dot"></span>' : ""}`));
     const details = `<b>${esc(p.nom)}</b><br><span class="h">${esc(h || "—")}</span>` +
@@ -336,7 +394,7 @@ function dayEl(iso) {
   const orph = orphelins(iso);
   for (const slot of orph) {
     const bricks = bricksAt(iso, slot), p = PRAT[slot];
-    const sl = el("div", "slot prat orphelin" + (FILTER?.p && FILTER.p !== slot ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.dataset.slot = slot;
+    const sl = el("div", "slot prat orphelin" + (horsP(slot) ? " dim" : "") + (aucuneS(bricks) ? " dim" : "")); sl.dataset.slot = slot;
     if (p) sl.style.setProperty("--pc", p.couleur[1]);
     const motif = p ? (fer ? "jour fermé" : "absent ce jour-là") : "inconnu";
     sl.appendChild(el("div", "sl", `<b>${esc(p?.label ?? slot)}</b><span class="et">hors présence · ${motif}</span>`));
@@ -346,45 +404,58 @@ function dayEl(iso) {
   }
   if (pres.length || nonCouvert(iso) || orph.length) day.appendChild(prats);
   // Secrétariat toujours présent, juste sous les praticiens ; Sureffectif et Administratif seulement s'ils contiennent une brique (ou pendant un placement)
-  for (const [slot, cls, label] of [MISC[1], MISC[0], MISC[2]]) {
+  // Brique 8 (D8.7, D8.8) : le libellé devient un pictogramme cliquable ; une ligne repliée montre « picto + N » et reste une cible de dépôt
+  for (const [slot, cls] of [MISC[1], MISC[0], MISC[2]]) {
     const bricks = bricksAt(iso, slot);
-    const sl = el("div", `slot misc ${cls}` + (slot !== "secretariat" && !bricks.length ? " collapsed" : "") + (FILTER?.p ? " dim" : "") + (FILTER?.s && !bricks.some(b => b.s === FILTER.s) ? " dim" : "")); sl.dataset.slot = slot; sl.appendChild(el("div", "ml", label));
+    const sl = el("div", `slot misc ${cls}` + (REPLIS[slot] ? " replie" : "") + (slot !== "secretariat" && !bricks.length ? " collapsed" : "") + (FILTER?.p ? " dim" : "") + (aucuneS(bricks) ? " dim" : "")); sl.dataset.slot = slot; sl.appendChild(boutonLigne(slot));
     const bk = el("div", "bricks"); bricks.forEach((b, i) => bk.appendChild(brickEl(b, {from:{date:iso, slot, index:i}})));
-    sl.appendChild(bk); dropHandlers(sl, iso, slot); day.appendChild(sl);
+    sl.appendChild(bk); if (REPLIS[slot]) sl.appendChild(el("span", "nb", String(bricks.length)));
+    dropHandlers(sl, iso, slot); day.appendChild(sl);
   }
   // absences du jour (lecture seule : elles se corrigent sur /absences/), comptées comme des journées placées
-  const absJour = DATA.salaries.filter(s => (congeDe(s.id, iso)?.bloque || coursDe(s.id, iso)) && !(FILTER?.s && FILTER.s !== s.id));
+  const absJour = DATA.salaries.filter(s => (congeDe(s.id, iso)?.bloque || coursDe(s.id, iso)) && !horsS(s.id));
   if (absJour.length) {
-    const sl = el("div", "slot misc absr" + (FILTER?.p ? " dim" : "")); sl.appendChild(el("div", "ml", "Absent"));
+    const sl = el("div", "slot misc absr" + (REPLIS.absent ? " replie" : "") + (FILTER?.p ? " dim" : "")); sl.appendChild(boutonLigne("absent"));
     const bk = el("div", "bricks");
     for (const s of absJour.filter(x => coursDe(x.id, iso))) { const vb = el("span", "vbrick abs-cours lecture", `${esc(s.label)} · COURS`); vb.title = `${s.nom} · cours`; bk.appendChild(vb); }
     for (const s of absJour.filter(x => congeDe(x.id, iso)?.bloque)) { const c = congeDe(s.id, iso), a = ABS[c.type]; const vb = el("span", `vbrick lecture ${a?.cls ?? ""}`, `${esc(s.label)} · ${a?.code ?? esc(c.type)}`); vb.style.color = a ? "" : "var(--ink-2)"; vb.title = `${s.nom} · ${c.type} — se corrige depuis l'écran des absences`; bk.appendChild(vb); }
-    sl.appendChild(bk); day.appendChild(sl);
+    sl.appendChild(bk); if (REPLIS.absent) sl.appendChild(el("span", "nb", String(absJour.length))); day.appendChild(sl);
   }
-  for (const sid of attentesDe(iso)) if (SAL[sid] && !(FILTER?.s && FILTER.s !== sid)) { const at = el("span", "attente", `${esc(SAL[sid].label)} : demande d'absence en attente`); at.title = "Demande à décider sur l'écran des absences ; ne bloque pas le planning"; day.appendChild(at); }
+  for (const sid of attentesDe(iso)) if (SAL[sid] && !horsS(sid)) { const at = el("span", "attente", `${esc(SAL[sid].label)} : demande d'absence en attente`); at.title = "Demande à décider sur l'écran des absences ; ne bloque pas le planning"; day.appendChild(at); }
   for (const p of DATA.praticiens) { const l = DATA.jours[iso]?.[p.id]; if (l && !l.pr && l.n > 0) notes.push(`<div>${esc(p.label)} · agenda ${l.v === "non planifié" ? "non ouvert" : esc(l.v)}, ${l.n} RDV</div>`); }
-  for (const s of DATA.salaries) { const c = congeDe(s.id, iso); if (c && !c.bloque && !(FILTER?.s && FILTER.s !== s.id)) notes.push(`<div>ℹ ${esc(s.label)} : ${esc(c.type.toLowerCase())}</div>`); }
+  for (const s of DATA.salaries) { const c = congeDe(s.id, iso); if (c && !c.bloque && !horsS(s.id)) notes.push(`<div>ℹ ${esc(s.label)} : ${esc(c.type.toLowerCase())}</div>`); }
   if (notes.length) day.appendChild(el("div", "notes", notes.join("")));
   return day;
 }
-function setTitle() { const qui = FILTER?.s ? SAL[FILTER.s].label : FILTER?.p ? PRAT[FILTER.p].label : null; document.getElementById("title").innerHTML = `Planning assistantes <span class="month">${esc(DATA.meta.libelle)}</span>` + (qui ? ` <span class="who">· ${esc(qui)}</span>` : ""); }
-function setFilter(f) { FILTER = f; render(); setTitle(); document.title = `Planning assistantes — ${DATA.meta.libelle}` + (FILTER?.s ? ` — ${SAL[FILTER.s].label}` : FILTER?.p ? ` — ${PRAT[FILTER.p].label}` : ""); }
+function setTitle() { const qui = nomsFiltre(); document.getElementById("title").innerHTML = `Planning assistantes <span class="month">${esc(DATA.meta.libelle)}</span>` + (qui ? ` <span class="who">· ${esc(qui)}</span>` : ""); }
+function setFilter(f) { FILTER = f; render(); setTitle(); const qui = nomsFiltre(); document.title = `Planning assistantes — ${DATA.meta.libelle}` + (qui ? ` — ${qui}` : ""); }
 function renderPalette() {
   const palette = document.getElementById("palette"); palette.innerHTML = "";
   const collapsed = document.body.classList.contains("pal-collapsed");
   const tg = el("button", "ptoggle", collapsed ? "Réserve ›" : "‹ Replier"); tg.title = collapsed ? "Afficher la réserve" : "Replier la réserve pour agrandir le calendrier";
   tg.addEventListener("click", () => { document.body.classList.toggle("pal-collapsed"); renderPalette(); });
   palette.appendChild(tg);
+  // Brique 8 (D8.9, D8.10) : sommaire des semaines, hors de .pbody donc visible panneau replié ; « tout replier / déplier » à côté
+  const som = el("nav", "sommaire"); som.setAttribute("aria-label", "Semaines");
+  WEEKS.forEach((w, wi) => {
+    const b = el("button", "sw" + (wi === CURRENT_WEEK ? " on" : "") + (PLIEES.has(wi) ? " pliee" : ""), `<span class="s">S</span>${w.num}`);
+    b.type = "button"; b.title = `Semaine ${w.num}` + (PLIEES.has(wi) ? " (repliée)" : ""); b.addEventListener("click", () => allerA(wi)); som.appendChild(b);
+  });
+  for (const [texte, court, titre, jeu] of [["tout replier", "▾▾", "Replier toutes les semaines sur leur bande", () => new Set(WEEKS.keys())], ["tout déplier", "▴▴", "Déplier toutes les semaines", () => new Set()]]) {
+    const b = el("button", "sw tous", collapsed ? court : texte); b.type = "button"; b.title = titre;
+    b.addEventListener("click", () => { PLIEES = jeu(); render(); }); som.appendChild(b);
+  }
+  palette.appendChild(som);
   const pal = el("div", "pbody"); palette.appendChild(pal);
   const w = WEEKS[CURRENT_WEEK], d = shownDays(w);
   // --- praticiens en tête : un clic filtre la vue
   pal.appendChild(el("div", "grp", "Praticiens"));
   const chips = el("div", "pchips");
-  for (const p of DATA.praticiens) { const c = el("button", "pchip" + (FILTER?.p === p.id ? " on" : ""), esc(p.label)); c.style.setProperty("--pc", p.couleur[1]); c.title = p.nom; c.addEventListener("click", () => setFilter(FILTER?.p === p.id ? null : {p: p.id})); chips.appendChild(c); }
+  for (const p of DATA.praticiens) { const c = el("button", "pchip" + (FILTER?.p?.includes(p.id) ? " on" : ""), esc(p.label)); c.style.setProperty("--pc", p.couleur[1]); c.title = p.nom; c.addEventListener("click", () => setFilter(basculer("p", p.id))); chips.appendChild(c); }
   pal.appendChild(chips);
   // --- filtre actif
   const fb = el("div", "filtre-bar" + (FILTER ? " on" : "")); fb.style.marginTop = "6px";
-  if (FILTER) { fb.innerHTML = `Vue filtrée : <b>${esc(FILTER.s ? SAL[FILTER.s].label : PRAT[FILTER.p].label)}</b>`; const off = el("button", "btn", "Tout afficher"); off.addEventListener("click", () => setFilter(null)); fb.appendChild(off); }
+  if (FILTER) { fb.innerHTML = `Vue filtrée : <b>${esc(nomsFiltre())}</b>`; const off = el("button", "btn", "Tout afficher"); off.addEventListener("click", () => setFilter(null)); fb.appendChild(off); }
   pal.appendChild(fb);
 
   // --- tuiles salariées
@@ -393,7 +464,7 @@ function renderPalette() {
     const grid = el("div", "tiles");
     for (const s of DATA.salaries.filter(x => x.role === role)) {
       const j = jauge(s, w), r = j.r, q = j.q, h = heures(s, w);
-      const tile = el("div", "tile" + (FILTER?.s === s.id ? " on" : "")); tile.style.setProperty("--fg", s.couleur[1]); tile.style.setProperty("--bg", s.couleur[0]);
+      const tile = el("div", "tile" + (FILTER?.s?.includes(s.id) ? " on" : "")); tile.style.setProperty("--fg", s.couleur[1]); tile.style.setProperty("--bg", s.couleur[0]);
       const badges = {}; for (const v of j.v) badges[v.code] = badges[v.code] ? badges[v.code] + 1 : 1;
       const badgeHtml = Object.entries(badges).map(([code, n]) => `<span class="badge-abs ${j.v.find(v => v.code === code).cls}">${esc(code)}${n > 1 ? " ×" + n : ""}</span>`).join("");
       const nm = el("div", "nm", `<i></i>${esc(s.label)}${badgeHtml}<small>${s.heures_fixes ? `${s.fixes.length} j fixes` : s.etudiante ? "étudiante" : `${s.heures} h`}</small>`);
@@ -405,14 +476,14 @@ function renderPalette() {
       if (s.etudiante) { const n = nbCoursMois(s.id); tile.appendChild(el("div", "crs", `<span>cours ce mois</span><b>${n}</b>`)); }
       tile.appendChild(el("div", "mt", `<span class="squares">${j.sq || "—"}</span><span class="cnt">${j.texte}</span>${!r.rest.length && q.length ? '<span class="done" title="semaine placée">✓</span>' : ""}${h.sup ? `<span class="sup" title="heures supplémentaires cette semaine">+${fmtH(h.sup)}</span>` : ""}`));
       if (r.rest.length) { const stack = el("div", "stack"); r.rest.forEach(t => stack.appendChild(brickEl({s:s.id, t, x:false}, {palette:true}))); tile.appendChild(stack); }
-      tile.addEventListener("click", ev => { if (ev.target.closest(".brick,button")) return; setFilter(FILTER?.s === s.id ? null : {s: s.id}); });
+      tile.addEventListener("click", ev => { if (ev.target.closest(".brick,button")) return; setFilter(basculer("s", s.id)); });
       grid.appendChild(tile);
     }
     pal.appendChild(grid);
   }
   if (ARMED?.x) { const note = el("div", "sub", `Journée supplémentaire de ${SAL[ARMED.s].label} en main — cliquez une case.`); note.style.color = "var(--warn)"; note.style.marginTop = "8px"; pal.appendChild(note); }
   document.body.classList.toggle("placing", !!ARMED);
-  pal.appendChild(el("div", "hint", "Cliquez un nom pour filtrer. Glissez une brique (ou cliquez-la puis la case). + journée sup. Les absences et les cours se corrigent depuis l'écran des absences. Glissez une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
+  pal.appendChild(el("div", "hint", "Cliquez un ou plusieurs noms pour filtrer (Échap efface). Glissez une brique (ou cliquez-la puis la case). + journée sup. Les absences et les cours se corrigent depuis l'écran des absences. Glissez une brique posée jusqu'ici pour la retirer. Ctrl+Z annule."));
   palette.addEventListener("dragover", ev => { if (DRAG?.from) { ev.preventDefault(); palette.classList.add("over"); } });
   palette.addEventListener("dragleave", () => palette.classList.remove("over"));
   palette.addEventListener("drop", ev => { ev.preventDefault(); palette.classList.remove("over"); if (DRAG?.from) { retirer(DRAG.from); DRAG = null; } });
@@ -502,13 +573,25 @@ function signalerErreur(nom, source, ligne) {
 function boot() {
   setTitle();
   document.title = `Planning assistantes — ${DATA.meta.libelle}` + (META.autonome ? ` (copie v${META.numero})` : "");
-  const genere = new Date(DATA.meta.genere); const quand = isNaN(genere.getTime()) ? DATA.meta.genere : genere.toLocaleString("fr-FR", {dateStyle: "short", timeStyle: "short"});
-  document.getElementById("subtitle").textContent = `Généré le ${quand} · Doctolib · présence = agenda ouvert ou ≥ ${DATA.meta.seuils.presence_h} h de rendez-vous`;
+  // Brique 8 (D8.3) : la date des données prend la place de l'horodatage de génération — date locale « AAAA-MM-JJ » servie par la vue, découpée sans Date (le jour est celui du cabinet)
+  const du = META.donnees_du;
+  document.getElementById("subtitle").textContent = (du ? `Données Doctolib du ${du.slice(8, 10)}/${du.slice(5, 7)} · ` : "Doctolib · ") + `présence = agenda ouvert ou ≥ ${DATA.meta.seuils.presence_h} h de rendez-vous`;
   // Brique 6d : `bottom` du .topbar collé = barre commune (absente de la copie) + barre d'outils ; la réserve colle dessous
   const mesure = () => document.documentElement.style.setProperty("--topbar-h", document.querySelector(".topbar").getBoundingClientRect().bottom + "px");
   mesure(); window.addEventListener("resize", mesure); if (window.ResizeObserver) new ResizeObserver(mesure).observe(document.querySelector(".topbar"));
   const alertes = (DATA.meta.alertes ?? []).slice();
   if (alertes.length) bandeau(esc(alertes.join(" · ")));
+  // Brique 8 (D8.8) : lignes de rôle repliées, mémorisées par le navigateur (localStorage), par type de ligne
+  try { REPLIS = JSON.parse(localStorage.getItem(CLE_REPLIS) ?? "{}") || {}; } catch (e) { REPLIS = {}; }
+  // Brique 8 (D8.9, D8.9-bis, décision B) : jour actuel en date locale (jamais toISOString) ; quand il tombe dans la grille,
+  // les semaines passées s'ouvrent repliées et la réserve s'ouvre sur la semaine en cours ; mois passé ou à venir : tout déplié
+  const t = new Date(); AUJOURDHUI = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`;
+  if (WEEKS.length && AUJOURDHUI >= WEEKS[0].days[0] && AUJOURDHUI <= WEEKS[WEEKS.length - 1].days[6]) {
+    WEEKS.forEach((w, wi) => { if (w.days[6] < AUJOURDHUI) PLIEES.add(wi); });
+    CURRENT_WEEK = Math.max(0, WEEKS.findIndex(w => w.days.includes(AUJOURDHUI)));
+  }
+  document.addEventListener("dragover", ev => { DERNIER_Y = ev.clientY; });   // brique 8 (D8.12) : position du pointeur pendant un glisser
+  for (const s of DATA.salaries) TXT[s.id] = texteSur(s.couleur[1]);   // brique 8, lot 5 : texte blanc ou noir selon la luminance de l'encre
   // La proposition ne dépend que du numéro de version servi : 0 = aucune version, on propose.
   if (META.numero === 0 && !META.autonome) M.initialState();
   render();
@@ -522,10 +605,6 @@ function boot() {
   document.getElementById("btnImport").addEventListener("click", () => document.getElementById("importFile").click());
   document.getElementById("importFile").addEventListener("change", ev => { const f = ev.target.files[0]; if (!f) return; f.text().then(importFrom); ev.target.value = ""; });
   document.getElementById("btnReset").addEventListener("click", () => { if (confirm("Refaire toute la proposition ? Les placements manuels seront perdus.")) { M.snapshot(); M.initialState(); commit(); toast("Nouvelle proposition calculée"); } });
-  // Brique 6d : contrôle « Planning individuel » sur le filtre existant (FILTER {s}) ; les options viennent de DATA.salaries
-  const filtre = document.getElementById("filtre");
-  for (const s of DATA.salaries) { const o = document.createElement("option"); o.value = s.id; o.textContent = s.label; filtre.appendChild(o); }
-  filtre.addEventListener("change", ev => setFilter(ev.target.value ? {s: ev.target.value} : null));
   // Brique 6d : le menu « Plus » (<details>) se referme après une entrée ou un clic hors du menu
   const plus = document.querySelector(".plus");
   plus.querySelector(".plus-menu").addEventListener("click", ev => { if (ev.target.closest("button")) plus.open = false; });
@@ -535,6 +614,10 @@ function boot() {
     if (ev.key === "Escape") { hideTip(true); if (CPOP) closeCpop(); else if (ARMED) { ARMED = null; render(); } else if (FILTER) setFilter(null); }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "z") { ev.preventDefault(); annuler(); }
     if ((ev.ctrlKey || ev.metaKey) && ev.key.toLowerCase() === "s") { ev.preventDefault(); if (!META.autonome) enregistrer(); }
+    // Brique 8 (D8.13) : ← → d'une semaine à l'autre, seulement sans rien en main, sans modificateur, hors champs, panneau et commentaires
+    if ((ev.key === "ArrowLeft" || ev.key === "ArrowRight") && !DRAG && !ARMED && !ev.ctrlKey && !ev.metaKey && !ev.altKey && !ev.shiftKey && !ev.target.closest("input,select,textarea,.palette,.cpop")) {
+      ev.preventDefault(); allerA(Math.min(WEEKS.length - 1, Math.max(0, CURRENT_WEEK + (ev.key === "ArrowRight" ? 1 : -1))));
+    }
   });
   window.addEventListener("beforeunload", ev => { if (META.autonome) return; if (M.empreinte() !== DERNIERE) { ev.preventDefault(); ev.returnValue = ""; } });
   window.onerror = (message, source, ligne, colonne, erreur) => { signalerErreur(erreur?.name ?? "Erreur", source, ligne); };

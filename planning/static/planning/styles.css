@@ -49,6 +49,16 @@
   .ptoggle{width:100%;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:11.5px;padding:4px 0;cursor:pointer;color:var(--ink-2);margin-bottom:8px;font-weight:700}
   .ptoggle:hover{border-color:var(--accent);color:var(--accent)}
   body.pal-collapsed .ptoggle{width:28px;padding:6px 0;writing-mode:vertical-rl}
+  /* brique 8 (D8.10, décisions C et D) : sommaire des semaines, « tout replier / déplier » ; en colonne de 28 px panneau replié */
+  .sommaire{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
+  .sw{border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:11px;font-weight:700;padding:1px 7px;cursor:pointer;color:var(--ink-2)}
+  .sw:hover{border-color:var(--accent);color:var(--accent)}
+  .sw.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-ink)}
+  .sw.pliee{color:var(--ink-3)}
+  .sw.tous{font-weight:400}
+  body.pal-collapsed .sommaire{flex-direction:column;align-items:stretch}
+  body.pal-collapsed .sw{width:28px;padding:0;font-size:10px;text-align:center}
+  body.pal-collapsed .sw .s{display:none}
 
   /* ---------- barre latérale : semaines, tuiles, praticiens, bilan ---------- */
   .wtabs{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:8px}
@@ -60,7 +70,7 @@
   .tile:hover{border-color:#C8DBE2}
   .tile.on{border-color:var(--accent);background:var(--accent-soft)}
   .tile.armed{border-color:var(--alert)}
-  .tile .nm{display:flex;align-items:center;gap:5px;font-weight:700;font-size:12px;color:var(--fg)}
+  .tile .nm{display:flex;align-items:center;gap:5px;font-weight:700;font-size:13px;color:var(--fg)}
   .tile .nm i{width:8px;height:8px;border-radius:50%;background:var(--fg);flex:none}
   .tile .nm small{font-weight:400;color:var(--ink-3);font-size:10px;white-space:nowrap}
   .tile .acts{display:flex;gap:3px;margin-left:auto}
@@ -123,13 +133,18 @@
   .brick.dim:hover{opacity:.6}
 
   /* ---------- semaine ---------- */
-  .week{margin-bottom:18px;background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:hidden}
-  .band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 14px;background:var(--card-2);cursor:pointer}
+  /* brique 8 (D8.9, D8.11) : overflow:clip (un ancêtre overflow:hidden neutralise position:sticky) ; bande collante sous la barre d'outils ; semaine repliée sur sa bande */
+  .week{margin-bottom:18px;background:var(--card);border-radius:var(--r-card);box-shadow:var(--shadow);overflow:clip;scroll-margin-top:calc(var(--topbar-h,112px) + 8px)}
+  .band{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:8px 14px;background:var(--card-2);cursor:pointer;position:sticky;top:var(--topbar-h,112px);z-index:5}
   .week.current .band{background:var(--accent-soft)}
-  .band .wk{font-weight:700;font-size:13px;min-width:190px}
-  .band .wk small{display:block;font-weight:400;color:var(--ink-2);font-size:11.5px}
+  .week.pliee .days{display:none}
+  .band .wk{font-weight:700;font-size:14px;min-width:190px;border:none;background:transparent;color:inherit;text-align:left;cursor:pointer;display:flex;align-items:center;gap:6px;padding:0}
+  .band .wk .chev{flex:none;width:8px;height:8px;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(45deg);margin:0 2px 3px 2px}
+  .week.pliee .band .wk .chev{transform:rotate(-45deg)}
+  .band .wk:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .band .wk small{display:block;font-weight:400;color:var(--ink-2);font-size:12px}
   .meters{display:flex;flex-wrap:wrap;gap:4px 14px;flex:1}
-  .meter{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-2)}
+  .meter{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink)}
   .meter b{color:var(--fg);font-weight:700}
   .squares{display:inline-flex;align-items:flex-end;gap:2px;height:12px}
   .sq{width:10px;height:10px;border:1.5px solid var(--fg);border-radius:3px;background:transparent}
@@ -137,7 +152,7 @@
   .sq.c{height:6px}
   .sq.x{border-color:var(--warn);background:var(--warn);height:10px}
   .sq.over{border-color:var(--alert);background:var(--alert)}
-  .meter .cnt{font-family:var(--mono);font-size:11px;color:var(--ink-2)}
+  .meter .cnt{font-family:var(--mono);font-size:12px;color:var(--ink)}
   .meter .hs{color:var(--warn);font-weight:700;font-size:10.5px}
   .meter.hide{display:none}
   .meter.done .cnt{color:var(--ok)}
@@ -154,9 +169,12 @@
   .day.ferie{background:repeating-linear-gradient(135deg,#F4F8F9 0 6px,#EAF1F3 6px 12px)}
   body.moving-abs .day{cursor:copy}
   .day.over{outline:2px solid var(--accent);outline-offset:-2px;background:var(--accent-soft)}
-  .day-head{display:flex;align-items:baseline;gap:6px;font-size:12px;color:var(--ink-2);padding-bottom:4px;font-weight:400}
-  .day-head .num{font-weight:700;font-size:16px;color:var(--ink)}
+  .day-head{display:flex;align-items:baseline;gap:6px;font-size:13px;color:var(--ink);padding-bottom:4px;font-weight:400}
+  .day-head .num{font-weight:700;font-size:17px;color:var(--ink)}
   .day.outside .day-head .num{color:var(--ink-3)}
+  /* brique 8 (D8.9-bis) : la colonne du jour actuel, calculée côté client */
+  .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .day.today .day-head .num{background:var(--accent);color:#fff;border-radius:var(--r-pill);padding:0 7px}
   .day-head .fer{margin-left:auto;font-size:11px;color:var(--alert);font-weight:700}
   .day-head .fbtn{display:none;margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:10px;padding:0 7px;cursor:pointer;color:var(--ink-2);line-height:16px}
   .day-head .fer + .fbtn{margin-left:4px}
@@ -201,7 +219,10 @@
   .slot.sur{--pc:var(--sur)}  .slot.secr{--pc:var(--secr)}  .slot.adm{--pc:var(--adm)}  .slot.absr{--pc:var(--ink-3)}
   .slot.misc.collapsed{display:none}
   body.placing .slot.misc.collapsed{display:flex;opacity:.7}
-  .vbrick{display:inline-flex;align-items:center;gap:5px;padding:1px 8px 1px 7px;border-radius:var(--r-pill);font-size:11px;font-weight:700;border:1px dashed currentColor;
+  /* brique 8 (D8.8) : une ligne repliée se rouvre le temps d'un placement, comme une ligne vide */
+  body.placing .slot.misc.replie .bricks{display:flex}
+  body.placing .slot.misc.replie .nb{display:none}
+  .vbrick{display:inline-flex;align-items:center;gap:5px;padding:1px 8px 1px 7px;border-radius:var(--r-pill);font-size:12px;font-weight:700;border:1px dashed currentColor;
     background:repeating-linear-gradient(135deg,transparent 0 4px,rgba(0,0,0,.05) 4px 8px);white-space:nowrap;position:relative}
   .vbrick .x{border:none;background:transparent;color:inherit;cursor:pointer;font-size:12px;padding:0;line-height:1;opacity:.7}
   .vbrick .x:hover{opacity:1}
@@ -210,30 +231,43 @@
   .slot.over{background:var(--accent-soft)!important;border-color:var(--accent)!important}
   .slot.nodrop{opacity:.4}
   .sl{display:flex;flex-wrap:wrap;align-items:center;gap:2px 6px;line-height:1.2}
-  .sl b{font-size:12px;font-weight:700;color:var(--ink)}
+  .sl b{font-size:13px;font-weight:700;color:var(--ink)}
   .sl .et{font-size:9px;text-transform:uppercase;letter-spacing:.08em;padding:1px 6px;border-radius:var(--r-pill);background:var(--ink);color:#fff;font-weight:700}
   .sl .att{font-size:10px;font-weight:700;padding:0 6px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--line);color:var(--ink-2)}
   .slot.prat.partial .sl .att{border-color:var(--warn);color:var(--warn)}
   .slot.prat.empty .sl .att{border-color:var(--alert);color:var(--alert)}
   .sl .dot{width:6px;height:6px;border-radius:50%;background:var(--warn);display:inline-block}
-  .slot.misc .ml{flex:none;width:66px;font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--pc)}
+  /* brique 8 (D8.7) : le libellé de ligne est un pictogramme cliquable de 22 px (66 px rendus aux briques) */
+  .slot.misc .ml{flex:none;width:22px;height:22px;border:none;background:transparent;color:var(--pc);padding:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;border-radius:6px}
+  .slot.misc .ml svg{width:14px;height:14px}
+  .slot.misc .ml:hover{background:var(--card-2)}
+  .slot.misc .ml:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
   .bricks{display:flex;flex-wrap:wrap;gap:3px;margin-top:3px;min-height:20px}
   .slot.misc .bricks{margin-top:0;flex:1}
+  /* brique 8 (D8.8) : ligne repliée = picto + nombre de noms, même hauteur qu'une ligne dépliée */
+  .slot.misc.replie .bricks{display:none}
+  .slot.misc.replie .nb{font-family:var(--mono);font-size:11px;color:var(--ink-2);padding:0 6px}
 
   /* ---------- briques ---------- */
-  .brick{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 8px;border-radius:var(--r-pill);background:var(--bg);color:var(--fg);
-    border:1px solid color-mix(in srgb,var(--fg) 28%,transparent);font-size:11.5px;font-weight:700;cursor:grab;user-select:none;position:relative;line-height:1.35;white-space:nowrap;transition:transform .12s,box-shadow .12s}
+  /* brique 8, lot 5 (D8.14, décision A) : brique pleine = encre de la personne, texte par luminance (--txt, page.js) ; pâle = proposée par le moteur */
+  .brick{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 8px;border-radius:var(--r-pill);background:var(--fg);color:var(--txt,#fff);
+    border:1px solid transparent;font-size:12.5px;font-weight:700;cursor:grab;user-select:none;position:relative;line-height:1.35;white-space:nowrap;transition:transform .12s,box-shadow .12s}
   .brick:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(20,23,23,.12)}
   .brick:active{cursor:grabbing;transform:none}
-  .brick .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:var(--r-pill);background:color-mix(in srgb,var(--fg) 14%,white)}
-  .brick.c{border-style:dashed}
-  .brick.auto{background:color-mix(in srgb,var(--bg) 45%,white);font-weight:500;font-style:italic}
-  .brick.x{box-shadow:inset 0 0 0 1.5px var(--warn)}
+  .brick .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:var(--r-pill);background:rgba(255,255,255,.22);color:inherit}
+  .brick.c{border:1px dashed rgba(255,255,255,.75)}
+  .brick.auto{background:var(--bg);color:var(--fg);border-color:color-mix(in srgb,var(--fg) 40%,transparent);font-weight:600;font-style:normal}
+  .brick.auto.c{border:1px dashed color-mix(in srgb,var(--fg) 60%,transparent)}
+  .brick.x{box-shadow:inset 0 0 0 1.5px #fff,inset 0 0 0 3px var(--warn)}   /* anneau blanc puis ambre : visible sur fond sombre */
+  .brick.auto.x{box-shadow:inset 0 0 0 1.5px var(--warn)}
   .brick.warn::after{content:"!";position:absolute;top:-6px;right:-5px;width:13px;height:13px;border-radius:50%;background:var(--warn);color:#fff;font-size:9px;line-height:13px;text-align:center;font-weight:700}
   .brick.armed{outline:2px solid var(--accent);outline-offset:1px}
   .brick.ghost{opacity:.4}
   .brick .rm{display:none;position:absolute;top:-7px;left:-6px;width:15px;height:15px;border-radius:50%;background:var(--ink);color:#fff;font-size:10px;line-height:15px;text-align:center;cursor:pointer;border:none;padding:0}
   .slot .brick:hover .rm{display:block}
+  /* brique 8 (D8.12) : bref flash de la brique qui vient d'être posée */
+  .brick.posee{animation:posee .6s ease-out}
+  @keyframes posee{from{box-shadow:0 0 0 3px var(--accent)}to{box-shadow:none}}
 
   .notes{margin-top:auto;font-size:10.5px;color:var(--ink-3);line-height:1.3;font-weight:400}
   .notes div{padding-left:9px;text-indent:-9px}
@@ -276,7 +310,7 @@
   #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   #toast.err{background:var(--alert)}
 
-  @media (prefers-reduced-motion:reduce){#toast,.brick,#tip{transition:none}}
+  @media (prefers-reduced-motion:reduce){#toast,.brick,#tip{transition:none} .brick.posee{animation:none}}
 
   /* ---------- impression ---------- */
   @media print{
@@ -291,12 +325,20 @@
     .calendar{padding:0}
     .week{break-inside:avoid;page-break-inside:avoid;margin-bottom:8px;box-shadow:none;border:1px solid var(--line)}
     .bilan{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
-    .band{background:#f4f4f4!important;cursor:default}
+    .band{background:#f4f4f4!important;cursor:default;position:static}
+    .week.pliee .days{display:grid}   /* brique 8 : tout s'imprime, même replié à l'écran */
+    .day.today{box-shadow:none}
+    .day.today .day-head .num{background:none;color:var(--ink);padding:0}
     .day{min-height:0}
     .slot{background:#fff}
     .slot.prat.empty{background:#fff;border-color:var(--alert)}
     .slot.prat.partial{background:#fff;border-color:var(--warn)}
     .brick,.sq,.day.outside,.day.ferie,.slot,.band{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    /* brique 8, lot 5 (décision A) : pâle au papier */
+    .brick{background:var(--bg);color:var(--fg);border-color:var(--fg)}
+    .brick .tag{background:transparent}
+    .brick.x{box-shadow:inset 0 0 0 1.5px var(--warn)}
+    .brick.c{border-color:var(--fg)}
   }
 
   /* ---------------------------------------------------------------- brique 4a
@@ -309,6 +351,7 @@
   .topbar .version{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);background:var(--line-2);color:var(--ink-2);font-size:12px;white-space:nowrap}
   .topbar .version.publiee{background:var(--ok-bg);color:var(--ok)}
   .topbar .version.modifie{background:var(--warn-bg);color:var(--warn);font-weight:700}
+  .topbar .version[hidden]{display:none}   /* brique 8 (D8.2) : l'attribut hidden doit battre le display:inline-block ci-dessus */
   .btn:disabled{opacity:.45;cursor:not-allowed}
   body.autonome .btn.api{display:none}
   .banner.err{background:var(--alert-bg);color:var(--alert);border-color:var(--alert)}
@@ -327,15 +370,12 @@
 
   /* ---------------------------------------------------------------- brique 6d
      Enveloppe : en-tête sur une ligne (‹ mois ›, titre et sous-titre en colonne,
-     pastilles), filtre « Planning individuel », menu « Plus », bandeau « écran
-     large ». Rien de la grille (brique 8). */
+     pastilles), menu « Plus », bandeau « écran large ». La pastille « Données
+     Doctolib du … » et le filtre « Planning individuel » sont retirés en brique 8 (D8.3, D8.4). */
   .topbar .titre{display:flex;flex-direction:column}
   .topbar h1{font-size:18px}
   .topbar .mois{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--card);color:var(--ink-2);text-decoration:none;font-size:16px;line-height:1}
   .topbar .mois:hover{border-color:var(--accent);color:var(--accent)}
-  .topbar .donnees{display:inline-block;padding:3px 10px;border-radius:var(--r-pill);background:var(--line-2);color:var(--ink-2);font-size:12px;white-space:nowrap}
-  .topbar .filtre{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2);white-space:nowrap}
-  .topbar .filtre select{font:inherit;font-size:13px;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--card);color:var(--ink)}
   .plus{position:relative}
   .plus summary{display:inline-flex;align-items:center;list-style:none}
   .plus summary::-webkit-details-marker{display:none}

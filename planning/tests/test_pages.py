@@ -86,9 +86,9 @@ def test_page_servie(client, principale, connecter, cabinet):
     assert "socle/commun.css" not in contenu
     assert "socle/polices.css" not in contenu
     assert 'class="titre-page"' not in contenu
-    # Navigation : la barre porte les liens de gestion et l'unique déconnexion ;
-    # l'en-tête porte les mois voisins.
-    assert 'href="/presences/"' in contenu and 'href="/absences/"' in contenu
+    # Navigation : la barre porte les liens de gestion — sur le mois de la page depuis la
+    # brique 8 (D8.5) — et l'unique déconnexion ; l'en-tête porte les mois voisins.
+    assert f'href="/presences/{fabrique.MOIS}/"' in contenu and f'href="/absences/?mois={fabrique.MOIS}"' in contenu
     assert f'href="/planning/{mois_precedent(fabrique.MOIS)}/"' in contenu
     assert contenu.count('action="/deconnexion/"') == 1
 
