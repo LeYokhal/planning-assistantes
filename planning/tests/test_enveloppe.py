@@ -25,7 +25,7 @@ URL = f"/planning/{fabrique.MOIS}/"
 URL_COPIE = f"/planning/{fabrique.MOIS}/copie/"
 LIENS_PERSONNELS = ('href="/mes-jours/"', 'href="/mes-absences/"', 'href="/mon-profil/"')
 ADMIN = 'href="/admin/"'
-ONGLET_COURANT = 'href="/planning/" aria-current="page"'
+ONGLET_COURANT = f'href="/planning/{fabrique.MOIS}/" aria-current="page"'   # brique 8 : l'onglet suit le mois
 # Les six boutons rangés dans « Plus », dans l'ordre du dossier ; les trois qui restent au premier plan.
 IDS_PLUS = ("btnPropose", "btnExport", "btnImport", "btnCopie", "btnPrint", "btnReset")
 IDS_BARRE = ("btnUndo", "btnSave", "btnPublier")
@@ -93,7 +93,6 @@ def test_menu_plus_six_boutons_dans_l_ordre(client, cabinet, connecter):
         "Refaire la proposition",
     ):
         assert libelle in menu, libelle
-    assert 'id="filtre"' in contenu and 'id="donnees"' in contenu
 
 
 # --- 3. « Données Doctolib du … » -----------------------------------------------------
@@ -180,3 +179,47 @@ def test_corps_sans_lien_vers_l_application():
     for interdit in ("{% url", 'href="/', "/static/"):
         assert interdit not in source, interdit
     assert source.count("{% if nav_mois %}") == 2
+
+
+# --- 8. Brique 8 : en-tête allégé (D8.2 → D8.4) et gardes de source -------------------
+
+
+def _source(chemin):
+    return Path(finders.find(chemin)).read_text(encoding="utf-8")
+
+
+def test_entete_sans_selecteur_ni_pastille_donnees(client, cabinet, connecter):
+    """D8.3 et D8.4 : plus de pastille « Données Doctolib du … » ni de sélecteur « Planning individuel »."""
+    fabrique.jeu_complet(cabinet)
+    connecter(client, cabinet)
+    contenu = _page(client, URL)
+    assert 'id="filtre"' not in contenu and 'id="donnees"' not in contenu
+    assert 'id="version"' in contenu
+
+
+def test_sous_titre_et_pastille_de_version():
+    """D8.3 : la date des données remplace « Généré le … » ; D8.2 : `hidden` doit battre `display:inline-block`."""
+    page_js = _source("planning/page.js")
+    assert "Données Doctolib du" in page_js and "Généré le" not in page_js
+    assert ".version[hidden]" in _source("planning/styles.css")
+
+
+def test_filtre_multiple_sans_comparaison_simple():
+    """D8.6 : `FILTER` porte des listes ; aucune comparaison à un identifiant seul ne doit subsister."""
+    page_js = _source("planning/page.js")
+    for interdit in ("FILTER.s !==", "FILTER.p !==", "FILTER?.s ===", "FILTER?.p ==="):
+        assert interdit not in page_js, interdit
+
+
+def test_lignes_de_role_pictogrammes_et_repli():
+    """D8.7 : pictogrammes avec libellé accessible ; D8.8 : repli mémorisé dans le navigateur, jamais dans `STATE`."""
+    page_js = _source("planning/page.js")
+    for attendu in ("aria-label", "Secrétariat", "Administratif", "Sureffectif", "Absent", "localStorage"):
+        assert attendu in page_js, attendu
+
+
+def test_semaines_sommaire_et_fleches():
+    """D8.9 → D8.13 : flèches ← →, défilement vers une semaine, jour actuel calculé côté client."""
+    page_js = _source("planning/page.js")
+    for attendu in ("ArrowLeft", "scrollIntoView", "AUJOURDHUI"):
+        assert attendu in page_js, attendu

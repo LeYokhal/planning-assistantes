@@ -4,6 +4,8 @@ Une page par app pour chaque rôle ; la page planning, elle, reçoit la barre
 (`barre.css`, brique 6d) mais ni `commun.css` ni le titre de la coquille.
 """
 
+import re
+
 import pytest
 
 from absences.tests import fabrique as fabrique_absences
@@ -21,6 +23,15 @@ ADMIN = 'href="/admin/"'
 DECONNEXION = 'action="/deconnexion/"'
 
 
+def liens_attendus(url):
+    """Brique 8 (D8.5) : les onglets de gestion portent le mois de la page quand elle en a un."""
+    mois = re.search(r"\d{4}-\d{2}", url)
+    if not mois:
+        return LIENS_GESTION
+    m = mois.group(0)
+    return (f'href="/planning/{m}/"', f'href="/absences/?mois={m}"', f'href="/presences/{m}/"')
+
+
 def _page(client, url):
     reponse = client.get(url)
     assert reponse.status_code == 200, url
@@ -31,7 +42,7 @@ def _page(client, url):
 def test_cabinet(client, cabinet, connecter, url):
     connecter(client, cabinet)
     contenu = _page(client, url)
-    assert all(lien in contenu for lien in LIENS_GESTION)
+    assert all(lien in contenu for lien in liens_attendus(url))
     assert not any(lien in contenu for lien in LIENS_PERSONNELS)
     assert ADMIN in contenu
     assert DECONNEXION in contenu
@@ -43,7 +54,7 @@ def test_cabinet(client, cabinet, connecter, url):
 def test_principale(client, principale, connecter, url):
     connecter(client, principale)
     contenu = _page(client, url)
-    assert all(lien in contenu for lien in LIENS_GESTION)
+    assert all(lien in contenu for lien in liens_attendus(url))
     assert all(lien in contenu for lien in LIENS_PERSONNELS)
     assert ADMIN not in contenu  # le rôle, pas `is_staff`
     assert DECONNEXION in contenu
@@ -64,7 +75,7 @@ def test_salariee(client, salariee, connecter, url):
     connecter(client, salariee)
     contenu = _page(client, url)
     assert all(lien in contenu for lien in LIENS_PERSONNELS)
-    assert not any(lien in contenu for lien in LIENS_GESTION)
+    assert not any(lien in contenu for lien in liens_attendus(url))
     assert 'href="/personnes/"' not in contenu
     assert ADMIN not in contenu
     assert DECONNEXION in contenu
@@ -78,8 +89,9 @@ def test_page_courante(client, principale, connecter):
     connecter(client, principale)
     assert 'href="/absences/" aria-current="page">Absences</a>' in _page(client, "/absences/")
     presences = _page(client, f"/presences/{MOIS}/")
-    assert 'href="/presences/" aria-current="page">Présences &amp; personnes</a>' in presences
-    assert 'href="/presences/" aria-current="page">Présences</a>' in presences
+    # Brique 8 (D8.5) : la page porte un mois, l'onglet et le sous-onglet le suivent.
+    assert f'href="/presences/{MOIS}/" aria-current="page">Présences &amp; personnes</a>' in presences
+    assert f'href="/presences/{MOIS}/" aria-current="page">Présences</a>' in presences
     personnes = _page(client, "/personnes/")
     assert 'href="/presences/" aria-current="page">Présences &amp; personnes</a>' in personnes
     assert 'href="/personnes/" aria-current="page">Personnes</a>' in personnes
@@ -107,7 +119,7 @@ def test_page_planning_avec_barre_sans_commun(client, cabinet, connecter):
         '<details class="avatar"',
         "socle/barre.css",
         "socle/favicon.png",
-        'href="/planning/" aria-current="page"',
+        f'href="/planning/{MOIS}/" aria-current="page"',   # brique 8 : l'onglet suit le mois
     ):
         assert marque in contenu, marque
     for marque in ("socle/commun.css", "socle/polices.css", 'class="titre-page"'):
@@ -128,3 +140,24 @@ def test_une_seule_deconnexion_sur_le_tableau_de_bord(
 ):
     connecter(client, cabinet if role == "cabinet" else principale)
     assert _page(client, "/").count(DECONNEXION) == 1
+
+
+# --- Brique 8 (D8.5) : les onglets suivent le mois de la page ------------------
+
+
+@pytest.mark.parametrize(
+    ("url", "statut", "attendus"),
+    [
+        (f"/absences/?mois={MOIS}", 200, liens_attendus(f"/absences/?mois={MOIS}")),
+        ("/", 200, LIENS_GESTION),
+        # Mois invalide : la vue répond 404, la page 404 garde la barre, sur le mois courant.
+        ("/absences/?mois=abcd", 404, LIENS_GESTION),
+    ],
+)
+def test_onglets_suivent_le_mois(client, cabinet, connecter, url, statut, attendus):
+    connecter(client, cabinet)
+    reponse = client.get(url)
+    assert reponse.status_code == statut, url
+    contenu = reponse.content.decode()
+    assert 'class="onglets"' in contenu
+    assert all(lien in contenu for lien in attendus), attendus
