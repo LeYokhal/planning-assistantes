@@ -219,7 +219,7 @@ Hébergement Railway, image Docker, sonde de santé sur `/sante/`, migrations et
 création du compte cabinet au pré-déploiement par `python manage.py pre_deploiement`.
 Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
-- Cadrage de l'application (v1.12 — 11/09/2026 : périmètre, décisions C2 → C7, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
+- Cadrage de l'application (v1.13 — 12/09/2026 : périmètre, décisions C2 → C8, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
