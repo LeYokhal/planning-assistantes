@@ -162,9 +162,9 @@
   .band .adm{font-size:11px;color:var(--warn);white-space:nowrap}
   .band .adm.ok{color:var(--ok)}
 
-  .days{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));background:var(--card)}
-  .day{border-right:1px solid var(--line-2);padding:8px 8px 10px;min-height:120px;display:flex;flex-direction:column;gap:5px}
-  .day:last-child{border-right:none}
+  /* brique 8-bis : cases jour délimitées (bordure 1,5 px, coins arrondis comme une case praticien, 6 px d'air) */
+  .days{display:grid;grid-template-columns:repeat(var(--cols),minmax(0,1fr));background:var(--card);gap:6px;padding:6px 8px 10px}
+  .day{border:1.5px solid var(--line);border-radius:var(--r-slot);background:var(--card);padding:8px 8px 10px;min-height:120px;display:flex;flex-direction:column;gap:5px}
   .day.outside{background:var(--outside)}
   .day.ferie{background:repeating-linear-gradient(135deg,#F4F8F9 0 6px,#EAF1F3 6px 12px)}
   body.moving-abs .day{cursor:copy}
@@ -173,7 +173,7 @@
   .day-head .num{font-weight:700;font-size:17px;color:var(--ink)}
   .day.outside .day-head .num{color:var(--ink-3)}
   /* brique 8 (D8.9-bis) : la colonne du jour actuel, calculée côté client */
-  .day.today{box-shadow:inset 0 0 0 2px var(--accent)}
+  .day.today{border-color:var(--accent);border-width:2px}
   .day.today .day-head .num{background:var(--accent);color:#fff;border-radius:var(--r-pill);padding:0 7px}
   .day-head .fer{margin-left:auto;font-size:11px;color:var(--alert);font-weight:700}
   .day-head .fbtn{display:none;margin-left:auto;border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-size:10px;padding:0 7px;cursor:pointer;color:var(--ink-2);line-height:16px}
@@ -249,17 +249,14 @@
   .slot.misc.replie .nb{font-family:var(--mono);font-size:11px;color:var(--ink-2);padding:0 6px}
 
   /* ---------- briques ---------- */
-  /* brique 8, lot 5 (D8.14, décision A) : brique pleine = encre de la personne, texte par luminance (--txt, page.js) ; pâle = proposée par le moteur */
+  /* brique 8, lot 5 (D8.14) et 8-bis : toutes les briques sont pleines — encre de la personne, texte par luminance (--txt, page.js) ; le drapeau « proposée » reste dans l'infobulle */
   .brick{display:inline-flex;align-items:center;gap:5px;padding:2px 9px 2px 8px;border-radius:var(--r-pill);background:var(--fg);color:var(--txt,#fff);
     border:1px solid transparent;font-size:12.5px;font-weight:700;cursor:grab;user-select:none;position:relative;line-height:1.35;white-space:nowrap;transition:transform .12s,box-shadow .12s}
   .brick:hover{transform:translateY(-1px);box-shadow:0 2px 6px rgba(20,23,23,.12)}
   .brick:active{cursor:grabbing;transform:none}
   .brick .tag{font-size:9px;font-weight:700;padding:0 5px;border-radius:var(--r-pill);background:rgba(255,255,255,.22);color:inherit}
   .brick.c{border:1px dashed rgba(255,255,255,.75)}
-  .brick.auto{background:var(--bg);color:var(--fg);border-color:color-mix(in srgb,var(--fg) 40%,transparent);font-weight:600;font-style:normal}
-  .brick.auto.c{border:1px dashed color-mix(in srgb,var(--fg) 60%,transparent)}
   .brick.x{box-shadow:inset 0 0 0 1.5px #fff,inset 0 0 0 3px var(--warn)}   /* anneau blanc puis ambre : visible sur fond sombre */
-  .brick.auto.x{box-shadow:inset 0 0 0 1.5px var(--warn)}
   .brick.warn::after{content:"!";position:absolute;top:-6px;right:-5px;width:13px;height:13px;border-radius:50%;background:var(--warn);color:#fff;font-size:9px;line-height:13px;text-align:center;font-weight:700}
   .brick.armed{outline:2px solid var(--accent);outline-offset:1px}
   .brick.ghost{opacity:.4}
@@ -327,9 +324,9 @@
     .bilan{break-inside:avoid;box-shadow:none;border:1px solid var(--line)}
     .band{background:#f4f4f4!important;cursor:default;position:static}
     .week.pliee .days{display:grid}   /* brique 8 : tout s'imprime, même replié à l'écran */
-    .day.today{box-shadow:none}
+    .day.today{border-color:var(--line);border-width:1px}
     .day.today .day-head .num{background:none;color:var(--ink);padding:0}
-    .day{min-height:0}
+    .day{min-height:0;border-width:1px}
     .slot{background:#fff}
     .slot.prat.empty{background:#fff;border-color:var(--alert)}
     .slot.prat.partial{background:#fff;border-color:var(--warn)}
