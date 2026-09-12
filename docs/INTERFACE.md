@@ -1,4 +1,4 @@
-# Interface — la coquille (brique 6a)
+# Interface — la coquille (brique 6a) et l'enveloppe du planning (brique 6d)
 
 La brique 6 rhabille l'application par rôle sans toucher à la grille du
 planning, au moteur, aux contrats `DATA` / `STATE`, aux règles ni aux droits
@@ -28,19 +28,27 @@ restent vertes, aucune migration.
 `base.html` est la racine de tous les gabarits d'app (la copie autonome du
 planning, `planning/copie.html`, ne l'étend pas). Ses blocs, dans l'ordre :
 `classe_html`, `titre`, `style_base`, `tete`, `classe_corps`, `en_tete_page`
-(qui contient `entete`, le `h1` de la page), `contenu`, `navigation_page` (qui
-contient `navigation`), `scripts`. Aucun bloc n'a été renommé en 6a.
+(qui contient `titre_page`, lui-même contenant `entete`, le `h1` de la page),
+`contenu`, `navigation_page` (qui contient `navigation`), `scripts`. Aucun bloc
+n'a été renommé en 6a ; la 6d a ajouté, à l'intérieur d'`en_tete_page`, le bloc
+imbriqué `titre_page` (le titre de page, § ci-dessous).
 
-**Règle d'isolement.** `planning/templates/planning/page.html` **vide**
-`style_base` et `en_tete_page` pour imposer sa propre mise en page. Tout
-balisage de coquille vit donc **dans l'un de ces deux blocs** — la feuille de
-style dans `style_base`, la barre, les onglets, le menu et le `h1` dans
-`en_tete_page` — et la page planning n'en reçoit rien. La seule exception
-voulue est le favicon, posé dans `<head>` hors bloc, donc présent sur toutes les
-pages. `socle/tests/test_navigation.py::test_page_planning_sans_coquille`
-vérifie qu'un `/planning/<AAAA-MM>/` servi avec le jeu complet ne contient ni
-`class="barre"`, ni `<details class="avatar"`, ni `socle/commun.css`, ni
-`socle/polices.css`, et contient `socle/favicon.png` ;
+**Règle d'isolement (révisée en 6d).** `planning/templates/planning/page.html`
+**redéfinit** `style_base` (`barre.css` seule) et **vide**, dans `en_tete_page`, le
+seul bloc imbriqué `titre_page` : la page planning reçoit donc la barre haute, les
+onglets et le menu avatar, mais **aucune feuille de la coquille** — ni `commun.css`
+ni `polices.css` ne s'y chargent. La barre s'y affiche grâce à `barre.css` seule
+(§ 8), qui est **autonome** : elle ne dépend d'aucune règle générale de
+`commun.css`. Le favicon reste posé dans `<head>` hors bloc, présent sur toutes
+les pages. Conséquence pour toute brique à venir : un style de barre va dans
+`barre.css` ; un balisage de coquille hors barre va dans `style_base` ou
+`titre_page`, jamais ailleurs dans `en_tete_page`.
+`socle/tests/test_navigation.py::test_page_planning_avec_barre_sans_commun`
+vérifie qu'un `/planning/<AAAA-MM>/` servi avec le jeu complet contient
+`planning-data`, `class="barre"`, `<details class="avatar"`, `socle/barre.css`,
+`socle/favicon.png` et l'onglet Planning courant
+(`href="/planning/" aria-current="page"`), et ne contient ni `socle/commun.css`,
+ni `socle/polices.css`, ni `class="titre-page"` ;
 `test_contexte.py::test_cout_page_planning` fige son nombre de requêtes (§ 3).
 
 Ce que rend `en_tete_page` :
@@ -65,14 +73,17 @@ Ce que rend `en_tete_page` :
   présences ou de personnes ; le sous-onglet courant est celui de l'app résolue.
 - **Onglets bas** « Mes jours | Mes absences » pour le rôle `salariee`, sur
   toutes ses pages, quel que soit l'écran (règle par rôle, sans `@media`).
-- **Titre de page** : `<div class="titre-page"><h1>{% block entete %}…</h1></div>`,
-  rempli par chaque gabarit comme avant.
+- **Titre de page** : le bloc imbriqué `titre_page` (6d) enveloppe
+  `<div class="titre-page"><h1>{% block entete %}…</h1></div>`, rempli par chaque
+  gabarit comme avant ; la page planning vide `titre_page` et porte son propre
+  en-tête.
 
 `<main>` rend les messages Django dans `<ul class="messages">` avec la classe
 du niveau (`success`, `info`, `warning`, `error`, `debug` traité comme `info`),
 stylés par `commun.css` ; puis `contenu`. Le `<nav>` de bas de page
-(`navigation_page`) est inchangé : les gabarits qui n'ont pas encore été
-rhabillés y écrivent toujours leurs liens (§ 10).
+(`navigation_page`) est inchangé pour les gabarits qui n'ont pas encore été
+rhabillés (§ 10) ; la page planning n'en a plus depuis la 6d, les mois voisins
+étant dans son en-tête (‹ ›, URL calculées par la vue).
 
 ## 3. Processeur de contexte `socle.contexte.coquille`
 
@@ -98,9 +109,10 @@ l'administration, qui ne rendent pas la barre, ne paient donc aucune requête ;
 une page qui la rend en paie **une** de plus, et seulement pour un compte
 rattaché (un `personne_id` nul ne déclenche rien).
 
-Coûts figés par `socle/tests/test_contexte.py`, identiques à ceux d'avant la
-brique : `/planning/2026-10/` avec le jeu complet **9** requêtes, sans import
-**4**, `/admin/` **3**, `/connexion/` et un 404 anonyme **0**.
+Coûts figés par `socle/tests/test_contexte.py` : `/planning/2026-10/` avec le
+jeu complet **10** requêtes (9 avant la 6d, plus la date du dernier import
+retenu ; **11** pour une principale rattachée, la barre lisant sa personne),
+sans import **4**, `/admin/` **3**, `/connexion/` et un 404 anonyme **0**.
 
 ## 4. Page d'arrivée `/`
 
@@ -227,16 +239,18 @@ d'import, boutons de liste) sont inchangés : ils héritent du nouveau
 | Fichier | Rôle |
 |---|---|
 | `polices.css` | les quatre `@font-face` Satoshi, **copiés** de `planning/static/planning/styles.css` (duplication assumée : `styles.css` est un fichier de la 6d ; l'option de faire pointer `page.html` sur `polices.css` reste ouverte) |
-| `commun.css` | la coquille : variables de la charte dans `:root` (mêmes valeurs que `styles.css`) et `color-scheme: light` ; barre, avatar et menu ; sous-onglets et onglets bas ; corps de page — la largeur de lecture est portée par `main` (`body.large` l'élargit, comme avant sur `body`) ; formulaires et boutons — la pilule bleue est la classe `.bouton` (`.bouton.contour` pour le contour), un `button` nu ne reçoit que la police et le curseur ; messages Django et bandeaux ; cartes et pastilles du tableau de bord. Aucune règle de largeur (`@media`) : elles arrivent avec la 6b ; une seule `@media print` |
+| `barre.css` | **la barre haute, autonome** (6d) : barre, onglets, sous-onglets, menu avatar et les règles générales dont ils dépendent (police, liens, `button` nu), extraites de `commun.css` pour que la barre s'affiche sur la page planning, qui ne charge pas `commun.css` ; chargée par `base.html` sur toutes les pages dans le bloc `style_base`, et par `page.html` seule dans son propre `style_base` |
+| `commun.css` | la coquille : variables de la charte dans `:root` (mêmes valeurs que `styles.css`) et `color-scheme: light` (barre, onglets, sous-onglets et avatar sont dans `barre.css` depuis la 6d) ; onglets bas ; corps de page — la largeur de lecture est portée par `main` (`body.large` l'élargit, comme avant sur `body`) ; formulaires et boutons — la pilule bleue est la classe `.bouton` (`.bouton.contour` pour le contour), un `button` nu ne reçoit que la police et le curseur ; messages Django et bandeaux ; cartes et pastilles du tableau de bord. Aucune règle de largeur (`@media`) : elles arrivent avec la 6b ; une seule `@media print` |
 | `administration.css` | les variables de `admin/css/base.css` avec les valeurs de la charte, l'en-tête de 52 px, l'index en blocs |
 | `favicon.png` | 256 × 256 : la dent blanche du logo du cabinet sur un carré arrondi bleu (`--accent`, #1764D8), seuls les coins sont transparents ; référencé par `base.html` (`icon` et `apple-touch-icon`) et `base_site.html` |
 
-Les quatre fichiers sont collectés et hachés par `collectstatic`
+Les cinq fichiers sont collectés et hachés par `collectstatic`
 (`CompressedManifestStaticFilesStorage`, WhiteNoise) au build de l'image ; en
 test, la fixture `stockage_statique_simple` de `conftest.py` remplace le
 stockage par `django.contrib.staticfiles.storage.StaticFilesStorage` (aucun
-manifeste n'existe alors). `page.html`
-charge toujours `planning/styles.css`, `moteur.js` et `page.js` seuls.
+manifeste n'existe alors). `page.html` charge `planning/styles.css`,
+`moteur.js` et `page.js` ; la seule feuille du socle qui l'atteint est
+`barre.css`, qu'il charge lui-même dans son bloc `style_base`.
 
 ## 9. Tests
 
@@ -260,7 +274,7 @@ merge : 1 011 tests Python, 57 tests Node.
 
 ## 10. Limites et transition
 
-- Les gabarits des sous-briques 6b, 6c et 6d gardent leur bloc `navigation`
+- Les gabarits des sous-briques 6b et 6c gardent leur bloc `navigation`
   (liens « Accueil — … », bouton « Se déconnecter » en bas de page) : jusqu'à
   leur rhabillage, ces pages proposent **deux** déconnexions et la coquille
   s'ajoute à leur mise en page d'origine. Voulu, pour ne toucher qu'aux
@@ -275,3 +289,15 @@ merge : 1 011 tests Python, 57 tests Node.
 - Le mois en cours sans version ni import porte à la fois « Aucune version
   enregistrée » et « Données Doctolib manquantes ».
 - `apple-touch-icon` est le même PNG ; iOS applique son propre masque aux coins.
+- **6d (mergée le 11/09/2026, `a39c3d5`, PR #29 ; recettée le 12/09)** : la page
+  planning porte la barre commune par `barre.css` seule, un en-tête sur une ligne
+  (‹ › vers les mois voisins, pastilles de version et de données), Annuler · Enregistrer
+  · Publier et un menu « Plus » (Proposer, Exporter (JSON), Importer, Télécharger une
+  copie, Imprimer, Refaire la proposition), le toast « rien n'a été publié » sur un 422,
+  le bandeau « écran large » sous 768 px, `page.js` au vouvoiement, les alertes « à
+  signaler au cabinet » pour la principale ; plus de navigation de bas de page.
+  Les neuf `id` de boutons restent dans le DOM. Retour de recette : pastilles et
+  sélecteur « Planning individuel » jugés redondants, retirés en **brique 8** (C6.20),
+  qui porte aussi le filtre à plusieurs noms et les onglets qui suivent le mois.
+  Poste de recette de référence : 1 536 × 864 (Chromebook 15,6" à 125 %) ; à 1 366 px la
+  barre d'outils passe sur deux lignes, hors critère, résorption attendue par la 8.
