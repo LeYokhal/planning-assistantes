@@ -32,7 +32,7 @@ from audit.services import journaliser
 from comptes.models import Personne
 from presences.fenetres import mois_precedent, mois_suivant, plage_mois
 
-from . import donnees, webhooks
+from . import donnees, effectif, webhooks
 from .models import PlanningVersion
 from .verification import nettoyer, verifier
 
@@ -202,6 +202,10 @@ def publier(mois, numero, qui, data=None):
     auteur = qui if getattr(qui, "is_authenticated", False) else None
     total = nb_briques(version.state)
     maintenant = timezone.now()
+    # Brique 6b (C6.9) : compte-rendu d'effectif jour par jour, calculé sur le
+    # `DATA` de la revérification et horodaté comme elle.
+    compte_rendu = effectif.calculer(data, version.state)
+    compte_rendu["calcule_le"] = maintenant.isoformat()
     plus_recente = PlanningVersion.objects.filter(mois=mois, numero__gt=numero)
     rows = (
         PlanningVersion.objects.filter(pk=version.pk, publiee=False)
@@ -214,6 +218,7 @@ def publier(mois, numero, qui, data=None):
                 "verifie_le": maintenant.isoformat(),
                 "imports": data["meta"].get("imports", []),
                 "nb_briques": total,
+                "effectif": compte_rendu,
             },
         )
     )
@@ -246,7 +251,12 @@ def jours_publies(personne, mois):
     de la date fait foi.
 
     Rend `{"numero", "publie_le", "jours": [{date, t, x, slot, slot_libelle,
-    hors_mois, source_numero}]}`. Ni congé, ni note, ni férié, ni type.
+    hors_mois, source_numero}], "effectif", "sans_effectif", "sans_compte_rendu"}`.
+    Ni congé, ni note, ni férié, ni type. Brique 6b (C6.9) : `effectif` =
+    `{iso: {moins, plus, ouvert}}` lu dans le compte-rendu de la version qui porte
+    le jour ; `sans_effectif` vrai si aucune version source n'en a (historique,
+    publiée avant la 6b) ; `sans_compte_rendu` = les jours dont la version
+    source n'en a pas (revue 4.6).
     """
     version = version_publiee(mois)
     if version is None:
@@ -267,11 +277,23 @@ def jours_publies(personne, mois):
 
     plage = plage_mois(mois)
     jours = []
+    # Brique 6b (C6.9) : le compte-rendu d'effectif de la version qui porte le
+    # jour (règle C4.8, comme les briques), lu une fois par version, sans requête.
+    comptes_rendus = {}
+    marques = {}
+    sans_compte_rendu = []
     jour = plage.debut
     while jour <= plage.fin:
         iso = jour.isoformat()
         cle = jour.strftime("%Y-%m")
         source = versions.get(cle) or version
+        if source.pk not in comptes_rendus:
+            comptes_rendus[source.pk] = effectif.lire(source)
+        compte_rendu = comptes_rendus[source.pk]
+        if not compte_rendu:
+            sans_compte_rendu.append(iso)
+        elif iso in compte_rendu:
+            marques[iso] = compte_rendu[iso]
         slots = (source.state.get("affectations") or {}).get(iso) or {}
         for slot, arr in slots.items():
             if not isinstance(arr, list):
@@ -292,4 +314,11 @@ def jours_publies(personne, mois):
                 )
         jour += datetime.timedelta(days=1)
 
-    return {"numero": version.numero, "publie_le": version.publie_le, "jours": jours}
+    return {
+        "numero": version.numero,
+        "publie_le": version.publie_le,
+        "jours": jours,
+        "effectif": marques,
+        "sans_effectif": not any(comptes_rendus.values()),
+        "sans_compte_rendu": sans_compte_rendu,
+    }

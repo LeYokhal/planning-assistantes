@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 
 import pytest
+from django.contrib.staticfiles import finders
 from django.template.loader import get_template
 
 from absences.tests import fabrique as fabrique_absences
@@ -183,3 +184,20 @@ def test_base_html_un_seul_script_apres_details():
     source = Path(get_template("socle/base.html").origin.name).read_text(encoding="utf-8")
     assert source.count("<script") == 1
     assert re.search(r'</details>\s*<script id="script-avatar">', source)
+
+
+# --- Brique 6b (F-1) : une seule `@media` de largeur, dans `commun.css`, hors de la page planning ---
+
+
+def _medias_de_largeur(chemin):
+    source = Path(finders.find(chemin)).read_text(encoding="utf-8")
+    return re.findall(r"@media[^{]*(?:min|max)-width", source)
+
+
+def test_barre_css_sans_media_de_largeur():
+    """La page planning ne charge que `barre.css` : aucune requête de largeur ne doit s'y glisser."""
+    assert _medias_de_largeur("socle/barre.css") == []
+
+
+def test_commun_css_une_seule_media_de_largeur():
+    assert len(_medias_de_largeur("socle/commun.css")) == 1

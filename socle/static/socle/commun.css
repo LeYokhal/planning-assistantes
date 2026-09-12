@@ -2,7 +2,7 @@
    Variables de la charte Espace K Dentaire, recopiées de planning/static/planning/styles.css ;
    chargée par le bloc `style_base` de socle/base.html — la page planning ne charge que barre.css
    (brique 6d), qui porte la barre haute, l'avatar, le menu et les sous-onglets.
-   Aucune règle de largeur ici : les points de rupture sont la brique 6b. */
+   Une seule requête de largeur, en fin de fichier (brique 6b, D6b.9) : la page planning ne charge pas cette feuille. */
 
 :root {
   color-scheme: light;
@@ -81,6 +81,74 @@ button:disabled { background: var(--line-2); border-color: var(--line-2); color:
 .pastille.refuse { background: var(--alert-bg); color: var(--alert); }
 .pastille.neutre { background: var(--line-2); color: var(--ink-2); }
 .code-etat { color: var(--ink-3); font-weight: 700; letter-spacing: .06em; margin: 0 0 .5rem; }
+
+/* ---------- espace salariée : « Mes jours » en grille (brique 6b, C6.8 / C6.9) ---------- */
+.titre-page.chevrons { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.titre-page.chevrons h1 { flex: 1; text-align: center; font-size: 18px; }
+.chevron { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 40px; height: 40px; border-radius: var(--r-pill); border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 22px; line-height: 1; text-decoration: none; }
+.chevron:hover { background: var(--card-2); color: var(--ink); }
+.version { color: var(--ink-2); font-size: 13px; margin: 0 0 .75rem; }
+.visuellement-cache { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.grille-mois { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 4px; margin: 0 -4px; }
+.grille-mois th { padding: 0 0 4px; font-size: 12px; font-weight: 500; color: var(--ink-3); }
+.grille-mois td { padding: 0; vertical-align: top; }
+.case { display: flex; flex-direction: column; align-items: center; justify-content: space-between; width: 100%; min-height: 3rem; padding: 4px 2px; border: 1px solid var(--line); border-radius: var(--r-slot); background: var(--card); color: var(--ink); font: inherit; font-size: 12px; line-height: 1.2; cursor: pointer; }
+.case .num { font-weight: 700; }
+.case .code { font-size: 11px; font-weight: 700; letter-spacing: .02em; white-space: nowrap; }
+.case .marqueurs { display: flex; gap: 4px; min-height: 1em; font-size: 14px; font-weight: 700; line-height: 1; }
+.moins { color: var(--alert); }
+.plus { color: var(--ok); }
+.case.brique { background: var(--accent-soft); border-color: var(--accent-soft); color: var(--accent-ink); }
+.case.absence-bloquante { background: var(--alert-bg); border-color: var(--alert-bg); color: var(--alert); }
+.case.absence-partielle { background: var(--warn-bg); border-color: var(--warn-bg); color: var(--warn); }
+.case.attente { background: var(--card); border: 1px dashed var(--accent); color: var(--accent-ink); }
+.case.ecole { background: var(--card-2); border-color: var(--card-2); color: var(--ink-2); }
+.case.ferie, .case.ferme { background: var(--card-2); border-color: var(--card-2); color: var(--ink-3); }
+.case.vide { color: var(--ink-2); }
+td.voisin .case { opacity: .55; border-style: dashed; }
+.case[aria-current="date"] { box-shadow: 0 0 0 2px var(--accent); }
+.case[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--ink); }
+.fiche { margin: 1rem 0 0; padding: 14px 16px; background: var(--card); border: 1px solid var(--line); border-radius: var(--r-card); }
+.fiche h2 { margin: 0 0 .5rem; font-size: 15px; }
+.fiche p { margin: .25rem 0; }
+.fiche .absence-bloquante { color: var(--alert); }
+.fiche .absence-partielle { color: var(--warn); }
+.fiche .raison { color: var(--ink-2); font-size: 13px; }
+.note { color: var(--ink-2); font-size: 13px; margin: .75rem 0 0; }
+.legende { display: grid; grid-template-columns: auto 1fr auto 1fr; gap: 6px 10px; align-items: center; margin: 1.25rem 0 0; font-size: 13px; color: var(--ink-2); }
+.legende dt, .legende dd { margin: 0; }
+.legende .case { width: 36px; min-height: 0; padding: 3px 0; font-size: 11px; cursor: default; }
+.legende .moins, .legende .plus { display: inline-block; width: 36px; text-align: center; font-size: 16px; font-weight: 700; }
+
+/* ---------- espace salariée : « Mes absences », « Nouvelle absence », profil (brique 6b, C6.19) ---------- */
+.actions { margin: 0 0 1rem; }
+details.mois { margin: 0 0 .75rem; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--card); }
+details.mois > summary { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; font-weight: 700; cursor: pointer; list-style: none; }
+details.mois > summary::-webkit-details-marker { display: none; }
+details.mois > summary::after { content: "›"; color: var(--ink-3); font-size: 20px; line-height: 1; transform: rotate(90deg); transition: transform .15s; }
+details.mois[open] > summary::after { transform: rotate(-90deg); }
+article.absence { margin: 0 8px 8px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-slot); background: var(--bg); }
+article.absence p { margin: 0 0 .35rem; }
+article.absence .dates { font-weight: 700; }
+article.absence .etat { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+article.absence .detail { color: var(--ink-2); font-size: 13px; }
+article.absence .vide { color: var(--ink-3); }
+article.absence form { margin: .5rem 0 0; }
+dialog { width: min(92vw, 24rem); padding: 20px; border: 1px solid var(--line); border-radius: var(--r-card); background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+dialog::backdrop { background: rgba(20, 23, 23, .45); }
+dialog p { margin: 0 0 1rem; font-weight: 700; }
+dialog form { display: flex; flex-direction: column; gap: 8px; }
+optgroup { font-weight: 700; color: var(--ink-2); }
+option { color: var(--ink); font-weight: 400; }
+.retour { margin-top: 1.25rem; }
+.carte h2 { margin: 0 0 .25rem; }
+
+/* ---------- la seule requête de largeur de la coquille (brique 6b, D6b.9) ---------- */
+@media (min-width: 48rem) {
+  .case { min-height: 4.25rem; }
+  .fiche { padding: 18px 20px; }
+  .titre-page.chevrons h1 { font-size: 20px; }
+}
 
 @media print {
   .onglets-bas, body > nav:last-of-type { display: none; }

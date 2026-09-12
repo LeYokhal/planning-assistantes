@@ -1,17 +1,13 @@
 {% extends "socle/base.html" %}
 
 {% block titre %}Mes jours — {{ libelle }} — Planning Assistantes{% endblock %}
-{% block entete %}Mes jours — {{ libelle }}{% endblock %}
 
-{% block tete %}
-  <style>
-    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
-    th { background: rgba(0,0,0,.04); }
-    tr.voisin td { color: #777; font-style: italic; }
-    .version { color: #666; margin-top: 0; }
-  </style>
-{% endblock %}
+{# Brique 6b (D6b.4) : le titre entre les chevrons des mois voisins, dans le bloc de titre de la coquille. #}
+{% block titre_page %}<div class="titre-page chevrons">
+  <a class="chevron" href="{% url 'planning:mes_jours' precedent %}" aria-label="Mois précédent">‹</a>
+  <h1>Mes jours — {{ libelle }}</h1>
+  <a class="chevron" href="{% url 'planning:mes_jours' suivant %}" aria-label="Mois suivant">›</a>
+</div>{% endblock %}
 
 {% block contenu %}
   {% if sans_personne %}
@@ -19,39 +15,87 @@
        personnel : vos jours ne peuvent pas être affichés. Signalez-le au
        cabinet.</p>
   {% elif not resultat %}
-    <p class="message">Le planning de {{ libelle }} n'est pas encore publié.</p>
+    <p class="message">Le planning de {{ libelle }} n'est pas encore publié.
+       Vous le verrez ici dès sa publication par le cabinet.</p>
   {% else %}
     <p class="version">Version {{ resultat.numero }}, publiée le
-       {{ resultat.publie_le|date:"d/m/Y" }} à {{ resultat.publie_le|date:"H:i" }}.
-       Les semaines complètes sont affichées : les jours d'un mois voisin sont
-       en italique.</p>
-    <table>
+       {{ resultat.publie_le|date:"d/m/Y" }} à {{ resultat.publie_le|date:"H:i" }}.</p>
+
+    <table class="grille-mois">
+      <caption class="visuellement-cache">Mes jours de {{ libelle }}, une case par jour ; touchez une case pour le détail.</caption>
       <thead>
-        <tr><th>Date</th><th>Journée</th><th>Avec</th></tr>
+        <tr>
+          <th scope="col" abbr="lundi">L</th>
+          <th scope="col" abbr="mardi">M</th>
+          <th scope="col" abbr="mercredi">M</th>
+          <th scope="col" abbr="jeudi">J</th>
+          <th scope="col" abbr="vendredi">V</th>
+          <th scope="col" abbr="samedi">S</th>
+          <th scope="col" abbr="dimanche">D</th>
+        </tr>
       </thead>
       <tbody>
-        {% for jour in resultat.jours %}
-          <tr{% if jour.hors_mois %} class="voisin"{% endif %}>
-            <td>{{ jour.date|date:"l d/m/Y" }}{% if jour.hors_mois %} <small>(mois voisin, planning {{ jour.date|date:"F" }})</small>{% endif %}</td>
-            <td>{% if jour.t == "C" %}journée courte (fin 16h30){% else %}journée{% endif %}{% if jour.x %} (heures sup){% endif %}</td>
-            <td>{{ jour.slot_libelle }}</td>
+        {% for semaine in grille.semaines %}
+          <tr>
+            {% for case in semaine %}
+              <td{% if case.hors_mois %} class="voisin"{% endif %}>
+                <button type="button" class="case {{ case.classe }}" aria-controls="fiche-{{ case.iso }}" aria-expanded="false"{% if case.aujourd_hui %} aria-current="date"{% endif %}>
+                  <span class="num">{{ case.jour }}</span>
+                  <span class="code">{{ case.code }}</span>
+                  <span class="marqueurs">{% if case.moins %}<span class="moins" aria-label="effectif insuffisant">−</span>{% endif %}{% if case.plus %}<span class="plus" aria-label="sureffectif">+</span>{% endif %}</span>
+                </button>
+              </td>
+            {% endfor %}
           </tr>
-        {% empty %}
-          <tr><td colspan="3">Aucun jour planifié pour vous sur cette période.</td></tr>
         {% endfor %}
       </tbody>
     </table>
+
+    {% if resultat.sans_effectif %}<p class="note">Effectif non renseigné pour ce mois.</p>{% endif %}
+
+    {# Une fiche par case (D6b.2 a) : rendue côté serveur, masquée, ouverte au toucher. #}
+    {% for semaine in grille.semaines %}{% for case in semaine %}
+    <section class="fiche" id="fiche-{{ case.iso }}" hidden>
+      <h2>{{ case.date|date:"l d/m/Y"|capfirst }}</h2>
+      {% if case.fiche.brique %}
+        <p class="brique">{% if case.fiche.brique.courte %}journée courte (fin 16h30){% else %}journée{% endif %} avec {{ case.fiche.brique.slot_libelle }}{% if case.fiche.brique.sup %} (heures sup){% endif %}</p>
+      {% endif %}
+      {% for absence in case.fiche.absences %}
+        <p class="absence {% if absence.ecole %}ecole{% elif absence.bloquant %}absence-bloquante{% else %}absence-partielle{% endif %}">{{ absence.type }} — {{ absence.statut }}</p>
+      {% endfor %}
+      {% if case.fiche.raison %}<p class="raison">{{ case.fiche.raison }}</p>{% endif %}
+    </section>
+    {% endfor %}{% endfor %}
+
+    <dl class="legende">
+      {% for entree in grille.legende %}
+        <dt>{% if entree.classe == "moins" or entree.classe == "plus" %}<span class="{{ entree.classe }}">{{ entree.code }}</span>{% else %}<span class="case {{ entree.classe }}">{{ entree.code }}</span>{% endif %}</dt>
+        <dd>{{ entree.libelle }}</dd>
+      {% endfor %}
+    </dl>
   {% endif %}
 {% endblock %}
 
-{% block navigation %}
-  <a href="{% url 'planning:mes_jours' precedent %}">← {{ precedent }}</a> —
-  <a href="{% url 'planning:mes_jours' suivant %}">{{ suivant }} →</a> —
-  <a href="{% url 'absences:mes_absences' %}">Mes absences</a> —
-  <a href="{% url 'comptes:profil' %}">Mon profil</a> —
-  <a href="/">Accueil</a> —
-  <form method="post" action="/deconnexion/" style="display:inline">
-    {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
-  </form>
+{# Brique 6b : la barre et les onglets bas portent déjà l'espace personnel et la déconnexion. #}
+{% block navigation %}{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () { // Brique 6b (D6b.2) : une seule fiche ouverte à la fois ; Échap referme.
+    var cases = document.querySelectorAll(".grille-mois .case");
+    function fermer() {
+      document.querySelectorAll(".fiche:not([hidden])").forEach(function (fiche) { fiche.hidden = true; });
+      cases.forEach(function (c) { c.setAttribute("aria-expanded", "false"); });
+    }
+    cases.forEach(function (c) {
+      c.addEventListener("click", function () {
+        var fiche = document.getElementById(c.getAttribute("aria-controls"));
+        var ouverte = c.getAttribute("aria-expanded") === "true";
+        fermer();
+        if (!ouverte && fiche) { fiche.hidden = false; c.setAttribute("aria-expanded", "true"); }
+      });
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") { fermer(); } });
+  })();
+</script>
 {% endblock %}

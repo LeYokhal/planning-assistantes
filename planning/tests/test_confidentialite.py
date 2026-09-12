@@ -186,7 +186,7 @@ def test_publication_sans_nom_ni_type(client, cabinet, connecter, caplog, settin
 
 
 def test_mes_jours_sans_type_ni_autre_personne(client, cabinet, salariee, connecter, caplog):
-    """La page « Mes jours » ne reçoit pas `DATA` : aucun type, aucune autre salariée."""
+    """La page « Mes jours » ne reçoit pas `DATA` : aucune autre salariée, aucun type d'une autre personne."""
     from absences.tests import fabrique as fabrique_absences
 
     jeu = fabrique.jeu_complet(cabinet)
@@ -196,7 +196,14 @@ def test_mes_jours_sans_type_ni_autre_personne(client, cabinet, salariee, connec
     connecter(client, salariee)
     with caplog.at_level(logging.INFO):
         contenu = client.get(f"/mes-jours/{fabrique.MOIS}/").content.decode()
-    for mot in TYPES + ("PETIT", "Sara", "ROUX", "Lina", "planning-data", "conges"):
+    # Brique 6b (D6b.11 amendée) : le type de SA propre absence (congé payé validé du 13 au 15) ne vit que
+    # dans ses fiches du jour ; les types des autres (retard de Lina, école de Lea) et leurs noms, nulle part.
+    morceaux = contenu.split('<section class="fiche"')
+    dans_les_fiches = "".join(m.split("</section>", 1)[0] for m in morceaux[1:])
+    hors_des_fiches = morceaux[0] + "".join(m.split("</section>", 1)[1] for m in morceaux[1:])
+    assert "Congé payé" in dans_les_fiches
+    assert "Congé payé" not in hors_des_fiches + caplog.text
+    for mot in ("Maladie", "Retard", "Ecole") + ("PETIT", "Sara", "ROUX", "Lina", "planning-data", "conges"):
         assert mot not in contenu + caplog.text, mot
 
 
