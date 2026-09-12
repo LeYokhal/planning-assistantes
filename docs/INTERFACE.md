@@ -13,6 +13,7 @@ le dossier de conception et les diff plans de la brique vivent hors dépôt.
 | Sous-brique | Contenu | État |
 |---|---|---|
 | **6a — coquille** | `socle/base.html` (barre haute, menu avatar, onglets bas, messages), feuille de style commune, tableau de bord sur `/`, connexion à quatre états, pages 403 / 404 / 500, administration habillée, favicon | **livrée** (PR #26) |
+| **6a-bis — aménagement (réduite, C6.21)** | « Ajouter » en pilule dans l'index d'admin, menu avatar fermé au clic extérieur et à Échap, tableau de bord à coût constant | **livrée** (PR #35) |
 | 6b — espace salariée | « Mes jours » en grille avec ses absences et les marqueurs d'effectif (C6.8, C6.9), « Mes absences », « Nouvelle absence », « Mon profil », premières règles de largeur (téléphone) | à venir |
 | 6c — absences, présences & personnes | écran de décision, présences du mois et import, liste des personnes, mois en français dans les liens | à venir |
 | 6d — enveloppe du planning | barre haute au-dessus de la barre d'outils, en-tête d'état, menu « Plus », bandeau « écran large » — `page.js` et la grille inchangés | à venir |
@@ -43,10 +44,15 @@ ni `polices.css` ne s'y chargent. La barre s'y affiche grâce à `barre.css` seu
 les pages. Conséquence pour toute brique à venir : un style de barre va dans
 `barre.css` ; un balisage de coquille hors barre va dans `style_base` ou
 `titre_page`, jamais ailleurs dans `en_tete_page`.
+Un **script de la barre** vit avec la barre (6a-bis) : inline dans `base.html`,
+juste après le `</details>` du menu avatar (`<details class="avatar">`), hors du
+bloc `scripts` (que `page.html` redéfinit sans `block.super`) — garde de source
+`test_base_html_un_seul_script_apres_details`.
 `socle/tests/test_navigation.py::test_page_planning_avec_barre_sans_commun`
 vérifie qu'un `/planning/<AAAA-MM>/` servi avec le jeu complet contient
 `planning-data`, `class="barre"`, `<details class="avatar"`, `socle/barre.css`,
-`socle/favicon.png` et l'onglet Planning courant
+`socle/favicon.png`, `id="script-avatar"` (6a-bis : six `<script` au total, le
+script de la barre en tête) et l'onglet Planning courant
 (`href="/planning/" aria-current="page"`), et ne contient ni `socle/commun.css`,
 ni `socle/polices.css`, ni `class="titre-page"` ;
 `test_contexte.py::test_cout_page_planning` fige son nombre de requêtes (§ 3).
@@ -62,7 +68,8 @@ Ce que rend `en_tete_page` :
   l'onglet courant portant `aria-current="page"`.
   Toutes les conditions sont sur `user.role` ; `is_staff` n'apparaît nulle part
   dans le gabarit (il ne garde que l'administration).
-- **Menu avatar** : un `<details class="avatar">` sans script, dont le
+- **Menu avatar** : un `<details class="avatar">` fermé au clic extérieur et à
+  Échap par son script inline (`id="script-avatar"`, 6a-bis), dont le
   `<summary>` porte les initiales. Le titre du menu est « Bonjour Prénom » si le
   compte est rattaché à une personne, sinon le libellé du rôle (« Cabinet »,
   « Assistante principale »). Entrées : « Mes jours » et « Mes absences » pour
@@ -120,7 +127,9 @@ seulement pour un compte rattaché (un `personne_id` nul ne déclenche rien).
 Coûts figés par `socle/tests/test_contexte.py` : `/planning/2026-10/` avec le
 jeu complet **10** requêtes (9 avant la 6d, plus la date du dernier import
 retenu ; **11** pour une principale rattachée, la barre lisant sa personne),
-sans import **4**, `/admin/` **3**, `/connexion/` et un 404 anonyme **0**.
+sans import **4**, `/admin/` **3**, `/connexion/` et un 404 anonyme **0** ;
+`/` **8** (cabinet) / **9** (principale rattachée), indépendant du nombre de
+mois versionnés (`test_cout_accueil`, 6a-bis).
 
 ## 4. Page d'arrivée `/`
 
@@ -130,9 +139,12 @@ et `cabinet` reçoivent `socle/tableau_de_bord.html`, dont le contexte est
 assemblé par `socle/tableau_de_bord.py::construire(utilisateur, aujourd_hui=None)`
 — une fonction pure, la date étant injectable pour figer l'horizon dans les
 tests. Le `h1` est « Tableau de bord » ; la salutation ne vit que dans le menu.
-Rien de nouveau n'est calculé : versions par `planning.services`, couverture
-Doctolib par `presences.services.imports_par_date` (la sélection jour par jour
-de `planning.donnees`), demandes par la requête de `/absences/`.
+Rien de nouveau n'est calculé : une requête sur toutes les versions regroupée
+par mois (6a-bis : `order_by("mois", "-numero")`, `defer("state")`, `_ligne`
+sans requête) ; couverture Doctolib par les plages `debut → fin` des imports
+réussis (un import réussi couvre toute sa plage, `presences/lecture.py` ;
+`imports_par_date` reste celui de `/presences/` et du planning) ; demandes par
+la requête de `/absences/`. Coût figé 8 / 9 (`test_cout_accueil`, § 3).
 
 **Carte Planning** — « Présences Doctolib importées jusqu'au <date> », date =
 `Max("fin")` des imports réussis, ou « Aucun import de présences réussi ».
@@ -249,7 +261,7 @@ d'import, boutons de liste) sont inchangés : ils héritent du nouveau
 | `polices.css` | les quatre `@font-face` Satoshi, **copiés** de `planning/static/planning/styles.css` (duplication assumée : `styles.css` est un fichier de la 6d ; l'option de faire pointer `page.html` sur `polices.css` reste ouverte) |
 | `barre.css` | **la barre haute, autonome** (6d) : barre, onglets, sous-onglets, menu avatar et les règles générales dont ils dépendent (police, liens, `button` nu), extraites de `commun.css` pour que la barre s'affiche sur la page planning, qui ne charge pas `commun.css` ; chargée par `base.html` sur toutes les pages dans le bloc `style_base`, et par `page.html` seule dans son propre `style_base` |
 | `commun.css` | la coquille : variables de la charte dans `:root` (mêmes valeurs que `styles.css`) et `color-scheme: light` (barre, onglets, sous-onglets et avatar sont dans `barre.css` depuis la 6d) ; onglets bas ; corps de page — la largeur de lecture est portée par `main` (`body.large` l'élargit, comme avant sur `body`) ; formulaires et boutons — la pilule bleue est la classe `.bouton` (`.bouton.contour` pour le contour), un `button` nu ne reçoit que la police et le curseur ; messages Django et bandeaux ; cartes et pastilles du tableau de bord. Aucune règle de largeur (`@media`) : elles arrivent avec la 6b ; une seule `@media print` |
-| `administration.css` | les variables de `admin/css/base.css` avec les valeurs de la charte, l'en-tête de 52 px, l'index en blocs |
+| `administration.css` | les variables de `admin/css/base.css` avec les valeurs de la charte, l'en-tête de 52 px, l'index en blocs, la pilule « Ajouter » (`a.ajout`, 6a-bis) |
 | `favicon.png` | 256 × 256 : la dent blanche du logo du cabinet sur un carré arrondi bleu (`--accent`, #1764D8), seuls les coins sont transparents ; référencé par `base.html` (`icon` et `apple-touch-icon`) et `base_site.html` |
 
 Les cinq fichiers sont collectés et hachés par `collectstatic`
@@ -266,11 +278,11 @@ Cinq fichiers dans `socle/tests/` (74 tests, tous nouveaux en 6a) :
 
 | Fichier | Ce qu'il couvre |
 |---|---|
-| `test_contexte.py` | garde sans `user` / anonyme / compte sans personne / compte rattaché ; chaque valeur de `nav_courante` ; `resolver_match` absent ; paresse (0 requête tant que rien n'est rendu, 1 ensuite) ; coûts figés de `/planning/<mois>/` (10, 11 pour une principale rattachée ; 4 sans import), `/admin/` (3), `/connexion/` et 404 anonyme (0) ; `_mois_de` et `nav_urls` (brique 8) |
-| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_avec_barre_sans_commun`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` ; les onglets suivent le mois (`test_onglets_suivent_le_mois`, brique 8) |
+| `test_contexte.py` | garde sans `user` / anonyme / compte sans personne / compte rattaché ; chaque valeur de `nav_courante` ; `resolver_match` absent ; paresse (0 requête tant que rien n'est rendu, 1 ensuite) ; coûts figés de `/planning/<mois>/` (10, 11 pour une principale rattachée ; 4 sans import), `/admin/` (3), `/` (8 pour N = 0, 1, 6 mois versionnés ; 9 pour une principale rattachée — 6a-bis), `/connexion/` et 404 anonyme (0) ; `_mois_de` et `nav_urls` (brique 8) |
+| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_avec_barre_sans_commun`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` ; les onglets suivent le mois (`test_onglets_suivent_le_mois`, brique 8) ; le script du menu avatar une fois par page authentifiée, jamais pour un anonyme, et la garde de source `test_base_html_un_seul_script_apres_details` (6a-bis) |
 | `test_tableau_de_bord.py` | redirections de `/` ; horizon à date fixée (À venir / En cours / Passés, « Préparer un mois ») ; les quatre pastilles ; mois historique sans marqueur (C7.10) ; « manquantes » dès un jour non couvert ; `Max("fin")` ; demandes, règle K, cinq au plus ; rendu HTML des deux rôles |
 | `test_erreurs.py` | 403 et 404 connectés et anonyme (lien par rôle) ; 500 rendu par `server_error` seul et par le gestionnaire ; lien périmé → `/connexion/?expire=1` ; bandeau ; neutralité du `POST` ; 429 sans formulaire |
-| `test_admin_habillage.py` | index (titres, ordre des cinq blocs, « Importer un fichier », « Actions récentes », plus de barre latérale, de bascule de thème ni de Groupes listé), liste habillée, `/admin/auth/group/` servi |
+| `test_admin_habillage.py` | index (titres, ordre des cinq blocs, « Importer un fichier », quatre pilules « Ajouter » et huit rangées (6a-bis), « Actions récentes », plus de barre latérale, de bascule de thème ni de Groupes listé), liste habillée, `/admin/auth/group/` servi |
 
 Assertions réécrites en 6a, parce qu'elles lisaient l'accueil ou le 403 d'un
 lien magique : `absences/tests/test_pages.py`, `personnes/tests/test_pages.py`,
@@ -278,7 +290,7 @@ lien magique : `absences/tests/test_pages.py`, `personnes/tests/test_pages.py`,
 « base inchangée » de la 4a, qui comparait `base.html` à son texte d'origine,
 est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre"`),
 `comptes/tests/test_connexion.py`, `comptes/tests/test_profil.py`. Total au
-12/09/2026 (briques 8 et 8-bis mergées) : 1 039 tests Python, 57 tests Node.
+12/09/2026 (brique 6a-bis mergée) : 1 045 tests Python, 57 tests Node.
 
 ## 10. Limites et transition
 
@@ -289,8 +301,9 @@ est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre
   fichiers de la 6a.
 - Les boutons nus de ces mêmes gabarits ne sont pas stylés (la pilule est
   réservée à `.bouton`).
-- Le menu avatar (`<details>`) reste ouvert tant qu'on ne le referme pas ;
-  aucun script n'a été ajouté.
+- Le menu avatar (`<details>`) se ferme au clic extérieur et à Échap depuis la
+  6a-bis (script inline avec la barre, § 2) ; sur la page planning, Échap ferme
+  aussi le filtre si les deux sont actifs (écart assumé, C6.21).
 - Aucune règle de largeur avant la 6b : la barre haute de la principale ne se
   replie pas sur un téléphone, et les onglets bas dépendent du rôle, pas de la
   largeur.
@@ -316,3 +329,8 @@ est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre
   (`nav_urls`, § 3). La grille elle-même — filtre à plusieurs noms, pictogrammes et repli des
   lignes, repli des semaines, sommaire, bandes collantes, jour actuel, flèches, briques
   pleines, cases jour — est décrite dans `docs/PLANNING.md` § 14.
+- **6a-bis — 12/09/2026 — PR #35 `4b1dd6f`** (réduite, C6.21) : « Ajouter » en pilule dans
+  l'index d'admin (`div.rangee`, `a.ajout`, `administration.css` seule), menu avatar fermé au
+  clic extérieur et à Échap (script inline `id="script-avatar"` avec la barre), tableau de
+  bord à coût constant (une requête sur les versions, couverture par les plages des imports
+  réussis ; `/` figé à 8 / 9). Sept fichiers, aucune migration ; 1 045 tests Python, 57 Node.

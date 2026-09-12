@@ -19,7 +19,9 @@ barre commune sur la page, en-tête sur une ligne, barre d'outils réduite et
 menu « Plus », et la **grille du planning (briques 8 et 8-bis)** : en-tête
 allégé, onglets qui suivent le mois, filtre à plusieurs noms, pictogrammes et
 repli des lignes, repli des semaines, sommaire, jour actuel, briques pleines,
-cases jour délimitées.
+cases jour délimitées, et l'**aménagement (brique 6a-bis)** : « Ajouter » en
+pilule dans l'admin, menu avatar fermé au clic extérieur, tableau de bord à
+coût constant.
 
 ## État
 
@@ -111,10 +113,15 @@ cases jour délimitées.
   pleines, cases jour bordées et arrondies. `moteur.js` et les contrats intouchés, aucune
   migration. Recettée en production le 12/09/2026 (émulation 1 536 × 864 ; jugement de la
   principale sur son poste à suivre).
-  1 039 tests Python, 57 tests Node.
-- **Prochaine étape** : la suite de la brique 6 — 6a-bis
-  (aménagement à grande largeur), 6b (espace salariée sur téléphone) et 6c (écrans
-  absences, présences et personnes) —, puis brique 5 (mail comptable — dates et catégorie de paie
+- **Brique 6a-bis mergée le 12/09/2026** (`4b1dd6f`, PR #35 ; réduite, C6.21) : « Ajouter »
+  en pilule dans l'index d'admin, menu avatar fermé au clic extérieur et à Échap (script
+  inline avec la barre, `page.js` intouché), tableau de bord à coût constant (une requête
+  sur les versions, couverture par les plages des imports réussis ; `/` figé à 8 / 9
+  requêtes, indépendant du nombre de mois). Sept fichiers, aucune migration. Recette
+  déclarée OK le 12/09/2026.
+  1 045 tests Python, 57 tests Node.
+- **Prochaine étape** : la suite de la brique 6 — 6b (espace salariée sur téléphone) et
+  6c (écrans absences, présences et personnes) —, puis brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
   (endpoint présences, projet VoiceDoctolib). Le périmètre v1 de l'application
@@ -141,7 +148,7 @@ cases jour délimitées.
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
 | Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | |
 | Lecture d'un mois historique : page dédiée, sans `DATA` ni moteur | |
-| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) ; enveloppe de la page planning : barre commune, en-tête sur une ligne, menu « Plus » (6d) ; grille du planning : filtre à plusieurs noms, repli des lignes et des semaines, sommaire, briques pleines, cases jour (8, 8-bis) | Aménagement à grande largeur (6a-bis) ; espace salariée, écrans absences / présences & personnes (6b, 6c) |
+| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) ; enveloppe de la page planning : barre commune, en-tête sur une ligne, menu « Plus » (6d) ; grille du planning : filtre à plusieurs noms, repli des lignes et des semaines, sommaire, briques pleines, cases jour (8, 8-bis) ; « Ajouter » en pilule, menu avatar fermé au clic extérieur, tableau de bord à coût constant (6a-bis) | Espace salariée, écrans absences / présences & personnes (6b, 6c) |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. Un lien périmé ou déjà utilisé ramène sur
@@ -219,7 +226,7 @@ Hébergement Railway, image Docker, sonde de santé sur `/sante/`, migrations et
 création du compte cabinet au pré-déploiement par `python manage.py pre_deploiement`.
 Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
-- Cadrage de l'application (v1.13 — 12/09/2026 : périmètre, décisions C2 → C8, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
+- Cadrage de l'application (v1.14 — 12/09/2026 : périmètre, décisions C2 → C8, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
