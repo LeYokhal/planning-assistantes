@@ -49,6 +49,7 @@ class Action(models.TextChoices):
     # numéro de la version publiée, dates. Jamais de nom, jamais de type
     # d'absence.
     PLANNING_PUBLIE = "planning_publie", "Planning publié"
+    PLANNING_EFFECTIF_RATTRAPE = "planning_effectif_rattrape", "Marqueurs d'effectif rattrapés"
     ABSENCE_CONFLIT_PUBLICATION = (
         "absence_conflit_publication",
         "Absence en conflit avec un planning publié",

@@ -100,11 +100,15 @@ def test_publie_la_derniere_version(client, cabinet, connecter, jeu, caplog):
     version = PlanningVersion.objects.get()
     assert version.publiee is True
     assert version.publie_par == cabinet and version.publie_le is not None
-    assert set(version.verifications) == {"verifie_le", "imports", "nb_briques"}
+    assert set(version.verifications) == {"verifie_le", "imports", "nb_briques", "effectif"}
     assert version.verifications["nb_briques"] == 2
     imports = version.verifications["imports"]
     assert {x["id"] for x in imports} == {i.pk for i in jeu["imports"]}
     assert all(len(x["empreinte"]) == 64 for x in imports)
+    # Brique 6b (C6.9) : le compte-rendu d'effectif, jour par jour, horodaté comme la vérification.
+    compte_rendu = version.verifications["effectif"]
+    assert compte_rendu["jours"]
+    assert compte_rendu["calcule_le"] == version.verifications["verifie_le"]
 
     evenement = EvenementAudit.objects.get(action="planning_publie")
     assert evenement.qui == cabinet and evenement.id_objet == str(version.pk)

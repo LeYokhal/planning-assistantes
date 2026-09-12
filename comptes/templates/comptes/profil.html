@@ -4,7 +4,12 @@
 {% block entete %}Mon profil{% endblock %}
 
 {% block contenu %}
-  <p>Adresse de connexion actuelle : <strong>{{ user.email }}</strong></p>
+  {# Brique 6b (E-4) : habillage seul ; la page reste identique quelle que soit l'adresse saisie. #}
+  <section class="carte">
+    <h2>Adresse de connexion actuelle</h2>
+    <p class="sous">Celle où vous recevez vos liens de connexion.</p>
+    <p><strong>{{ user.email }}</strong></p>
+  </section>
 
   {% if envoye %}
     <p class="message">Si cette adresse peut être utilisée, un lien de
@@ -18,15 +23,9 @@
   <form method="post">
     {% csrf_token %}
     {{ formulaire.as_p }}
-    <button type="submit">Envoyer le lien de confirmation</button>
+    <button type="submit" class="bouton">Envoyer le lien de confirmation</button>
   </form>
 {% endblock %}
 
-{% block navigation %}
-  <a href="{% url 'absences:mes_absences' %}">Mes absences</a> —
-  <a href="/">Accueil</a> —
-  <form method="post" action="/deconnexion/" style="display:inline">
-    {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
-  </form>
-{% endblock %}
+{# Brique 6b : la barre et les onglets bas portent déjà l'espace personnel et la déconnexion. #}
+{% block navigation %}{% endblock %}

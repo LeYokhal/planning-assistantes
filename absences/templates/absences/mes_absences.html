@@ -2,59 +2,59 @@
 
 {% block titre %}Mes absences — Planning Assistantes{% endblock %}
 {% block entete %}Mes absences{% endblock %}
-{% block classe_corps %}large{% endblock %}
-
-{% block tete %}
-  <style>
-    table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
-    th, td { border: 1px solid #ccc; padding: 0.35rem 0.5rem; text-align: left; }
-    th { background: rgba(0,0,0,.04); }
-    td.vide { color: #888; }
-  </style>
-{% endblock %}
 
 {% block contenu %}
-  <p><a href="{% url 'absences:nouvelle' %}">Déclarer une absence</a></p>
+  <p class="actions"><a class="bouton" href="{% url 'absences:nouvelle' %}">Nouvelle absence</a></p>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Du</th><th>Au</th><th>Motif</th><th>État</th>
-        <th>Jours comptés</th><th></th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for absence in absences %}
-        <tr>
-          <td>{{ absence.date_debut|date:"d/m/Y" }}</td>
-          <td>{{ absence.date_fin|date:"d/m/Y" }}</td>
-          <td>{{ absence.type.libelle }}</td>
-          <td>{{ absence.get_statut_display }}</td>
-          <td {% if absence.jours_comptes is None %}class="vide"{% endif %}>
-            {{ absence.jours_comptes|default_if_none:"—" }}
-          </td>
-          <td>
-            {% if absence.statut == "en_attente" %}
+  {# Brique 6b (C6.19) : un groupe par mois, du plus récent au plus ancien ; à venir et courant ouverts. #}
+  {% for groupe in groupes %}
+    <details class="mois"{% if groupe.ouvert %} open{% endif %}><summary>{{ groupe.libelle|capfirst }} — {{ groupe.absences|length }} absence{{ groupe.absences|length|pluralize }}</summary>
+      {% for absence in groupe.absences %}
+        <article class="absence">
+          <p class="dates">{% if absence.date_debut == absence.date_fin %}Le {{ absence.date_debut|date:"d/m/Y" }}{% else %}Du {{ absence.date_debut|date:"d/m/Y" }} au {{ absence.date_fin|date:"d/m/Y" }}{% endif %}</p>
+          <p class="type">{{ absence.type.libelle }}</p>
+          <p class="etat">
+            <span class="pastille {% if absence.statut == "en_attente" %}attente{% elif absence.statut == "refusee" %}refuse{% elif absence.statut == "annulee" %}neutre{% else %}ok{% endif %}">{{ absence.get_statut_display }}</span>
+            <span class="detail">Jours comptés : <span {% if absence.jours_comptes is None %}class="vide"{% endif %}>{{ absence.jours_comptes|default_if_none:"—" }}</span></span>
+          </p>
+          {% if absence.statut == "en_attente" %}
+            <form method="post" action="{% url 'absences:annuler' absence.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="bouton contour annuler" data-confirme="dialog-{{ absence.pk }}">Annuler la demande</button>
+            </form>
+            <dialog id="dialog-{{ absence.pk }}">
+              <p>Annuler cette demande ?</p>
               <form method="post" action="{% url 'absences:annuler' absence.pk %}">
                 {% csrf_token %}
-                <button type="submit">Annuler</button>
+                <button type="submit" class="bouton">Annuler la demande</button>
+                <button type="button" class="bouton contour" data-fermer>Garder la demande</button>
               </form>
-            {% endif %}
-          </td>
-        </tr>
-      {% empty %}
-        <tr><td colspan="6">Aucune absence enregistrée.</td></tr>
+            </dialog>
+          {% endif %}
+        </article>
       {% endfor %}
-    </tbody>
-  </table>
+    </details>
+  {% empty %}
+    <p class="message">Aucune absence pour l'instant.</p>
+  {% endfor %}
 {% endblock %}
 
-{% block navigation %}
-  <a href="{% url 'absences:nouvelle' %}">Déclarer une absence</a> —
-  <a href="{% url 'comptes:profil' %}">Mon profil</a> —
-  <a href="/">Accueil</a> —
-  <form method="post" action="/deconnexion/" style="display:inline">
-    {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
-  </form>
+{# Brique 6b : la barre et les onglets bas portent déjà l'espace personnel et la déconnexion. #}
+{% block navigation %}{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () { // Brique 6b (D6b.7) : confirmation par <dialog> natif ; sans script, le bouton poste directement.
+    if (!window.HTMLDialogElement) { return; }
+    document.querySelectorAll("[data-confirme]").forEach(function (bouton) {
+      bouton.addEventListener("click", function (e) {
+        var dialog = document.getElementById(bouton.getAttribute("data-confirme"));
+        if (dialog) { e.preventDefault(); dialog.showModal(); }
+      });
+    });
+    document.querySelectorAll("[data-fermer]").forEach(function (bouton) {
+      bouton.addEventListener("click", function () { bouton.closest("dialog").close(); });
+    });
+  })();
+</script>
 {% endblock %}

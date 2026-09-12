@@ -1,20 +1,71 @@
 {% extends "socle/base.html" %}
 
-{% block titre %}Déclarer une absence — Planning Assistantes{% endblock %}
-{% block entete %}Déclarer une absence{% endblock %}
+{% block titre %}Nouvelle absence — Planning Assistantes{% endblock %}
+{% block entete %}Nouvelle absence{% endblock %}
 
 {% block contenu %}
-  <p>Selon le motif, votre saisie est enregistrée directement ou soumise à
+  <p>Selon le type, votre saisie est enregistrée directement ou soumise à
      décision. Vous verrez l'état sur la page « Mes absences ».</p>
 
-  <form method="post">
+  {# Brique 6b (E-3) : rendu manuel du formulaire, `FormulaireAbsence` intouché ; le type en deux groupes #}
+  {# par catégorie (D6b.8). Les <optgroup> ne sont pas refermés : leur balise de fin est facultative #}
+  {# quand un autre <optgroup> ou la fin du <select> suit, et un groupe vide n'est pas rendu. #}
+  <form method="post" class="formulaire-absence">
     {% csrf_token %}
-    {{ formulaire.as_p }}
-    <button type="submit">Envoyer</button>
+    {{ formulaire.non_field_errors }}
+    <p>
+      <label for="{{ formulaire.type.id_for_label }}">Type</label>
+      <select name="{{ formulaire.type.html_name }}" id="{{ formulaire.type.id_for_label }}" required>
+        <option value="">{{ formulaire.fields.type.empty_label }}</option>
+        {% for t in formulaire.fields.type.queryset %}{% if t.categorie == "demande" %}{% ifchanged t.categorie %}<optgroup label="{{ t.get_categorie_display }}">{% endifchanged %}
+          <option value="{{ t.pk }}" data-categorie="{{ t.categorie }}"{% if t.pk|stringformat:"s" == formulaire.type.value|stringformat:"s" %} selected{% endif %}>{{ t.libelle }}</option>{% endif %}{% endfor %}
+        {% for t in formulaire.fields.type.queryset %}{% if t.categorie == "declare" %}{% ifchanged t.categorie %}<optgroup label="{{ t.get_categorie_display }}">{% endifchanged %}
+          <option value="{{ t.pk }}" data-categorie="{{ t.categorie }}"{% if t.pk|stringformat:"s" == formulaire.type.value|stringformat:"s" %} selected{% endif %}>{{ t.libelle }}</option>{% endif %}{% endfor %}
+      </select>
+      {{ formulaire.type.errors }}
+    </p>
+    <p>
+      {{ formulaire.date_debut.label_tag }}
+      {{ formulaire.date_debut }}
+      {{ formulaire.date_debut.errors }}
+    </p>
+    <p>
+      {{ formulaire.date_fin.label_tag }}
+      {{ formulaire.date_fin }}
+      {{ formulaire.date_fin.errors }}
+    </p>
+    <p>
+      {{ formulaire.precision.label_tag }}
+      {{ formulaire.precision }}
+      <span class="aide">{{ formulaire.precision.help_text }}</span>
+      {{ formulaire.precision.errors }}
+    </p>
+    <button type="submit" class="bouton" id="envoyer">Envoyer</button>
   </form>
+
+  <p class="retour"><a href="{% url 'absences:mes_absences' %}">Retour à mes absences</a></p>
 {% endblock %}
 
-{% block navigation %}
-  <a href="{% url 'absences:mes_absences' %}">Retour à mes absences</a> —
-  <a href="/">Accueil</a>
+{# Brique 6b : la barre et les onglets bas portent déjà l'espace personnel et la déconnexion. #}
+{% block navigation %}{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () { // Brique 6b (E-3) : le bouton dit ce qu'il fera ; « Dernier jour » suit « Premier jour ».
+    var select = document.getElementById("{{ formulaire.type.id_for_label }}");
+    var bouton = document.getElementById("envoyer");
+    var debut = document.getElementById("{{ formulaire.date_debut.id_for_label }}");
+    var fin = document.getElementById("{{ formulaire.date_fin.id_for_label }}");
+    var libelles = {demande: "Envoyer la demande", declare: "Déclarer l'absence"};
+    function majBouton() {
+      var option = select.options[select.selectedIndex];
+      bouton.textContent = (option && libelles[option.getAttribute("data-categorie")]) || "Envoyer";
+    }
+    select.addEventListener("change", majBouton);
+    majBouton();
+    debut.addEventListener("change", function () {
+      if (debut.value && (!fin.value || fin.value < debut.value)) { fin.value = debut.value; }
+    });
+  })();
+</script>
 {% endblock %}

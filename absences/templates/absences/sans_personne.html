@@ -9,10 +9,5 @@
      fait le rattachement — signalez-le-lui.</p>
 {% endblock %}
 
-{% block navigation %}
-  <a href="/">Accueil</a> —
-  <form method="post" action="/deconnexion/" style="display:inline">
-    {% csrf_token %}
-    <button type="submit">Se déconnecter</button>
-  </form>
-{% endblock %}
+{# Brique 6b : la barre (menu du compte, déconnexion) est rendue pour tout compte connecté. #}
+{% block navigation %}{% endblock %}

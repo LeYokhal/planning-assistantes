@@ -19,6 +19,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
+from absences.models import AbsenceSalariee
 from comptes.acces import role_requis
 from comptes.models import Compte, Personne
 from comptes.noms import JOURS_FR, normaliser
@@ -28,7 +29,7 @@ from regles.chargeur import charger, couleur_hex, jours_ouverture, resoudre
 from socle.debit import limite_par_ip
 from socle.feries import feries_entre
 
-from . import donnees, services
+from . import donnees, espace_salariee, services
 
 logger = logging.getLogger(__name__)
 
@@ -560,12 +561,40 @@ def mes_jours_courant(request):
 def mes_jours(request, mois):
     """« Mes jours » : les jours de la salariée dans le planning publié, sans `DATA`.
 
-    Un compte sans personne rattachée (décision H) voit un message, pas un 500.
-    Le log ne porte que le mois et un comptage.
+    Brique 6b (C6.8) : en grille du mois, avec ses absences, les fériés du
+    calendrier et les marqueurs d'effectif de la version publiée (C6.9) ; la
+    grille est un calcul pur (`espace_salariee`). Un compte sans personne
+    rattachée (décision H) voit un message, pas un 500. Le log ne porte que le
+    mois et un comptage.
     """
-    _plage_ou_404(mois)
+    plage = _plage_ou_404(mois)
     personne = request.user.personne
     resultat = services.jours_publies(personne, mois) if personne is not None else None
+    grille = None
+    if resultat is not None:
+        # Ses absences seulement : une requête, filtrée sur la personne du compte,
+        # jamais sur un identifiant venu de l'URL.
+        statuts = (
+            AbsenceSalariee.Statut.EN_ATTENTE,
+            AbsenceSalariee.Statut.VALIDEE,
+            AbsenceSalariee.Statut.DECLAREE,
+        )
+        absences = list(
+            AbsenceSalariee.objects.filter(
+                personne=personne,
+                date_debut__lte=plage.fin,
+                date_fin__gte=plage.debut,
+                statut__in=statuts,
+            )
+            .select_related("type")
+            .order_by("date_debut")
+        )
+        feries = {
+            jour.isoformat(): nom for jour, nom in feries_entre(plage.debut, plage.fin).items()
+        }
+        grille = espace_salariee.construire_grille(
+            resultat, absences, feries, mois, timezone.localdate()
+        )
     logger.info("mes jours %s : %s jour(s)", mois, len(resultat["jours"]) if resultat else 0)
     return render(
         request,
@@ -578,6 +607,7 @@ def mes_jours(request, mois):
             "personne": personne,
             "sans_personne": personne is None,
             "resultat": resultat,
+            "grille": grille,
         },
     )
 

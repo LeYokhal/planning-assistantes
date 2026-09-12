@@ -40,7 +40,12 @@ def _sans_personne(request):
 
 @role_requis(SALARIEE, PRINCIPALE)
 def mes_absences(request):
-    """Les absences de la salariée connectée, et l'état de ses demandes."""
+    """Les absences de la salariée connectée, et l'état de ses demandes.
+
+    Brique 6b (C6.19) : groupées par mois de début, du plus récent au plus
+    ancien (l'ordre du modèle) ; les mois à venir et le mois courant ouverts,
+    les mois passés repliés. Une absence à cheval va au mois où elle commence.
+    """
     personne = request.user.personne
     if personne is None:
         return _sans_personne(request)
@@ -48,10 +53,24 @@ def mes_absences(request):
     absences = list(
         AbsenceSalariee.objects.filter(personne=personne).select_related("type")
     )
+    mois_courant = timezone.localdate().strftime("%Y-%m")
+    groupes = []
+    for absence in absences:
+        cle = absence.date_debut.strftime("%Y-%m")
+        if not groupes or groupes[-1]["cle"] != cle:
+            groupes.append(
+                {
+                    "cle": cle,
+                    "libelle": libelle_mois(cle),
+                    "ouvert": cle >= mois_courant,
+                    "absences": [],
+                }
+            )
+        groupes[-1]["absences"].append(absence)
     return render(
         request,
         "absences/mes_absences.html",
-        {"absences": absences, "personne": personne},
+        {"absences": absences, "groupes": groupes, "personne": personne},
     )
 
 
