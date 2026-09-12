@@ -79,7 +79,9 @@ python -m venv .venv                      # une seule fois
   (dont la page planning ne charge rien) ; tout balisage de coquille hors barre
   va dans `style_base` ou `titre_page` (test d'isolement
   `socle/tests/test_navigation.py`). Jamais `is_staff` dans un gabarit d'app :
-  le rôle seul décide de la navigation, `is_staff` ne garde que l'admin.
+  le rôle seul décide de la navigation, `is_staff` ne garde que l'admin. Les
+  onglets de gestion portent le mois de la page (`nav_urls`, `socle/contexte.py`,
+  brique 8) : dans la barre, jamais `{% url 'planning:courant' %}` en dur.
 - **Imports de présences** : une ligne `ImportPresences` n'est **jamais modifiée
   après sa fin, ni supprimée** — c'est la preuve de ce qui est entré dans
   l'application. Un import fautif est dépassé par un import plus récent couvrant
@@ -363,6 +365,18 @@ voisins calculées par la vue, `page.js` au vouvoiement, alertes « à signaler 
 cabinet » pour la principale. `moteur.js`, `donnees.py`, `verification.py`,
 `services.py` intouchés ; aucune migration ; 1 020 tests Python, 57 Node. Voir
 `docs/INTERFACE.md`.
+
+La brique **8** (mergée le 12/09/2026, `2522e97`, PR #31) livre la grille du planning en un
+seul commit, cinq lots : en-tête allégé (`_corps.html`, `majEntete`, sous-titre), onglets
+de gestion sur le mois de la page (`nav_urls` dans `socle/contexte.py`, `base.html`),
+filtre à plusieurs noms (`FILTER` en listes, `basculer`), pictogrammes et repli des lignes
+de rôle (`PICTO`, `REPLIS`, clé `localStorage` `planning-assistantes.replis` — la seule),
+repli des semaines (`PLIEES`), sommaire, bandes collantes (`overflow:clip` sur `.week`),
+jour actuel (`AUJOURDHUI`, local), flèches ← →, glisser assisté (`defiler`), briques
+pleines (`--txt` par luminance). La **8-bis** (`89885de`, PR #32) rend toutes les briques
+pleines et borde les cases jour (CSS seul). `moteur.js`, `donnees.py`, `verification.py`,
+`services.py`, `views.py`, `regles.json` intouchés ; aucune migration ; 1 039 tests Python,
+57 Node. Voir `docs/PLANNING.md` § 14.
 
 Le mail comptable et le workflow n8n de `planning.publie` (variable
 `N8N_PLANNING_WEBHOOK_URL`, absente jusque-là) relèvent de la brique **5** ;
