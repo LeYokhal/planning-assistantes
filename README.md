@@ -14,7 +14,9 @@ publié, « Mes jours » pour chaque salariée, la **reprise de l'existant 2026
 (brique 3-quater)** : import exceptionnel des absences Notion par un écran
 d'administration, et la **coquille de l'interface (brique 6a)** : barre et menu
 par rôle, tableau de bord sur `/`, connexion à quatre états, pages d'état,
-administration habillée.
+administration habillée, et l'**enveloppe de la page planning (brique 6d)** :
+barre commune sur la page, en-tête sur une ligne, barre d'outils réduite et
+menu « Plus ».
 
 ## État
 
@@ -89,9 +91,19 @@ administration habillée.
   403 / 404 / 500, administration habillée (`admin/base_site.html`, index en
   cinq blocs), favicon. La page planning ne reçoit rien de la coquille (test
   d'isolement). Recettée en production le 10/09/2026.
-  1 011 tests Python, 57 tests Node.
-- **Prochaine étape** : la suite de la brique 6 — 6d (enveloppe de la page
-  planning) en premier, puis 6b (espace salariée sur téléphone) et 6c (écrans
+- **Brique 6d mergée le 11/09/2026** (`a39c3d5`, PR #29) : l'**enveloppe** de la page
+  planning. La barre commune arrive sur la page par `barre.css` seule (autonome), sans
+  `commun.css` ; en-tête sur une ligne (‹ › vers les mois voisins, pastilles de version
+  et de données), Annuler · Enregistrer · Publier et menu « Plus » ; toast sur un 422 de
+  publication ; bandeau « écran large » sous 768 px ; `page.js` au vouvoiement ; alertes
+  « à signaler au cabinet » pour la principale ; plus de navigation de bas de page.
+  `moteur.js` et le contrat `DATA` / `STATE` intouchés, aucune migration. Recettée en
+  production le 12/09/2026 (poste de référence 1 536 × 864).
+  1 020 tests Python, 57 tests Node.
+- **Prochaine étape** : la **brique 8** (grille du planning : en-tête allégé, filtre à
+  plusieurs noms, onglets qui suivent le mois, pictogrammes et repli des lignes, repli
+  des semaines, sommaire — une seule PR), puis la suite de la brique 6 — 6a-bis
+  (aménagement à grande largeur), 6b (espace salariée sur téléphone) et 6c (écrans
   absences, présences et personnes) —, puis brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
   `planning.publie` avec la variable `N8N_PLANNING_WEBHOOK_URL`) ou brique 0
@@ -119,7 +131,7 @@ administration habillée.
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
 | Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | |
 | Lecture d'un mois historique : page dédiée, sans `DATA` ni moteur | |
-| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) | Espace salariée, écrans absences / présences & personnes, enveloppe du planning (6b, 6c, 6d) |
+| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) ; enveloppe de la page planning : barre commune, en-tête sur une ligne, menu « Plus » (6d) | Grille du planning (8) ; aménagement à grande largeur (6a-bis) ; espace salariée, écrans absences / présences & personnes (6b, 6c) |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. Un lien périmé ou déjà utilisé ramène sur
@@ -197,12 +209,12 @@ Hébergement Railway, image Docker, sonde de santé sur `/sante/`, migrations et
 création du compte cabinet au pré-déploiement par `python manage.py pre_deploiement`.
 Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 
-- Cadrage de l'application (v1.11 — 10/09/2026 : périmètre, décisions C2 → C7, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
+- Cadrage de l'application (v1.12 — 11/09/2026 : périmètre, décisions C2 → C7, journal des briques) : [`docs/PLANNING_ASSISTANTES_CADRAGE.md`](docs/PLANNING_ASSISTANTES_CADRAGE.md)
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
 - Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, import historique, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
-- Interface (brique 6) : coquille `base.html`, tableau de bord, connexion, pages d'état, administration habillée, statiques : [`docs/INTERFACE.md`](docs/INTERFACE.md)
+- Interface (brique 6) : coquille `base.html`, tableau de bord, connexion, pages d'état, administration habillée, statiques, enveloppe de la page planning (`barre.css`) : [`docs/INTERFACE.md`](docs/INTERFACE.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)
 - JSON des trois workflows n8n (à importer tels quels, puis credentials et

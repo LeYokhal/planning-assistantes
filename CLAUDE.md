@@ -72,9 +72,12 @@ python -m venv .venv                      # une seule fois
   gabarits `admin/base_site.html` et `admin/index.html` (brique 6a) ne seraient
   jamais trouvés sinon — le chargeur de gabarits par app suit cet ordre. Ne pas
   réordonner.
-- **Coquille (`socle/base.html`)** : tout balisage ajouté va dans le bloc
-  `style_base` ou `en_tete_page`, que `page.html` vide — la page planning ne
-  doit rien recevoir de la coquille (test d'isolement
+- **Coquille (`socle/base.html`)** : la page planning charge la coquille **sans
+  ses feuilles** — `page.html` redéfinit `style_base` (`barre.css` seule) et vide
+  le bloc imbriqué `titre_page` (6d) — et la barre s'y affiche par `barre.css`,
+  autonome. Tout style de barre va dans `barre.css`, jamais dans `commun.css`
+  (dont la page planning ne charge rien) ; tout balisage de coquille hors barre
+  va dans `style_base` ou `titre_page` (test d'isolement
   `socle/tests/test_navigation.py`). Jamais `is_staff` dans un gabarit d'app :
   le rôle seul décide de la navigation, `is_staff` ne garde que l'admin.
 - **Imports de présences** : une ligne `ImportPresences` n'est **jamais modifiée
@@ -281,7 +284,7 @@ sur le déploiement.
 ## Périmètre
 
 Le cadrage complet (périmètre v1, décisions C2 → C7, journal de livraison des
-briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.11 — 10/09/2026) : il fait foi sur
+briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.12 — 11/09/2026) : il fait foi sur
 le périmètre, ce fichier sur les règles de travail.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
@@ -350,6 +353,16 @@ l'existant Notion 2026 **une fois** (C3.9) : écran d'administration
 Deux temps (rapport, puis confirmation avec analyse rejouée), session
 `import_absences` à empreinte et horodatage, écriture tout ou rien, ni webhook
 ni crochet de conflit, sans migration de schéma. Voir `docs/ABSENCES.md` § 11.
+
+La brique **6d** (mergée le 11/09/2026, `a39c3d5`, PR #29) livre l'enveloppe de la
+page planning : barre commune par `socle/static/socle/barre.css` (autonome, extraite
+de `commun.css`), bloc imbriqué `titre_page` dans `socle/base.html`, en-tête sur une
+ligne et menu « Plus » dans `planning/templates/planning/_corps.html` (sans
+`{% url %}` ni URL de l'application, inclus par la copie autonome), URL des mois
+voisins calculées par la vue, `page.js` au vouvoiement, alertes « à signaler au
+cabinet » pour la principale. `moteur.js`, `donnees.py`, `verification.py`,
+`services.py` intouchés ; aucune migration ; 1 020 tests Python, 57 Node. Voir
+`docs/INTERFACE.md`.
 
 Le mail comptable et le workflow n8n de `planning.publie` (variable
 `N8N_PLANNING_WEBHOOK_URL`, absente jusque-là) relèvent de la brique **5** ;
