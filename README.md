@@ -16,7 +16,10 @@ d'administration, et la **coquille de l'interface (brique 6a)** : barre et menu
 par rôle, tableau de bord sur `/`, connexion à quatre états, pages d'état,
 administration habillée, et l'**enveloppe de la page planning (brique 6d)** :
 barre commune sur la page, en-tête sur une ligne, barre d'outils réduite et
-menu « Plus ».
+menu « Plus », et la **grille du planning (briques 8 et 8-bis)** : en-tête
+allégé, onglets qui suivent le mois, filtre à plusieurs noms, pictogrammes et
+repli des lignes, repli des semaines, sommaire, jour actuel, briques pleines,
+cases jour délimitées.
 
 ## État
 
@@ -99,10 +102,17 @@ menu « Plus ».
   « à signaler au cabinet » pour la principale ; plus de navigation de bas de page.
   `moteur.js` et le contrat `DATA` / `STATE` intouchés, aucune migration. Recettée en
   production le 12/09/2026 (poste de référence 1 536 × 864).
-  1 020 tests Python, 57 tests Node.
-- **Prochaine étape** : la **brique 8** (grille du planning : en-tête allégé, filtre à
-  plusieurs noms, onglets qui suivent le mois, pictogrammes et repli des lignes, repli
-  des semaines, sommaire — une seule PR), puis la suite de la brique 6 — 6a-bis
+- **Briques 8 et 8-bis mergées le 12/09/2026** (`2522e97`, PR #31 ; `89885de`, PR #32) : la
+  **grille** du planning. En-tête allégé (date des données au sous-titre, pastille de version
+  masquée sur « Publiée (vN) », sélecteur retiré) ; onglets de gestion sur le mois de la page
+  (`nav_urls`) ; filtre à plusieurs noms ; pictogrammes et repli des lignes de rôle (mémorisé
+  par le navigateur) ; repli des semaines, sommaire, bandes collantes, jour actuel, flèches
+  ← →, glisser assisté ; briques pleines et tailles +1 px ; 8-bis : toutes les briques
+  pleines, cases jour bordées et arrondies. `moteur.js` et les contrats intouchés, aucune
+  migration. Recettée en production le 12/09/2026 (émulation 1 536 × 864 ; jugement de la
+  principale sur son poste à suivre).
+  1 039 tests Python, 57 tests Node.
+- **Prochaine étape** : la suite de la brique 6 — 6a-bis
   (aménagement à grande largeur), 6b (espace salariée sur téléphone) et 6c (écrans
   absences, présences et personnes) —, puis brique 5 (mail comptable — dates et catégorie de paie
   de chaque absence, décision C5.1 du cadrage v1.7 —, et workflow n8n de
@@ -131,7 +141,7 @@ menu « Plus ».
 | Import exceptionnel de l'existant Notion 2026 : écran d'admin, rapport puis confirmation, tout ou rien | |
 | Import d'un planning historique 2026 : écran d'admin, version publiée marquée historique | |
 | Lecture d'un mois historique : page dédiée, sans `DATA` ni moteur | |
-| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) ; enveloppe de la page planning : barre commune, en-tête sur une ligne, menu « Plus » (6d) | Grille du planning (8) ; aménagement à grande largeur (6a-bis) ; espace salariée, écrans absences / présences & personnes (6b, 6c) |
+| Coquille de l'interface : barre et menu par rôle, tableau de bord sur `/`, connexion, pages d'état, admin habillé (6a) ; enveloppe de la page planning : barre commune, en-tête sur une ligne, menu « Plus » (6d) ; grille du planning : filtre à plusieurs noms, repli des lignes et des semaines, sommaire, briques pleines, cases jour (8, 8-bis) | Aménagement à grande largeur (6a-bis) ; espace salariée, écrans absences / présences & personnes (6b, 6c) |
 
 Il n'y a **aucun mot de passe** : on saisit son adresse sur `/connexion/`, on
 reçoit un lien, on clique. Un lien périmé ou déjà utilisé ramène sur
@@ -213,7 +223,7 @@ Railway n'exécute pas le pre-deploy dans un shell : une seule commande.
 - Recette complète : [`docs/DEPLOIEMENT.md`](docs/DEPLOIEMENT.md)
 - Personnes, règles, appariement et comptes : [`docs/PERSONNES.md`](docs/PERSONNES.md)
 - Absences, jours comptés, paie, rétention et import exceptionnel de l'existant : [`docs/ABSENCES.md`](docs/ABSENCES.md)
-- Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, import historique, tests Node : [`docs/PLANNING.md`](docs/PLANNING.md)
+- Planning : contrat `DATA`, moteur, vérification, versions, publication, « Mes jours », conflit, import historique, tests Node, grille (briques 8 et 8-bis) : [`docs/PLANNING.md`](docs/PLANNING.md)
 - Interface (brique 6) : coquille `base.html`, tableau de bord, connexion, pages d'état, administration habillée, statiques, enveloppe de la page planning (`barre.css`) : [`docs/INTERFACE.md`](docs/INTERFACE.md)
 - Contrat et montage du webhook de mail : [`docs/n8n/MAIL_SORTANT.md`](docs/n8n/MAIL_SORTANT.md)
 - API n8n et webhooks d'import : [`docs/n8n/IMPORT_PRESENCES.md`](docs/n8n/IMPORT_PRESENCES.md)

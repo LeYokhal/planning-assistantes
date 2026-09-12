@@ -139,8 +139,10 @@ sont composés à partir des codes.
 
 **Ce que la page a perdu par rapport au gabarit** : le brouillon
 `localStorage` et « Repartir du fichier », la pose et le déplacement manuels de
-congés, le réglage `− N +` des cours. Une absence ou un jour d'école se corrige
-sur `/absences/`, puis la page se recharge. Les absences s'affichent en lecture
+congés, le réglage `− N +` des cours. Depuis la brique 8 (§ 14), `page.js`
+n'écrit dans `localStorage` qu'une seule clé, `planning-assistantes.replis`
+(lignes de rôle repliées), sous `try/catch` ; jamais l'état du planning. Une
+absence ou un jour d'école se corrige sur `/absences/`, puis la page se recharge. Les absences s'affichent en lecture
 seule ; une demande en attente apparaît en badge discret.
 
 **Ce qu'elle a gagné** : « Enregistrer » avec numéro de version dans la barre,
@@ -158,13 +160,15 @@ le cookie `csrftoken` lu par `page.js` pour l'en-tête `X-CSRFToken`.
 `socle/base.html` a reçu cinq blocs pour que la page impose sa mise en page :
 `classe_html`, `style_base`, `en_tete_page`, `navigation_page`, `scripts`.
 Depuis la brique 6a, `base.html` porte la coquille commune (barre, menu, feuille
-de style) **dans** `style_base` et `en_tete_page`, que `page.html` vide : la
-page planning ne reçoit rien de la coquille, ce que vérifie
-`socle/tests/test_navigation.py::test_page_planning_sans_coquille` (ni
-`class="barre"`, ni `<details class="avatar"`, ni `socle/commun.css`, ni
-`socle/polices.css` ; seul le favicon, hors bloc, est commun) et
-`socle/tests/test_contexte.py::test_cout_page_planning` (9 requêtes, comme
-avant). Voir `docs/INTERFACE.md` § 2.
+de style) **dans** `style_base` et `en_tete_page` ; depuis la 6d, `page.html`
+redéfinit `style_base` (`barre.css` seule) et vide le bloc imbriqué
+`titre_page` : la page planning reçoit la barre commune et rien d'autre de la
+coquille, ce que vérifie
+`socle/tests/test_navigation.py::test_page_planning_avec_barre_sans_commun`
+(`class="barre"`, `<details class="avatar"`, `socle/barre.css` et le favicon
+présents ; ni `socle/commun.css`, ni `socle/polices.css`, ni
+`class="titre-page"`) et `socle/tests/test_contexte.py::test_cout_page_planning`
+(10 requêtes, 11 pour une principale rattachée). Voir `docs/INTERFACE.md` § 2.
 
 ## 5. Vérification stricte : deux implémentations, un jeu de cas
 
@@ -332,8 +336,11 @@ depuis le crochet.
   message « tests JS non exécutés : node absent ». Dans l'image Docker
   (`python:3.14-slim`, sans Node), les tests JS ne tournent donc pas.
 
-Totaux au 09/09/2026 (post-squash `fdfc912`) : **939 tests Python** (+43 en
-7a, +22 en 7b) et **57 tests Node**, inchangés depuis la 4b (+2 alors :
+Totaux au 12/09/2026 (post-squash `89885de`) : **1 039 tests Python** (939 au
+09/09 : +43 en 7a, +22 en 7b ; puis +72 en 6a, +9 en 6d, +19 en 8 —
+`test_enveloppe.py` : cinq tests, `test_navigation.py` : un paramétré,
+`test_contexte.py` : six tests dont un paramétré) et **57 tests Node**,
+inchangés depuis la 4b (+2 alors :
 `orphelins`, et l'import qui compte les briques orphelines sans les écarter,
 dans `moteur.test.js`). Ni la 7a ni la 7b ne touchent au moteur.
 
@@ -791,3 +798,89 @@ janvier 2026 par ses flèches de navigation.
 **Procédure recommandée** : relire le fichier, puis faire un pilote sur un seul
 mois — analyser, confirmer, puis rejouer le même fichier pour voir « déjà
 présente » et zéro écriture — avant d'enchaîner les autres.
+
+## 14. Grille du planning (briques 8 et 8-bis)
+
+Brique **8** (mergée le 12/09/2026, `2522e97`, PR #31) et **8-bis** (`89885de`, PR #32).
+Cadrée par une fiche hors dépôt (décisions D8.1 → D8.14, reprises au cadrage en C8.x).
+Un seul commit, cinq lots ; `moteur.js`, `donnees.py`, `verification.py`, `services.py`,
+`views.py`, `regles.json` et les contrats `DATA` / `STATE` / `META` intouchés ; aucune
+migration ; les neuf `id` de boutons inchangés ; `_corps.html` toujours sans `{% url %}` ni
+URL de l'application.
+
+### 14.1 En-tête (lot 1)
+- Sous-titre : « Données Doctolib du jj/mm · présence = agenda ouvert ou ≥ N h de rendez-vous »
+  (`META.donnees_du`, découpé sans `Date` ; « Doctolib · … » si nul). `DATA.meta.genere` reste
+  servi, plus affiché ; `new Date` ne sert plus qu'au jour actuel (§ 14.4).
+- Pastille `#version` : masquée dans l'état stable « Publiée (vN) »
+  (`v.hidden = !META.autonome && publiee && !modifie`), visible sinon, toujours visible dans
+  la copie. `.topbar .version[hidden]{display:none}` est nécessaire : `display:inline-block`
+  battrait l'attribut.
+- Retirés de `_corps.html` : la pastille « Données Doctolib du … » (`#donnees`) et le sélecteur
+  « Planning individuel » (`#filtre`) — le clic sur un nom du panneau fait la même chose.
+- Onglets de gestion sur le mois de la page : `docs/INTERFACE.md` § 3 (`nav_urls`).
+
+### 14.2 Filtre à plusieurs noms (lot 2)
+`FILTER` vaut `null`, `{s: [sid, …]}` ou `{p: [pid, …]}` — jamais une liste vide, un genre à
+la fois. Aides `horsS`, `horsP`, `aucuneS`, `nomsFiltre`, `basculer(genre, id)` : le clic
+ajoute, un second clic sur le même nom retire, l'autre genre s'efface. « Tout afficher » et
+`Échap` vident. Titre « Planning assistantes <mois> · A, B », `document.title` de même ;
+`.dim` inchangé. La sélection ne survit pas au rechargement.
+
+### 14.3 Lignes de rôle (lot 3)
+Le libellé de ligne est un bouton `.ml` de 22 px portant un pictogramme SVG inline (`PICTO` :
+secrétariat, administratif, sureffectif, absent), libellé en `title` et `aria-label`
+(`LIBELLE`). Un clic replie ce type de ligne sur **toutes** les semaines (`REPLIS`, mémorisé
+sous la clé `localStorage` `planning-assistantes.replis`, `try/catch` en lecture et en
+écriture, jamais dans `STATE`) : `.slot.misc.replie` montre picto + `.nb` (nombre de noms),
+reste une cible de dépôt et se rouvre pendant `body.placing`. La ligne « Absent » se replie de
+même. Les mots viennent de `MISC` (`moteur.js`, intouché). 44 px rendus aux briques par ligne.
+
+### 14.4 Semaines (lot 4)
+- `AUJOURDHUI` (date locale, posée dans `boot`, jamais `toISOString`) ; `.day.today` marque la
+  colonne du jour, y compris un jour hors mois de la grille.
+- `PLIEES` (ensemble d'indices) : à l'ouverture, si le jour actuel tombe dans la grille, les
+  semaines passées sont repliées et la réserve s'ouvre sur la semaine en cours ; mois passé ou
+  à venir : tout déplié. `.week.pliee .days{display:none}` ; le titre de bande est un bouton
+  `.wk` à chevron (`aria-expanded`) ; le reste de la bande garde son clic (semaine courante de
+  la réserve).
+- Sommaire `.sommaire` dans le panneau, hors `.pbody` (visible panneau replié, numéro seul) :
+  un `.sw` par semaine (`.on` courante, `.pliee`), clic → `allerA(wi)` (déplie, `render`,
+  `scrollIntoView`) ; « tout replier / déplier » à côté ; le menu « Plus » reste à six entrées.
+- Bandes collantes : `.band{position:sticky;top:var(--topbar-h)}` ; `.week` passe
+  d'`overflow:hidden` à `overflow:clip` (un ancêtre `overflow:hidden` neutralise `sticky`) et
+  porte `scroll-margin-top`.
+- Flèches `←` `→` d'une semaine à l'autre : seulement sans rien en main (`DRAG`, `ARMED`
+  nuls), sans modificateur, focus hors `input`, `select`, `textarea`, `.palette`, `.cpop`.
+- Glisser assisté : `defiler()` (8 px par image près des bords, `requestAnimationFrame` du
+  `dragstart` au `dragend`) se tait pour l'image où la page a bougé sans lui (défilement natif
+  de Chrome) ; case surlignée au survol (`.slot.over`) ; flash `.brick.posee` sur la brique
+  posée, au glisser comme au clic.
+
+### 14.5 Lisibilité (lot 5, puis 8-bis)
+- Briques **pleines** : `background:var(--fg)` (l'encre de la personne, `palette` de
+  `regles.json` intouchée), texte `--txt` blanc ou noir par luminance (`texteSur`, `TXT` posé
+  dans `boot` ; blanc pour les dix encres actuelles). « Hors quota » (`.brick.x`) : double
+  anneau blanc puis ambre, visible sur fond sombre. Tailles +1 px (`.brick` 12,5 px, `.sl b`,
+  `.day-head`, `.meter`, `.band .wk`, `.tile .nm`, `.vbrick`) ; libellés en `--ink`.
+- **8-bis** : toutes les briques sont pleines, y compris celles proposées par le moteur (le
+  drapeau `a` reste servi et lu par l'infobulle « proposée par le moteur, déplacez-la pour la
+  confirmer », sans effet visuel) ; `.brick.auto*` supprimées. Cases jour : `.days` avec
+  `gap:6px` et rembourrage, `.day` bordée 1,5 px `--line`, rayon `--r-slot`, fond `--card` ;
+  `.day.today` par bordure accent 2 px.
+- Impression : briques pâles (`background:var(--bg);color:var(--fg)`), semaines toutes
+  dépliées, bandes statiques, jour actuel non marqué, bordures de jour 1 px.
+
+### 14.6 Copie autonome
+Mêmes gestes (tout est dans `page.js`, inliné) ; `localStorage` en `file://` est couvert par
+le `try/catch`.
+
+### 14.7 Tests
+Aucun geste JS n'est testé côté serveur (recette manuelle, captures). Gardes de source dans
+`planning/tests/test_enveloppe.py` : `test_entete_sans_selecteur_ni_pastille_donnees`,
+`test_sous_titre_et_pastille_de_version`, `test_filtre_multiple_sans_comparaison_simple`,
+`test_lignes_de_role_pictogrammes_et_repli`, `test_semaines_sommaire_et_fleches` ;
+`test_menu_plus_six_boutons_dans_l_ordre` et `test_page_js_vouvoie` inchangés. Onglets :
+`socle/tests/test_navigation.py::test_onglets_suivent_le_mois` (paramétré),
+`socle/tests/test_contexte.py::test_mois_de_*` et `test_nav_urls_suivent_le_mois`.
+1 039 tests Python, 57 Node.

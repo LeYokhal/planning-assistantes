@@ -55,9 +55,11 @@ Ce que rend `en_tete_page` :
 
 - **Barre haute** (`<header class="barre">`) : la marque « Espace K Dentaire
   · Planning » (lien vers `/`), puis, pour un compte connecté dont le rôle n'est
-  pas `salariee`, les trois onglets **Planning** (`planning:courant`),
-  **Absences** (`absences:decider`), **Présences & personnes**
-  (`presences:courant`), l'onglet courant portant `aria-current="page"`.
+  pas `salariee`, les trois onglets **Planning**, **Absences**, **Présences &
+  personnes**, dont les URL viennent de `nav_urls.planning`, `.absences`,
+  `.presences` (§ 3, brique 8) — le mois de la page quand elle en porte un,
+  sinon `planning:courant`, `absences:decider`, `presences:courant` —,
+  l'onglet courant portant `aria-current="page"`.
   Toutes les conditions sont sur `user.role` ; `is_staff` n'apparaît nulle part
   dans le gabarit (il ne garde que l'administration).
 - **Menu avatar** : un `<details class="avatar">` sans script, dont le
@@ -68,8 +70,8 @@ Ce que rend `en_tete_page` :
   « Administration » (`admin:index`) pour `cabinet` ; puis **la** déconnexion :
   un formulaire `POST` sur `comptes:deconnexion` (`/deconnexion/`), libellé
   « Déconnexion ». C'est le seul formulaire de déconnexion des pages de la 6a.
-- **Sous-onglets** « Présences | Personnes » (`presences:courant`,
-  `personnes:liste`), rendus seulement quand la page courante est une page de
+- **Sous-onglets** « Présences | Personnes » (`nav_urls.presences`, qui suit de
+  même le mois de la page, et `personnes:liste`), rendus seulement quand la page courante est une page de
   présences ou de personnes ; le sous-onglet courant est celui de l'app résolue.
 - **Onglets bas** « Mes jours | Mes absences » pour le rôle `salariee`, sur
   toutes ses pages, quel que soit l'écran (règle par rôle, sans `@media`).
@@ -87,7 +89,7 @@ rhabillés (§ 10) ; la page planning n'en a plus depuis la 6d, les mois voisins
 
 ## 3. Processeur de contexte `socle.contexte.coquille`
 
-Déclaré dans `config/settings.py` (`context_processors`), il fournit trois
+Déclaré dans `config/settings.py` (`context_processors`), il fournit quatre
 variables à `base.html` :
 
 - `nav_courante` — l'entrée à marquer courante, déduite de
@@ -96,6 +98,11 @@ variables à `base.html` :
   `nouvelle`, `annuler`), `donnees` (apps `presences` et `personnes`), `profil`,
   `tableau_de_bord` (`accueil`), ou `""` — y compris quand `resolver_match` est
   `None` (URL inconnue, page 404).
+- `nav_urls` — brique 8 (D8.5) : les trois URL des onglets de gestion, sur le
+  mois de la page s'il y en a un (`resolver_match.kwargs["mois"]` de
+  `/planning/<mois>/` et `/presences/<mois>/`, ou `?mois=` de `/absences/`,
+  validé « AAAA-MM »), sinon les URL courantes ; calculé par `reverse`, sans
+  requête, présent même pour un anonyme.
 - `initiales` — « PN » pour Prénom Nom, sinon la première lettre du libellé du
   rôle.
 - `prenom` — le prénom de la personne rattachée, sinon `""`.
@@ -104,10 +111,11 @@ variables à `base.html` :
 connexion, 403 / 404 anonymes), les deux dernières valent `""` et rien n'est
 lu en base. **Paresse** : pour un compte connecté, `initiales` et `prenom` sont
 des `SimpleLazyObject` — `user.personne` n'est interrogé que si un gabarit les
-rend, et une seule fois (Django met la relation en cache). La page planning et
-l'administration, qui ne rendent pas la barre, ne paient donc aucune requête ;
-une page qui la rend en paie **une** de plus, et seulement pour un compte
-rattaché (un `personne_id` nul ne déclenche rien).
+rend, et une seule fois (Django met la relation en cache). L'administration,
+qui ne rend pas la barre, ne paie aucune requête ; la page planning la rend
+depuis la 6d : 10 requêtes, 11 pour une principale rattachée (coûts figés dans
+`test_contexte.py`). Une page qui rend la barre en paie **une** de plus, et
+seulement pour un compte rattaché (un `personne_id` nul ne déclenche rien).
 
 Coûts figés par `socle/tests/test_contexte.py` : `/planning/2026-10/` avec le
 jeu complet **10** requêtes (9 avant la 6d, plus la date du dernier import
@@ -258,8 +266,8 @@ Cinq fichiers dans `socle/tests/` (74 tests, tous nouveaux en 6a) :
 
 | Fichier | Ce qu'il couvre |
 |---|---|
-| `test_contexte.py` | garde sans `user` / anonyme / compte sans personne / compte rattaché ; chaque valeur de `nav_courante` ; `resolver_match` absent ; paresse (0 requête tant que rien n'est rendu, 1 ensuite) ; coûts figés de `/planning/<mois>/` (9 / 4), `/admin/` (3), `/connexion/` et 404 anonyme (0) |
-| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_sans_coquille`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` |
+| `test_contexte.py` | garde sans `user` / anonyme / compte sans personne / compte rattaché ; chaque valeur de `nav_courante` ; `resolver_match` absent ; paresse (0 requête tant que rien n'est rendu, 1 ensuite) ; coûts figés de `/planning/<mois>/` (10, 11 pour une principale rattachée ; 4 sans import), `/admin/` (3), `/connexion/` et 404 anonyme (0) ; `_mois_de` et `nav_urls` (brique 8) |
+| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_avec_barre_sans_commun`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` ; les onglets suivent le mois (`test_onglets_suivent_le_mois`, brique 8) |
 | `test_tableau_de_bord.py` | redirections de `/` ; horizon à date fixée (À venir / En cours / Passés, « Préparer un mois ») ; les quatre pastilles ; mois historique sans marqueur (C7.10) ; « manquantes » dès un jour non couvert ; `Max("fin")` ; demandes, règle K, cinq au plus ; rendu HTML des deux rôles |
 | `test_erreurs.py` | 403 et 404 connectés et anonyme (lien par rôle) ; 500 rendu par `server_error` seul et par le gestionnaire ; lien périmé → `/connexion/?expire=1` ; bandeau ; neutralité du `POST` ; 429 sans formulaire |
 | `test_admin_habillage.py` | index (titres, ordre des cinq blocs, « Importer un fichier », « Actions récentes », plus de barre latérale, de bascule de thème ni de Groupes listé), liste habillée, `/admin/auth/group/` servi |
@@ -270,7 +278,7 @@ lien magique : `absences/tests/test_pages.py`, `personnes/tests/test_pages.py`,
 « base inchangée » de la 4a, qui comparait `base.html` à son texte d'origine,
 est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre"`),
 `comptes/tests/test_connexion.py`, `comptes/tests/test_profil.py`. Total au
-merge : 1 011 tests Python, 57 tests Node.
+12/09/2026 (briques 8 et 8-bis mergées) : 1 039 tests Python, 57 tests Node.
 
 ## 10. Limites et transition
 
@@ -301,3 +309,10 @@ merge : 1 011 tests Python, 57 tests Node.
   qui porte aussi le filtre à plusieurs noms et les onglets qui suivent le mois.
   Poste de recette de référence : 1 536 × 864 (Chromebook 15,6" à 125 %) ; à 1 366 px la
   barre d'outils passe sur deux lignes, hors critère, résorption attendue par la 8.
+- **8 (mergée le 12/09/2026, `2522e97`, PR #31) et 8-bis (`89885de`, PR #32)** : la pastille
+  « Données Doctolib du … » et le sélecteur « Planning individuel » sont retirés (la date
+  passe au sous-titre, le filtre vit dans le panneau) ; la pastille de version se masque
+  dans l'état stable « Publiée (vN) » ; les onglets de gestion suivent le mois de la page
+  (`nav_urls`, § 3). La grille elle-même — filtre à plusieurs noms, pictogrammes et repli des
+  lignes, repli des semaines, sommaire, bandes collantes, jour actuel, flèches, briques
+  pleines, cases jour — est décrite dans `docs/PLANNING.md` § 14.
