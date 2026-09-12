@@ -78,7 +78,10 @@ python -m venv .venv                      # une seule fois
   autonome. Tout style de barre va dans `barre.css`, jamais dans `commun.css`
   (dont la page planning ne charge rien) ; tout balisage de coquille hors barre
   va dans `style_base` ou `titre_page` (test d'isolement
-  `socle/tests/test_navigation.py`). Jamais `is_staff` dans un gabarit d'app :
+  `socle/tests/test_navigation.py`). Un script de la barre vit avec la barre
+  (6a-bis) : inline dans `base.html`, juste après le `</details>` du menu
+  avatar, hors du bloc `scripts` — garde de source
+  `test_base_html_un_seul_script_apres_details`. Jamais `is_staff` dans un gabarit d'app :
   le rôle seul décide de la navigation, `is_staff` ne garde que l'admin. Les
   onglets de gestion portent le mois de la page (`nav_urls`, `socle/contexte.py`,
   brique 8) : dans la barre, jamais `{% url 'planning:courant' %}` en dur.
@@ -286,7 +289,7 @@ sur le déploiement.
 ## Périmètre
 
 Le cadrage complet (périmètre v1, décisions C2 → C8, journal de livraison des
-briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.13 — 12/09/2026) : il fait foi sur
+briques) est `docs/PLANNING_ASSISTANTES_CADRAGE.md` (v1.14 — 12/09/2026) : il fait foi sur
 le périmètre, ce fichier sur les règles de travail.
 
 La brique **1a** livre le socle : projet Django, modèles `Personne` / `Compte` /
@@ -377,6 +380,16 @@ pleines (`--txt` par luminance). La **8-bis** (`89885de`, PR #32) rend toutes le
 pleines et borde les cases jour (CSS seul). `moteur.js`, `donnees.py`, `verification.py`,
 `services.py`, `views.py`, `regles.json` intouchés ; aucune migration ; 1 039 tests Python,
 57 Node. Voir `docs/PLANNING.md` § 14.
+
+La brique **6a-bis** (réduite, C6.21 ; mergée le 12/09/2026, `4b1dd6f`, PR #35) livre
+« Ajouter » en pilule dans l'index d'admin (`div.rangee` + `a.ajout`,
+`administration.css` seule), le menu avatar fermé au clic extérieur et à Échap
+(script inline `id="script-avatar"` dans `base.html`, avec la barre) et le tableau
+de bord à coût constant (`socle/tableau_de_bord.py` : une requête sur les versions,
+`defer("state")`, couverture par les plages des imports réussis) : `/` figé à
+8 requêtes pour le cabinet, 9 pour une principale rattachée, indépendant du nombre
+de mois. Sept fichiers ; aucune migration ; 1 045 tests Python, 57 Node. Voir
+`docs/INTERFACE.md`.
 
 Le mail comptable et le workflow n8n de `planning.publie` (variable
 `N8N_PLANNING_WEBHOOK_URL`, absente jusque-là) relèvent de la brique **5** ;
