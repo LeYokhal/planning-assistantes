@@ -11,10 +11,14 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.models import AnonymousUser
 from django.test import RequestFactory
 from django.urls import ResolverMatch
+from django.utils import timezone
 
 from absences.tests import fabrique as fabrique_absences
 from planning import services
+from planning.models import PlanningVersion
 from planning.tests import fabrique
+from presences.fenetres import mois_suivant, plage_mois
+from presences.models import ImportPresences
 from socle.contexte import _mois_de, coquille
 
 pytestmark = pytest.mark.django_db
@@ -153,6 +157,53 @@ def test_cout_admin(client, cabinet, connecter, django_assert_num_queries):
     connecter(client, cabinet)
     with django_assert_num_queries(3):
         assert client.get("/admin/").status_code == 200
+
+
+def _mois_versionnes(nb):
+    """`nb` mois consécutifs à partir d'octobre 2026 (`fabrique.MOIS`)."""
+    mois, resultat = fabrique.MOIS, []
+    for _ in range(nb):
+        resultat.append(mois)
+        mois = mois_suivant(mois)
+    return resultat
+
+
+def _versionner(mois_listes):
+    """Jeu de la Phase 1 (ACTION 4) : une version publiée par mois, un import réussi couvrant l'enveloppe.
+
+    `ImportPresences.objects.create` plutôt que `fabrique.importer`, qui plafonne
+    une fenêtre à 31 jours (`presences/lecture.py`).
+    """
+    for mois in mois_listes:
+        PlanningVersion.objects.create(mois=mois, numero=1, state=fabrique.etat(), publiee=True)
+    plages = [plage_mois(mois) for mois in mois_listes + [timezone.localdate().strftime("%Y-%m")]]
+    ImportPresences.objects.create(
+        source=ImportPresences.Source.FICHIER,
+        statut=ImportPresences.Statut.REUSSI,
+        debut=min(plage.debut for plage in plages),
+        fin=max(plage.fin for plage in plages),
+        payload={"succes": True, "message": "", "donnees": {"jours": []}},
+    )
+
+
+@pytest.mark.parametrize("nb_mois", [0, 1, 6])
+def test_cout_accueil(client, cabinet, connecter, django_assert_num_queries, nb_mois):
+    """Brique 6a-bis (D6a-bis.3) : 8 quel que soit le nombre de mois versionnés (8 + 2 × L avant)."""
+    _versionner(_mois_versionnes(nb_mois))
+    connecter(client, cabinet)
+    with django_assert_num_queries(8):
+        assert client.get("/").status_code == 200
+
+
+def test_cout_accueil_principale_rattachee(
+    client, principale, connecter, django_assert_num_queries
+):
+    """Compte rattaché : la barre lit `personne` une fois (prénom, initiales) — 8 + 1."""
+    _versionner(_mois_versionnes(1))
+    fabrique_absences.lier(principale, fabrique_absences.personne(nom="LEFEVRE", prenom="Manon"))
+    connecter(client, principale)
+    with django_assert_num_queries(9):
+        assert client.get("/").status_code == 200
 
 
 def test_cout_pages_anonymes(client, django_assert_num_queries):

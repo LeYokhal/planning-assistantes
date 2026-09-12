@@ -7,8 +7,10 @@ absences sous « Absences » (décision H-4).
 <section class="module bloc-admin app-{{ app.app_label }}">
   <h2><a href="{{ app.app_url }}">{{ app.name }}</a></h2>
   {% for model in app.models %}
-    <a class="ligne" href="{{ model.admin_url }}">{{ model.name }}{% if model.view_only %} <span>lecture seule</span>{% endif %}</a>
-    {% if model.add_url %}<a class="ajout" href="{{ model.add_url }}">Ajouter</a>{% endif %}
+    <div class="rangee">
+      <a class="ligne" href="{{ model.admin_url }}">{{ model.name }}{% if model.view_only %} <span>lecture seule</span>{% endif %}</a>
+      {% if model.add_url %}<a class="ajout" href="{{ model.add_url }}">Ajouter</a>{% endif %}
+    </div>
   {% endfor %}
   {% if label == "absences" %}<a class="ligne" href="{% url 'admin:absences_absencesalariee_importer' %}">Importer un fichier</a>{% endif %}
 </section>

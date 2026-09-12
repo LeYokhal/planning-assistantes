@@ -18,6 +18,10 @@ def test_index(client, cabinet, connecter):
     positions = [contenu.index(f">{escape(titre)}</a></h2>") for titre in BLOCS]
     assert positions == sorted(positions)
     assert 'href="/admin/absences/absencesalariee/importer/">Importer un fichier</a>' in contenu
+    # Brique 6a-bis (D6a-bis.1) : « Ajouter » en pilule, une rangée par modèle rendu.
+    assert contenu.count('class="ajout"') == 4
+    assert contenu.count('class="rangee"') == 8
+    assert 'href="/admin/absences/absencesalariee/add/">Ajouter</a>' in contenu
     assert 'id="recent-actions-module"' in contenu
     assert "Administration de Django" not in contenu
     assert "/admin/auth/group/" not in contenu

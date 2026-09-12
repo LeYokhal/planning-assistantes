@@ -2,9 +2,11 @@
 
 `construire` assemble tout le contexte sans requête HTTP : la vue ne fait que
 rendre, et la date du jour est injectable pour figer l'horizon dans les tests.
-Rien de nouveau n'est calculé : versions (`planning.services`), couverture
-Doctolib (`presences.services.imports_par_date`, la sélection jour par jour de
-`planning.donnees`), demandes en attente (la requête de `/absences/`).
+Rien de nouveau n'est calculé : versions (une requête, regroupées par mois —
+`state` jamais lu), couverture Doctolib (les plages des imports réussis : un
+import réussi couvre toute sa plage, `presences.lecture`), demandes en attente
+(la requête de `/absences/`). Coût constant, indépendant du nombre de mois
+versionnés (brique 6a-bis, D6a-bis.3).
 """
 
 import datetime
@@ -18,7 +20,6 @@ from absences.models import AbsenceSalariee
 from comptes.models import Compte, Personne
 from planning import services as services_planning
 from planning.models import PlanningVersion
-from presences import services as services_presences
 from presences.fenetres import libelle_mois, mois_suivant, plage_mois
 from presences.models import ImportPresences
 
@@ -31,14 +32,20 @@ AUCUNE_VERSION = "Aucune version enregistrée"
 def construire(utilisateur, aujourd_hui=None):
     """Le contexte du gabarit `socle/tableau_de_bord.html`."""
     courant = (aujourd_hui or timezone.localdate()).strftime("%Y-%m")
-    avec_version = set(PlanningVersion.objects.values_list("mois", flat=True))
+    # Une requête pour toutes les versions, regroupées par mois, numéro décroissant
+    # (6a-bis, E-1) : `state`, le JSON lourd, n'est jamais lu ici.
+    versions = list(PlanningVersion.objects.order_by("mois", "-numero").defer("state"))
+    par_mois = {}
+    for version in versions:
+        par_mois.setdefault(version.mois, []).append(version)
+    avec_version = set(par_mois)
     a_venir = sorted(mois for mois in avec_version if mois > courant)
     passes = sorted((mois for mois in avec_version if mois < courant), reverse=True)
 
     couverts = _jours_couverts(a_venir + [courant] + passes)
-    lignes_a_venir = [_ligne(mois, couverts) for mois in a_venir]
-    ligne_courante = _ligne(courant, couverts)
-    lignes_passees = [_ligne(mois, couverts) for mois in passes]
+    lignes_a_venir = [_ligne(mois, couverts, par_mois.get(mois, [])) for mois in a_venir]
+    ligne_courante = _ligne(courant, couverts, par_mois.get(courant, []))
+    lignes_passees = [_ligne(mois, couverts, par_mois.get(mois, [])) for mois in passes]
 
     preparer = mois_suivant(courant)
     while preparer in avec_version:
@@ -80,17 +87,31 @@ def construire(utilisateur, aujourd_hui=None):
 
 
 def _jours_couverts(mois_listes):
-    """Les jours (ISO) couverts par un import réussi, sur l'enveloppe des mois listés — un seul appel."""
+    """Les jours (ISO) couverts par un import réussi, sur l'enveloppe des mois listés — une seule requête.
+
+    Un import réussi couvre toute sa plage (`presences.lecture` refuse un payload
+    dont les jours ne couvrent pas exactement la fenêtre) : les bornes `debut` →
+    `fin` suffisent, le payload n'est pas lu (6a-bis, E-2). Mêmes clés que
+    `presences.services.imports_par_date`, consommées par `_ligne`.
+    """
     plages = [plage_mois(mois) for mois in mois_listes]
     debut = min(plage.debut for plage in plages)
     fin = max(plage.fin for plage in plages)
-    return set(services_presences.imports_par_date(debut, fin))
+    fenetres = ImportPresences.objects.filter(
+        statut=ImportPresences.Statut.REUSSI, debut__lte=fin, fin__gte=debut
+    ).values_list("debut", "fin")
+    return {
+        jour.isoformat()
+        for debut_import, fin_import in fenetres
+        for jour in _jours(debut_import, fin_import)
+    }
 
 
-def _ligne(mois, couverts):
+def _ligne(mois, couverts, versions):
     """Une ligne de la carte Planning : état de version (D-5), couverture Doctolib (D-6, C7.10), lien."""
-    derniere = services_planning.derniere_version(mois)
-    publiee = services_planning.version_publiee(mois)
+    # `versions` : celles du mois, numéro décroissant — aucune requête ici (6a-bis).
+    derniere = versions[0] if versions else None
+    publiee = next((version for version in versions if version.publiee), None)
     historique = publiee is not None and services_planning.est_historique(publiee)
     if derniere is None:
         etat, classe = AUCUNE_VERSION, "neutre"
