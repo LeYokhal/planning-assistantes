@@ -1,12 +1,13 @@
-# Interface — la coquille (brique 6a) et l'enveloppe du planning (brique 6d)
+# Interface — la coquille (brique 6a), l'enveloppe du planning (brique 6d) et l'espace salariée (brique 6b)
 
 La brique 6 rhabille l'application par rôle sans toucher à la grille du
 planning, au moteur, aux contrats `DATA` / `STATE`, aux règles ni aux droits
 (décision C6.2 du cadrage). Elle est découpée en quatre sous-briques ; ce
 document décrit la première, **6a « coquille »**, mergée le 10/09/2026
 (`2e30150`, PR #26) et recettée en production le même jour. Les décisions
-d'interface (C6.1 → C6.12) sont dans `docs/PLANNING_ASSISTANTES_CADRAGE.md` ;
-le dossier de conception et les diff plans de la brique vivent hors dépôt.
+d'interface (C6.1 → C6.22) sont dans `docs/PLANNING_ASSISTANTES_CADRAGE.md` ;
+le dossier de conception et les diff plans de la brique vivent hors dépôt ; les
+fiches de bilan des briques sont versées dans `docs/briques/` (6b : `6b.md`).
 
 ## 1. Périmètre
 
@@ -14,11 +15,11 @@ le dossier de conception et les diff plans de la brique vivent hors dépôt.
 |---|---|---|
 | **6a — coquille** | `socle/base.html` (barre haute, menu avatar, onglets bas, messages), feuille de style commune, tableau de bord sur `/`, connexion à quatre états, pages 403 / 404 / 500, administration habillée, favicon | **livrée** (PR #26) |
 | **6a-bis — aménagement (réduite, C6.21)** | « Ajouter » en pilule dans l'index d'admin, menu avatar fermé au clic extérieur et à Échap, tableau de bord à coût constant | **livrée** (PR #35) |
-| 6b — espace salariée | « Mes jours » en grille avec ses absences et les marqueurs d'effectif (C6.8, C6.9), « Mes absences », « Nouvelle absence », « Mon profil », premières règles de largeur (téléphone) | à venir |
+| **6b — espace salariée** | « Mes jours » en grille avec ses absences et les marqueurs d'effectif (C6.8, C6.9, C6.22), « Mes absences » par mois, « Nouvelle absence » en deux groupes, « Mon profil » et compte non rattaché habillés, commande `rattraper_effectif`, première règle de largeur (§ 11) | **livrée** (PR #37) |
 | 6c — absences, présences & personnes | écran de décision, présences du mois et import, liste des personnes, mois en français dans les liens | à venir |
-| 6d — enveloppe du planning | barre haute au-dessus de la barre d'outils, en-tête d'état, menu « Plus », bandeau « écran large » — `page.js` et la grille inchangés | à venir |
+| **6d — enveloppe du planning** | barre haute au-dessus de la barre d'outils, en-tête d'état, menu « Plus », bandeau « écran large » — `page.js` et la grille inchangés | **livrée** (PR #29, § 10) |
 
-Ordre de livraison : 6d, puis 6b, 6c (cadrage).
+Ordre de livraison (cadrage, C6.18) : 6d, brique 8, 6a-bis et 6b livrées ; reste la 6c.
 
 Invariants de toute la brique 6 : `comptes.acces.role_requis` reste la seule
 garde de rôle, les sept surfaces de `planning/tests/test_confidentialite.py`
@@ -129,7 +130,8 @@ jeu complet **10** requêtes (9 avant la 6d, plus la date du dernier import
 retenu ; **11** pour une principale rattachée, la barre lisant sa personne),
 sans import **4**, `/admin/` **3**, `/connexion/` et un 404 anonyme **0** ;
 `/` **8** (cabinet) / **9** (principale rattachée), indépendant du nombre de
-mois versionnés (`test_cout_accueil`, 6a-bis).
+mois versionnés (`test_cout_accueil`, 6a-bis). `/mes-jours/<mois>/` : **8**
+(`planning/tests/test_mes_jours.py::test_cout_fige_a_huit_requetes`, 6b).
 
 ## 4. Page d'arrivée `/`
 
@@ -260,7 +262,7 @@ d'import, boutons de liste) sont inchangés : ils héritent du nouveau
 |---|---|
 | `polices.css` | les quatre `@font-face` Satoshi, **copiés** de `planning/static/planning/styles.css` (duplication assumée : `styles.css` est un fichier de la 6d ; l'option de faire pointer `page.html` sur `polices.css` reste ouverte) |
 | `barre.css` | **la barre haute, autonome** (6d) : barre, onglets, sous-onglets, menu avatar et les règles générales dont ils dépendent (police, liens, `button` nu), extraites de `commun.css` pour que la barre s'affiche sur la page planning, qui ne charge pas `commun.css` ; chargée par `base.html` sur toutes les pages dans le bloc `style_base`, et par `page.html` seule dans son propre `style_base` |
-| `commun.css` | la coquille : variables de la charte dans `:root` (mêmes valeurs que `styles.css`) et `color-scheme: light` (barre, onglets, sous-onglets et avatar sont dans `barre.css` depuis la 6d) ; onglets bas ; corps de page — la largeur de lecture est portée par `main` (`body.large` l'élargit, comme avant sur `body`) ; formulaires et boutons — la pilule bleue est la classe `.bouton` (`.bouton.contour` pour le contour), un `button` nu ne reçoit que la police et le curseur ; messages Django et bandeaux ; cartes et pastilles du tableau de bord. Aucune règle de largeur (`@media`) : elles arrivent avec la 6b ; une seule `@media print` |
+| `commun.css` | la coquille : variables de la charte dans `:root` (mêmes valeurs que `styles.css`) et `color-scheme: light` (barre, onglets, sous-onglets et avatar sont dans `barre.css` depuis la 6d) ; onglets bas ; corps de page — la largeur de lecture est portée par `main` (`body.large` l'élargit, comme avant sur `body`) ; formulaires et boutons — la pilule bleue est la classe `.bouton` (`.bouton.contour` pour le contour), un `button` nu ne reçoit que la police et le curseur ; messages Django et bandeaux ; cartes et pastilles du tableau de bord ; espace salariée (6b) : grille de « Mes jours », fiche du jour, légende, chevrons, `details.mois`, `dialog`, `optgroup`. **Une seule règle de largeur**, `@media (min-width: 48rem)` (6b), et une `@media print` |
 | `administration.css` | les variables de `admin/css/base.css` avec les valeurs de la charte, l'en-tête de 52 px, l'index en blocs, la pilule « Ajouter » (`a.ajout`, 6a-bis) |
 | `favicon.png` | 256 × 256 : la dent blanche du logo du cabinet sur un carré arrondi bleu (`--accent`, #1764D8), seuls les coins sont transparents ; référencé par `base.html` (`icon` et `apple-touch-icon`) et `base_site.html` |
 
@@ -279,7 +281,7 @@ Cinq fichiers dans `socle/tests/` (74 tests, tous nouveaux en 6a) :
 | Fichier | Ce qu'il couvre |
 |---|---|
 | `test_contexte.py` | garde sans `user` / anonyme / compte sans personne / compte rattaché ; chaque valeur de `nav_courante` ; `resolver_match` absent ; paresse (0 requête tant que rien n'est rendu, 1 ensuite) ; coûts figés de `/planning/<mois>/` (10, 11 pour une principale rattachée ; 4 sans import), `/admin/` (3), `/` (8 pour N = 0, 1, 6 mois versionnés ; 9 pour une principale rattachée — 6a-bis), `/connexion/` et 404 anonyme (0) ; `_mois_de` et `nav_urls` (brique 8) |
-| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_avec_barre_sans_commun`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` ; les onglets suivent le mois (`test_onglets_suivent_le_mois`, brique 8) ; le script du menu avatar une fois par page authentifiée, jamais pour un anonyme, et la garde de source `test_base_html_un_seul_script_apres_details` (6a-bis) |
+| `test_navigation.py` | pour chaque rôle, une page par app : chaque entrée présente chez son rôle et absente chez les autres, « Administration » sur le rôle `cabinet` seulement, titre du menu, onglets bas de la salariée, `aria-current` ; **`test_page_planning_avec_barre_sans_commun`** ; l'écran « aucun import » reçoit la coquille ; une seule déconnexion sur `/` ; les onglets suivent le mois (`test_onglets_suivent_le_mois`, brique 8) ; le script du menu avatar une fois par page authentifiée, jamais pour un anonyme, et la garde de source `test_base_html_un_seul_script_apres_details` (6a-bis) ; aucune `@media` de largeur dans `barre.css`, exactement une dans `commun.css` (6b) |
 | `test_tableau_de_bord.py` | redirections de `/` ; horizon à date fixée (À venir / En cours / Passés, « Préparer un mois ») ; les quatre pastilles ; mois historique sans marqueur (C7.10) ; « manquantes » dès un jour non couvert ; `Max("fin")` ; demandes, règle K, cinq au plus ; rendu HTML des deux rôles |
 | `test_erreurs.py` | 403 et 404 connectés et anonyme (lien par rôle) ; 500 rendu par `server_error` seul et par le gestionnaire ; lien périmé → `/connexion/?expire=1` ; bandeau ; neutralité du `POST` ; 429 sans formulaire |
 | `test_admin_habillage.py` | index (titres, ordre des cinq blocs, « Importer un fichier », quatre pilules « Ajouter » et huit rangées (6a-bis), « Actions récentes », plus de barre latérale, de bascule de thème ni de Groupes listé), liste habillée, `/admin/auth/group/` servi |
@@ -290,11 +292,13 @@ lien magique : `absences/tests/test_pages.py`, `personnes/tests/test_pages.py`,
 « base inchangée » de la 4a, qui comparait `base.html` à son texte d'origine,
 est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre"`),
 `comptes/tests/test_connexion.py`, `comptes/tests/test_profil.py`. Total au
-12/09/2026 (brique 6a-bis mergée) : 1 045 tests Python, 57 tests Node.
+13/09/2026 (brique 6b mergée) : 1 096 tests Python, 57 tests Node (tests de la
+6b : § 11).
 
 ## 10. Limites et transition
 
-- Les gabarits des sous-briques 6b et 6c gardent leur bloc `navigation`
+- Les gabarits de la sous-brique 6c gardent leur bloc `navigation` (ceux de la
+  6b l'ont vidé)
   (liens « Accueil — … », bouton « Se déconnecter » en bas de page) : jusqu'à
   leur rhabillage, ces pages proposent **deux** déconnexions et la coquille
   s'ajoute à leur mise en page d'origine. Voulu, pour ne toucher qu'aux
@@ -304,9 +308,10 @@ est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre
 - Le menu avatar (`<details>`) se ferme au clic extérieur et à Échap depuis la
   6a-bis (script inline avec la barre, § 2) ; sur la page planning, Échap ferme
   aussi le filtre si les deux sont actifs (écart assumé, C6.21).
-- Aucune règle de largeur avant la 6b : la barre haute de la principale ne se
-  replie pas sur un téléphone, et les onglets bas dépendent du rôle, pas de la
-  largeur.
+- Une seule règle de largeur depuis la 6b (`@media (min-width: 48rem)`, dans
+  `commun.css`, que la page planning ne charge pas) : la barre haute de la
+  principale ne se replie toujours pas sur un téléphone, et les onglets bas
+  dépendent du rôle, pas de la largeur.
 - Le mois en cours sans version ni import porte à la fois « Aucune version
   enregistrée » et « Données Doctolib manquantes ».
 - `apple-touch-icon` est le même PNG ; iOS applique son propre masque aux coins.
@@ -334,3 +339,76 @@ est supprimé au profit du test d'isolement ; « sous-titre » → `class="barre
   clic extérieur et à Échap (script inline `id="script-avatar"` avec la barre), tableau de
   bord à coût constant (une requête sur les versions, couverture par les plages des imports
   réussis ; `/` figé à 8 / 9). Sept fichiers, aucune migration ; 1 045 tests Python, 57 Node.
+
+## 11. Espace salariée (brique 6b)
+
+Mergée le 13/09/2026 (`303dda5`, PR #37 ; commit de branche `510690f`),
+déployée sans migration, recettée à 380 px sur un compte salariée réel.
+Décisions : C6.22 du cadrage ; bilan, écarts et dettes : `docs/briques/6b.md`.
+Vingt-deux fichiers ; 1 096 tests Python (+51), 57 Node.
+
+**« Mes jours »** (`/mes-jours/<AAAA-MM>/`, `planning.views.mes_jours`). La vue
+lit la version publiée du mois et de ses voisins (`services.jours_publies`),
+**ses** absences (`en_attente`, `validee`, `declaree` ; une requête,
+`select_related("type")`) et les fériés du calendrier (`socle.feries`), puis
+`planning/espace_salariee.py::construire_grille` (calcul pur) rend la grille
+L → D du mois calendaire (`plage_mois`) : `<td class="voisin">` hors mois,
+`<button class="case …">` avec `aria-current="date"` le jour même, codes
+**J / JC / A / A ? / E / F** par priorité F > A > A ? > E > brique (« A » en
+`absence-bloquante` ou `absence-partielle` selon `TypeAbsence.bloquant`),
+marqueurs « − » / « + », une `<section class="fiche" hidden>` par case (brique
+« journée » / « journée courte (fin 16h30) » « avec … » « (heures sup) », ses
+absences du jour « type — statut », raison), la phrase « Effectif non renseigné
+pour ce mois. » quand aucune version source n'a de compte-rendu, une légende
+`<dl>` à huit entrées (J journée · JC journée courte · A absence · A ? absence en
+attente · E école · F férié · − effectif insuffisant · + sureffectif), les
+chevrons ‹ › dans le bloc `titre_page`. Un script inline : une seule fiche
+ouverte, Échap ferme. Toujours sans `DATA` ; **8 requêtes**.
+
+**Contrat de `services.jours_publies(personne, mois)`** : `None` sans version
+publiée ; sinon `{"numero", "publie_le", "jours": [{date, t, x, slot,
+slot_libelle, hors_mois, source_numero}], "effectif": {iso: {"moins", "plus",
+"ouvert"}}, "sans_effectif": bool, "sans_compte_rendu": [iso]}`. `effectif` est
+lu dans le compte-rendu de la version qui porte le jour (règle du mois
+calendaire) ; `sans_effectif` vaut vrai si aucune version source n'en a ;
+`sans_compte_rendu` liste les jours dont la version source n'en a pas. Chaque
+fiche de case porte `{"brique", "absences": [{"type", "statut", "bloquant",
+"ecole"}], "ferie", "raison"}` ; `ecole` est vrai quand le libellé du type est
+`donnees.LIBELLE_ECOLE`.
+
+**Compte-rendu d'effectif** (`planning/effectif.py`, pur). `calculer(data,
+state)` rend `{"jours": {iso: {moins, plus, ouvert}}}` pour chaque jour couvert
+de la plage (aucune entrée un jour sans présences importées) : « − » quand un
+praticien présent — ligne `pr` de l'agenda ou jour fixe, par
+`verification._Lecture` — n'a aucune brique dans sa colonne ; « + » quand la
+case Sureffectif porte une brique hors heures sup ; `ouvert` faux un férié du
+calendrier ou un jour que le planning n'affiche pas, sans marqueur. Dates ISO et
+booléens seulement. `services.publier` l'écrit dans `verifications["effectif"]`
+avec `calcule_le` (= `verifie_le`) ; `lire(version)` rend `{}` pour `[]`, une
+version historique ou une version publiée avant la 6b.
+
+**`rattraper_effectif`** (`planning/management/commands/`, `--mois`,
+`--a-blanc`) : calcule le compte-rendu des versions publiées qui n'en ont pas,
+sans republier, sans webhook, `publie_le` intouché ; historiques et versions
+déjà marquées ignorées ; un événement d'audit `planning_effectif_rattrape` par
+version marquée ; sortie ASCII sans nom. En production : par le shell du service
+Railway — octobre 2026 v1 marquée, septembre 2026 laissé sans compte-rendu.
+
+**« Mes absences »** : groupes par mois de début (`<details class="mois">`, mois
+à venir et courant ouverts, passés repliés, « Mois AAAA — N absence(s) »),
+pastilles d'état, jours comptés au format d'origine, « Annuler la demande » et
+son `<dialog>` (sans script, le `POST` part directement), bouton « Nouvelle
+absence » (`.bouton`). **« Nouvelle absence »** : `<select>` rendu à la main en
+deux `<optgroup>` par `TypeAbsence.categorie` (libellés du modèle), bouton
+« Envoyer la demande » / « Déclarer l'absence » selon le type, « Dernier jour »
+qui suit « Premier jour » ; `FormulaireAbsence` et la vue intouchés. **« Mon
+profil »** et le compte non rattaché : habillés, sans liens de bas de page ; le
+profil reste déterministe (réponse neutre comparée octet pour octet).
+
+**Tests** : `planning/tests/test_effectif.py` et `test_commandes.py` (nouveaux),
+`test_mes_jours.py` (grille, codes, marqueurs, raisons, légende, coût, garde de
+source), `test_publication.py` (quatre clés), `absences/tests/test_pages.py`
+(groupes, `<dialog>`, `<optgroup>`), `socle/tests/test_navigation.py` (gardes
+`@media`) ; le test « Mes jours » de `planning/tests/test_confidentialite.py` est
+adapté (D6b.11 amendée : le type de sa propre absence vit dans ses fiches du
+jour, rien d'une autre personne).
